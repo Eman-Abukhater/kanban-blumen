@@ -1,0 +1,199 @@
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+        
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  email     String   @unique
+  password  String
+  firstName String?
+  lastName  String?
+  userPic   String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  projectMembers ProjectMember[]
+  createdProjects Project[] @relation("ProjectCreator")
+  createdBoards   Board[]   @relation("BoardCreator")
+  createdLists    KanbanList[] @relation("ListCreator")
+  createdCards    KanbanCard[] @relation("CardCreator")
+  createdTags     KanbanTag[]  @relation("TagCreator")
+  createdTasks    KanbanTask[] @relation("TaskCreator")
+  updatedTasks    KanbanTask[] @relation("TaskUpdater")
+  assignedTasks   TaskAssignment[]
+
+  @@index([isActive])
+  @@index([email])
+  @@index([username])
+  @@map("users")
+}
+
+model Project {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  createdById Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  createdBy User @relation("ProjectCreator", fields: [createdById], references: [id])
+  members   ProjectMember[]
+  boards    Board[]
+
+  @@index([createdById])
+  @@map("projects")
+}
+
+model ProjectMember {
+  id        Int      @id @default(autoincrement())
+  projectId Int
+  userId    Int
+  role      String   @default("member") // "admin", "member"
+  joinedAt  DateTime @default(now())
+
+  // Relations
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@index([projectId])
+  @@index([userId])
+  @@map("project_members")
+}
+
+model Board {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  projectId   Int
+  createdById Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  project   Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy User         @relation("BoardCreator", fields: [createdById], references: [id])
+  lists     KanbanList[]
+
+  @@index([projectId])
+  @@index([createdById])
+  @@index([createdAt])
+  @@map("boards")
+}
+
+model KanbanList {
+  id          Int      @id @default(autoincrement())
+  title       String
+  boardId     Int
+  seqNo       Int
+  createdById Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  board     Board        @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  createdBy User         @relation("ListCreator", fields: [createdById], references: [id])
+  cards     KanbanCard[]
+
+  @@index([boardId])
+  @@index([createdById])
+  @@index([seqNo])
+  @@map("kanban_lists")
+}
+
+model KanbanCard {
+  id          Int       @id @default(autoincrement())
+  title       String
+  description String?
+  imageUrl    String?
+  completed   Boolean   @default(false)
+  startDate   DateTime?
+  endDate     DateTime?
+  listId      Int
+  seqNo       Int
+  createdById Int
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  list      KanbanList   @relation(fields: [listId], references: [id], onDelete: Cascade)
+  createdBy User         @relation("CardCreator", fields: [createdById], references: [id])
+  tags      KanbanTag[]
+  tasks     KanbanTask[]
+
+  @@index([listId])
+  @@index([createdById])
+  @@index([seqNo])
+  @@index([completed])
+  @@map("kanban_cards")
+}
+
+model KanbanTag {
+  id          Int      @id @default(autoincrement())
+  title       String
+  color       String
+  cardId      Int
+  seqNo       Int
+  createdById Int
+  createdAt   DateTime @default(now())
+
+  // Relations
+  card      KanbanCard @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  createdBy User       @relation("TagCreator", fields: [createdById], references: [id])
+
+  @@index([cardId])
+  @@index([seqNo])
+  @@map("kanban_tags")
+}
+
+model KanbanTask {
+  id          Int      @id @default(autoincrement())
+  title       String
+  completed   Boolean  @default(false)
+  fileUrl     String?
+  cardId      Int
+  seqNo       Int
+  createdById Int
+  updatedById Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  card      KanbanCard       @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  createdBy User             @relation("TaskCreator", fields: [createdById], references: [id])
+  updatedBy User?            @relation("TaskUpdater", fields: [updatedById], references: [id])
+  assignments TaskAssignment[]
+
+  @@index([cardId])
+  @@index([seqNo])
+  @@index([completed])
+  @@map("kanban_tasks")
+}
+
+model TaskAssignment {
+  id     Int @id @default(autoincrement())
+  taskId Int
+  userId Int
+
+  // Relations
+  task KanbanTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, userId])
+  @@index([taskId])
+  @@index([userId])
+  @@map("task_assignments")
+}
