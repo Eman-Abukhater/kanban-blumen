@@ -2,8 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-
-/* Add your custom styles below this line */
+/* Global body and scrollbar setup */
 body {
   @apply scroll-thin m-0 box-border bg-white p-0 antialiased dark:bg-slate-900;
 }
@@ -14,93 +13,28 @@ body {
   }
 }
 
-/* 
-.contentwave {
-  position: relative;
-} */
+/* (You can keep your contentwave and btn-shine animations here) */
 
-
-.contentwave-text {
-  color: #fff;
-  font-size: 1em;
+/* 🌼 Blumen Café Custom Utilities */
+:root {
+  --radius-card: 12px;
 }
 
- .contentwave span {
-  color: #ffffff;
-  font-size: 27px;
-  position: absolute;
-  transform: translate(-50%, -50%);
-  margin-top: -33px;
-  font-weight: bolder;
-}
+@layer utilities {
+  .text-h4 { @apply text-[20px] leading-[28px] font-semibold text-ink; }
+  .text-label { @apply text-[12px] leading-[18px] font-semibold text-ink; }
+  .text-muted { @apply text-slate500; }
 
-.contentwave span:nth-child(1) {
-  color: transparent;
-  -webkit-text-stroke: 2px #ffffff;
-}
+  .card { @apply rounded-[12px] border border-slate500_20 bg-surface shadow-soft; }
+  .divider { @apply h-px w-full bg-slate500_12; }
 
-.contentwave span:nth-child(2) {
-  color: #57caff;
-  /* color: #03a9f4; */
-  animation: animate 4s ease-in-out infinite;
-}
+  .btn { @apply inline-flex items-center justify-center rounded-[10px] px-4 py-2 text-[14px] font-semibold transition-all; }
+  .btn-dark { @apply btn bg-ink text-white hover:opacity-90; }
+  .btn-outline { @apply btn border border-slate500_20 text-ink hover:bg-slate500_12; }
 
-@keyframes animate {
-  0%, 100% {
-    clip-path: polygon(
-      0% 45%,
-      16% 44%,
-      33% 50%,
-      54% 60%,
-      70% 61%,
-      84% 59%,
-      100% 52%,
-      100% 100%,
-      0% 100%
-    );
-  }
-
-  50% {
-    clip-path: polygon(
-      0% 60%,
-      15% 65%,
-      34% 66%,
-      51% 62%,
-      67% 50%,
-      84% 45%,
-      100% 46%,
-      100% 100%,
-      0% 100%
-    );
+  .id-badge {
+    @apply inline-flex items-center rounded-[8px] border-2 px-2 py-[2px] text-label;
+    border-color: #8E33FF;
+    background: #F3E8FF;
   }
 }
-
-.btn-shine {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  padding: 12px 48px;
-  color: #ffffff;
-  background: linear-gradient(to right, #4d4d4d 0, white 10%, #4d4d4d 20%);
-  background-position: 0;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: shine 3s infinite linear(0 0%, 0.57 45.88%);
-  animation-fill-mode: forwards;
-  -webkit-text-size-adjust: none;
-  font-weight: bolder;
-  font-size: 30px;
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-@keyframes shine {
-  /* 0% {
-      background-position: -180px;
-  } */
-  100% {
-      background-position:  200px;
-  }
-}
-
