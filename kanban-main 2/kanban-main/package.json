@@ -19,6 +19,7 @@
     "chroma-js": "^2.4.2",
     "dayjs": "^1.11.7",
     "lottie-react": "^2.4.0",
+    "lucide-react": "^0.553.0",
     "next": "13.4.19",
     "postcss": "8.4.29",
     "prettier": "^2.8.8",
