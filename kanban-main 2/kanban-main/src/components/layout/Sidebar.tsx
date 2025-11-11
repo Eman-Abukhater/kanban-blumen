@@ -22,10 +22,6 @@ export default function Sidebar() {
       <div className="w-full p-4">
         <div className="mb-6 flex items-center gap-3 px-2">
           <Image src="/Logo.png" alt="Blumen Cafe" width={36} height={36} />
-          <div>
-            <div className="text-[20px] font-bold text-[#F9B900] leading-5">Blumen Cafe</div>
-            <div className="text-[12px] text-slate500 -mt-0.5">Coffee & Sweets</div>
-          </div>
         </div>
 
         <div className="px-2 text-[12px] font-semibold text-slate500 mb-2">OVER VIEW</div>
