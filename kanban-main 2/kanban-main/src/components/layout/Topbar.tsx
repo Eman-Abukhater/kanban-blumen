@@ -1,39 +1,62 @@
 // src/components/layout/Topbar.tsx
-import { Search } from "lucide-react";
+import Image from "next/image";
+import { Bell, Settings, Users2, Search } from "lucide-react";
 
 type Props = {
-  title: string;
   onCreate: () => void;
-  search: string;
-  setSearch: (v: string) => void;
 };
 
-export default function Topbar({ title, onCreate, search, setSearch }: Props) {
+export default function Topbar({ onCreate }: Props) {
   return (
-    <header className="sticky top-0 z-20 bg-surface/90 backdrop-blur border-b border-slate500_12">
-      <div className="mx-auto max-w-7xl px-4 py-4">
-        <div className="flex items-center">
-          <div>
-            <h1 className="text-h4">{title}</h1>
-            <div className="mt-1 flex items-center gap-2 text-[14px]">
-              <span className="text-ink">Project</span>
-              <span className="text-slate500">•</span>
-              <span className="text-slate500">Project List</span>
-            </div>
+    <header className="sticky top-0 z-30 border-b border-slate500_12 bg-white/85 backdrop-blur">
+      <div className="mx-auto flex h-16 max-w-[1120px] items-center justify-between px-6">
+        {/* left side empty to match figma spacing */}
+        <div className="w-[180px]" />
+
+        {/* right controls */}
+        <div className="flex items-center gap-3">
+          {/* mini search chip (⌘K style) */}
+          <div className="flex h-9 items-center rounded-[10px] border border-slate500_20 bg-white px-3 text-[13px] text-slate600">
+            <Search className="mr-2 h-4 w-4" />
+            <span className="opacity-80">Search…</span>
           </div>
 
-          <div className="ml-auto flex items-center gap-3">
-            <div className="relative w-[260px]">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate500" />
-              <input
-                className="input pl-9"
-                placeholder="Search..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-            <button className="btn btn-dark" onClick={onCreate}>Create Project</button>
+          {/* flags (placeholder images in /public) */}
+          <Image src="/flag-gb.png" width={20} height={14} alt="EN" className="rounded-sm" />
+          <Image src="/flag-uk.png" width={20} height={14} alt="UK" className="rounded-sm" />
+
+          {/* bell with badge */}
+          <button className="relative rounded-full p-2 hover:bg-slate500_12">
+            <Bell className="h-5 w-5 text-slate600" />
+            <span className="absolute -right-0.5 -top-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[#FF5630] px-1 text-[10px] font-bold text-white">
+              1
+            </span>
+          </button>
+
+          {/* users icon */}
+          <button className="rounded-full p-2 hover:bg-slate500_12">
+            <Users2 className="h-5 w-5 text-slate600" />
+          </button>
+
+          {/* settings */}
+          <button className="rounded-full p-2 hover:bg-slate500_12">
+            <Settings className="h-5 w-5 text-slate600" />
+          </button>
+
+          {/* avatar (place your avatar in /public/avatar.png) */}
+          <div className="relative h-9 w-9">
+            <Image
+              src="/avatar.png"
+              alt="profile"
+              fill
+              className="rounded-full ring-2 ring-[#FFAB00]"
+            />
           </div>
+
+          {/* Create Project button */}
+          <button onClick={onCreate} className="ml-2 h-10 rounded-[10px] bg-ink px-4 text-[14px] font-semibold text-white hover:opacity-90">
+            Create Project
+          </button>
         </div>
       </div>
     </header>
