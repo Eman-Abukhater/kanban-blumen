@@ -1,6 +1,6 @@
 // src/pages/projects.tsx
 export const getServerSideProps = async () => ({ props: {} });
-
+import SectionHeader from "@/components/layout/SectionHeader";
 import type { GetServerSideProps } from "next";
 import { useState, useEffect, useMemo, useContext } from "react";
 import { useRouter } from "next/router";
@@ -184,12 +184,8 @@ export default function ProjectsList() {
       {/* Hide content during navigation to prevent flash */}
       {!isNavigating && userInfo && (
         <Shell>
-          <Topbar
-            title="Project"
-            onCreate={() => openEditModal(null)}
-            search={search}
-            setSearch={setSearch}
-          />
+         <Topbar onCreate={() => openEditModal(null)} />
+         <SectionHeader search={search} setSearch={setSearch} />
 
           {/* Optional hero strip with Lottie (kept minimal, matches clean Figma tone) */}
           <section className="mx-auto max-w-7xl px-4 pt-6">
