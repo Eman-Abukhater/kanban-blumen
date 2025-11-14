@@ -187,18 +187,7 @@ export default function ProjectsList() {
          <Topbar onCreate={() => openEditModal(null)} />
          <SectionHeader search={search} setSearch={setSearch} />
 
-          {/* Optional hero strip with Lottie (kept minimal, matches clean Figma tone) */}
-          <section className="mx-auto max-w-7xl px-4 pt-6">
-            <div className="rounded-[12px] border border-slate500_20 bg-gradient-to-r from-brandGrad_from to-brandGrad_to text-ink/90 p-5 flex items-center justify-between">
-              <div>
-                <div className="text-label text-ink/80">POS – Blumen Café</div>
-                <h2 className="text-h4">Project List</h2>
-              </div>
-              <div className="hidden sm:block w-28">
-                <LottieClient animationData={animation_space} loop />
-              </div>
-            </div>
-          </section>
+      
 
           <section className="mx-auto max-w-7xl px-4 py-6">
             {isLoading ? (
