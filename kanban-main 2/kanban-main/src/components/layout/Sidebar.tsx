@@ -3,13 +3,18 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { FolderKanban, LayoutDashboard, User2, Shield, CheckCircle2, Building2, Users, Boxes, ShoppingCart, Truck, BarChart2, ChevronRight } from "lucide-react";
-
-const Item = ({ href, icon:Icon, label, active }: any) => (
+const Item = ({ href, icon: Icon, label, active }: any) => (
   <Link
     href={href}
-    className={`flex items-center gap-3 rounded-[12px] px-3 py-2 text-[14px] ${active ? "bg-warning-bg text-brand" : "hover:bg-slate500_12 text-ink"}`}
+    className={`flex items-center gap-3 rounded-[12px] px-3 py-2 text-[14px] ${
+      active ? "bg-warningBg text-brand" : "hover:bg-slate500_12 text-ink"
+    }`}
   >
-    <Icon className="h-5 w-5 text-slate600" />
+    <Icon
+      className={`h-5 w-5 ${
+        active ? "text-brand" : "text-slate600"
+      }`}
+    />
     <span>{label}</span>
     <ChevronRight className="ml-auto h-4 w-4 text-slate500" />
   </Link>

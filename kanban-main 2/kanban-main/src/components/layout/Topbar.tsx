@@ -8,8 +8,8 @@ type Props = {
 
 export default function Topbar({ onCreate }: Props) {
   return (
-    <header className="sticky top-0 z-30 border-b border-slate500_12 bg-white/85 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-[1120px] items-center justify-between px-6">
+<header className="sticky top-0 z-30 bg-white">
+        <div className="mx-auto flex h-16 max-w-[1120px] items-center justify-between px-6">
         {/* left side empty to match figma spacing */}
         <div className="w-[180px]" />
 
@@ -17,12 +17,11 @@ export default function Topbar({ onCreate }: Props) {
         <div className="flex items-center gap-3">
           {/* mini search chip (⌘K style) */}
           <div className="flex h-9 items-center rounded-[10px] border border-slate500_20 bg-white px-3 text-[13px] text-slate600">
-            <Search className="mr-2 h-4 w-4" />
-            <span className="opacity-80">Search…</span>
+          <Search className="mr-2 h-4 w-4" />
+            <span className="opacity-80">⌘K</span>
           </div>
 
           {/* flags (placeholder images in /public) */}
-          <Image src="/flag-gb.png" width={20} height={14} alt="EN" className="rounded-sm" />
           <Image src="/flag-uk.png" width={20} height={14} alt="UK" className="rounded-sm" />
 
           {/* bell with badge */}
@@ -53,10 +52,6 @@ export default function Topbar({ onCreate }: Props) {
             />
           </div>
 
-          {/* Create Project button */}
-          <button onClick={onCreate} className="ml-2 h-10 rounded-[10px] bg-ink px-4 text-[14px] font-semibold text-white hover:opacity-90">
-            Create Project
-          </button>
         </div>
       </div>
     </header>
