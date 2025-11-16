@@ -184,8 +184,8 @@ export default function ProjectsList() {
       {/* Hide content during navigation to prevent flash */}
       {!isNavigating && userInfo && (
         <Shell>
-         <Topbar onCreate={() => openEditModal(null)} />
-         <SectionHeader search={search} setSearch={setSearch} />
+         <Topbar />
+         <SectionHeader search={search} setSearch={setSearch} onCreate={() => openEditModal(null)}/>
 
       
 

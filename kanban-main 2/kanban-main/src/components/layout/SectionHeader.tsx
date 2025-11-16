@@ -4,13 +4,25 @@ import { Filter, List, Grid, Search } from "lucide-react";
 type Props = {
   search: string;
   setSearch: (v: string) => void;
+  onCreate: () => void;
 };
 
-export default function SectionHeader({ search, setSearch }: Props) {
+export default function SectionHeader({ search, setSearch, onCreate }: Props) {
   return (
     <div className="mx-auto max-w-[1120px] px-6 pt-6">
       {/* Title */}
-      <h1 className="text-[22px] font-bold leading-[30px] text-ink">Project</h1>
+      <div className="flex justify-between ">
+        <h1 className="text-[22px] font-bold leading-[30px] text-ink">
+          Project
+        </h1>
+        {/* Create Project button */}
+        <button
+          onClick={onCreate}
+          className="ml-2 h-10 rounded-[10px] bg-ink px-4 text-[14px] font-semibold text-white hover:opacity-90"
+        >
+          Create Project
+        </button>
+      </div>
 
       {/* Breadcrumb ONLY */}
       <div className="mt-1 flex items-center">
@@ -36,13 +48,22 @@ export default function SectionHeader({ search, setSearch }: Props) {
 
         {/* Right icons */}
         <div className="flex items-center gap-4">
-          <button className="rounded-[10px] p-2 hover:bg-slate500_12" title="Filter">
+          <button
+            className="rounded-[10px] p-2 hover:bg-slate500_12"
+            title="Filter"
+          >
             <Filter className="h-5 w-5 text-slate600" />
           </button>
-          <button className="rounded-[10px] p-2 hover:bg-slate500_12" title="List view">
+          <button
+            className="rounded-[10px] p-2 hover:bg-slate500_12"
+            title="List view"
+          >
             <List className="h-5 w-5 text-slate600" />
           </button>
-          <button className="rounded-[10px] p-2 hover:bg-slate500_12" title="Grid view">
+          <button
+            className="rounded-[10px] p-2 hover:bg-slate500_12"
+            title="Grid view"
+          >
             <Grid className="h-5 w-5 text-slate600" />
           </button>
         </div>

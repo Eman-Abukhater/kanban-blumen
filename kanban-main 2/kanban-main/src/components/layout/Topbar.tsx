@@ -2,11 +2,9 @@
 import Image from "next/image";
 import { Bell, Settings, Users2, Search } from "lucide-react";
 
-type Props = {
-  onCreate: () => void;
-};
 
-export default function Topbar({ onCreate }: Props) {
+
+export default function Topbar() {
   return (
 <header className="sticky top-0 z-30 bg-white">
         <div className="mx-auto flex h-16 max-w-[1120px] items-center justify-between px-6">
