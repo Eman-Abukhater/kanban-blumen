@@ -4,7 +4,7 @@ import Sidebar from "./Sidebar";
 
 export default function Shell({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen bg-[#F9FAFB] text-ink">
+    <div className="min-h-screen bg-[#ffffff] text-ink">
       <div className="flex">
         <Sidebar />
         <div className="flex-1">{children}</div>
