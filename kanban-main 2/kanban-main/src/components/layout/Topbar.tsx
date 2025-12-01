@@ -14,37 +14,42 @@ export default function Topbar() {
           </div>
 
           {/* flags */}
-          <Image
-            src="/flag-gb.png"
-            width={20}
-            height={14}
-            alt="EN"
-            className="rounded-sm"
-          />
+
           <Image
             src="/flag-uk.png"
-            width={20}
-            height={14}
+            width={25}
+            height={25}
             alt="UK"
             className="rounded-sm"
           />
-
           {/* bell with badge */}
           <button className="relative rounded-full p-2 hover:bg-slate500_12">
-            <Bell className="h-5 w-5 text-slate500" />
-            <span className="absolute -right-0.5 -top-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[#FF5630] px-1 text-[10px] font-bold text-white">
+            <Image
+              src="/icons/notification.png"
+              alt="notifications"
+              width={20}
+              height={20}
+              className="opacity-80"
+            />
+            <span className="min-w-4 absolute -right-0.5 -top-0.5 inline-flex h-4 items-center justify-center rounded-full bg-[#FF5630] px-1 text-[10px] font-bold text-white">
               1
             </span>
           </button>
 
-          {/* users icon */}
+          {/* users icon (KEEP THIS THE SAME for now) */}
           <button className="rounded-full p-2 hover:bg-slate500_12">
             <Users2 className="h-5 w-5 text-slate500" />
           </button>
 
           {/* settings */}
           <button className="rounded-full p-2 hover:bg-slate500_12">
-            <Settings className="h-5 w-5 text-slate500" />
+            <Image
+              src="/icons/settings.png"
+              alt="settings"
+              width={20}
+              height={20}
+              className="opacity-80"
+            />
           </button>
 
           {/* avatar */}
