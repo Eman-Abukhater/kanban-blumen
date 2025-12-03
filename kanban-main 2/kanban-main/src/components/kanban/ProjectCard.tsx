@@ -41,7 +41,7 @@ export default function ProjectCard({
   return (
     <article className="flex h-full flex-col rounded-[20px] border border-slate500_08 bg-white shadow-[0_20px_60px_rgba(15,23,42,0.04)]">
       {/* Top content */}
-      <div className="flex-1 px-6 pt-5 pb-4">
+      <div className="flex-1 px-4 pt-3 pb-4">
         {/* ID + menu */}
         <div className="flex items-start justify-between">
           <span className="inline-flex rounded-[6px] border-[3px] border-[#8E33FF]  px-1 py-[3px] text-[12px] font-bold leading-[14px] text-[#A855F7]">
@@ -49,7 +49,7 @@ export default function ProjectCard({
           </span>
 
           <button className="rounded-full p-1.5 hover:bg-slate500_08">
-            <MoreVertical className="h-4 w-4 text-[#637381]" />
+            <MoreVertical className="h-5 w-5 text-[#637381]" />
           </button>
         </div>
 
@@ -72,22 +72,22 @@ export default function ProjectCard({
 
             <div className="flex items-center">
               {/* avatar 1 */}
-              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#F0D5FF] text-[#C455F4] shadow-[0_0_0_3px_#FFFFFF]">
-                <MemberIcon className="h-3 w-3" />
+              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#EFD6FF] text-[#C684FF] shadow-[0_0_0_3px_#FFFFFF]">
+                <MemberIcon className="h-4 w-4" />
               </div>
 
               {/* avatar 2 */}
-              <div className="-ml-1 flex h-6 w-6 items-center justify-center rounded-full bg-[#FFE1CC] text-[#F3A56B] shadow-[0_0_0_3px_#FFFFFF]">
-                <MemberIcon className="h-3 w-3" />
+              <div className="-ml-1 flex h-6 w-6 items-center justify-center rounded-full bg-[#FFE1CC] text-[#F3A56B] shadow-[0_0_0_2px_#FFFFFF]">
+                <MemberIcon className="h-4 w-4" />
               </div>
 
               {/* avatar 3 */}
-              <div className="-ml-1 flex h-6 w-6 items-center justify-center rounded-full bg-[#C7F5FF] text-[#08B4E0] shadow-[0_0_0_3px_#FFFFFF]">
-                <MemberIcon className="h-3 w-3" />
+              <div className="-ml-1 flex h-6 w-6 items-center justify-center rounded-full bg-[#C7F5FF] text-[#08B4E0] shadow-[0_0_0_2px_#FFFFFF]">
+                <MemberIcon className="h-4 w-4" />
               </div>
 
               {/* +2 */}
-              <div className="-ml-1 flex h-6 w-6 items-center justify-center rounded-full bg-[#FFEFAF] text-[11px] font-semibold text-[#D7941B] shadow-[0_0_0_3px_#FFFFFF]">
+              <div className="-ml-1 flex h-6 w-6 items-center justify-center rounded-full bg-[#FFEFAF] text-[11px] font-semibold text-[#D7941B] shadow-[0_0_0_2px_#FFFFFF]">
                 +2
               </div>
             </div>
