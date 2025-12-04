@@ -13,35 +13,61 @@ type ItemProps = {
 const Item = ({ href, icon, label, active }: ItemProps) => (
   <Link
     href={href}
-    className={`flex items-center gap-3 rounded-[12px] px-3 py-2 text-[14px] transition ${
-      active ? "bg-warningBg text-brand" : "hover:bg-slate500_12 text-ink"
-    }`}
+    className={`
+      flex items-center gap-3 rounded-[12px] px-3 py-2 text-[14px] transition
+
+      ${
+        active
+          ? "bg-[#FFAB0014]"   /* ACTIVE background */
+          : "hover:bg-[#FFAB0014]" /* HOVER background */
+      }
+    `}
   >
+    {/* ICON */}
     <Image
-      src={`/icons/${icon}.svg`}     // ← clean icon path
+      src={`/icons/${icon}.svg`}
       alt={label}
-      width={20}
-      height={20}
-      className={`${active ? "opacity-100" : "opacity-80"} shrink-0`}
+      width={25}
+      height={25}
+      className={`
+        shrink-0 transition
+        ${active ? "brightness-0 saturate-100" : "opacity-60"}
+      `}
+      style={{
+        filter: active
+          ? "invert(66%) sepia(96%) saturate(934%) hue-rotate(356deg) brightness(101%) contrast(102%)"
+          : "none",
+      }}
     />
-    <span>{label}</span>
+
+    {/* LABEL */}
+    <span
+      className={`
+        font-medium text-[14px] transition
+        ${active ? "text-[#FFAB00]" : "text-[#637381]"}
+      `}
+    >
+      {label}
+    </span>
   </Link>
 );
+
+
 
 export default function Sidebar() {
   const { pathname } = useRouter();
 
   return (
-    <aside className="hidden md:flex md:w-64 shrink-0 border-r border-slate500_12 bg-surface">
-      <div className="w-full p-4">
+    <aside className="hidden md:flex md:w-64 shrink-0 border-r border-slate500_12">
+      <div className="w-full p-4 ">
 
         {/* Logo */}
         <div className="mb-6 flex items-center gap-3 px-2">
-          <Image src="/Logo.png" alt="Blumen Cafe" width={36} height={36} />
+<Image src="/Logo.png" alt="Blumen Cafe" width={170} height={70} />
         </div>
 
         {/* SECTION: OVERVIEW */}
-        <div className="mb-2 px-2 text-[12px] font-semibold text-slate500">
+        <div className="mb-2 px-2 text-[11px] font-semibold text-[#919EAB]">
           OVER VIEW
         </div>
 
@@ -55,7 +81,7 @@ export default function Sidebar() {
         </div>
 
         {/* SECTION: MANAGEMENT */}
-        <div className="mb-2 px-2 text-[12px] font-semibold text-slate500">
+        <div className="mb-2 px-2 text-[11px] font-semibold text-[#919EAB]">
           MANAGEMENT
         </div>
 

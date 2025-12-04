@@ -105,7 +105,7 @@ export default function ProjectCard({
       <div className="w-full border-t border-dashed border-[#E5EAF1]" />
 
       {/* Footer / View button */}
-      <div className="px-6 py-4">
+      <div className="px-4 py-4">
         <button
           type="button"
           onClick={onView}

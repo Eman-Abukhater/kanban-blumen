@@ -1,125 +1,133 @@
-import React, { useState, useEffect } from "react";
+// src/components/modal/AddEditProjectModal.tsx
+import { useEffect, useState, FormEvent } from "react";
 
-interface AddEditProjectModalProps {
+type Props = {
   isOpen: boolean;
   onClose: () => void;
+  project: any | null;
+  handleAddProject: (title: string, description: string) => Promise<void>;
   handleEditProject: (
-    newTitle: string,
-    newDescription: string,
+    title: string,
+    description: string,
     projectId: number
-  ) => void;
-  handleAddProject: (newTitle: string, newDescription: string) => void;
-  project: any;
-}
+  ) => Promise<void>;
+};
 
-const AddEditProjectModal: React.FC<AddEditProjectModalProps> = ({
+export default function AddEditProjectModal({
   isOpen,
   onClose,
-  handleEditProject,
-  handleAddProject,
   project,
-}) => {
-  const [newTitle, setNewTitle] = useState("");
-  const [newDescription, setNewDescription] = useState("");
+  handleAddProject,
+  handleEditProject,
+}: Props) {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
+  const isEditMode = Boolean(project);
+
+  // Fill fields when editing
   useEffect(() => {
-    if (project) {
-      setNewTitle(project.title || "");
-      setNewDescription(project.description || "");
-    } else {
-      setNewTitle("");
-      setNewDescription("");
+    if (isOpen && project) {
+      setTitle(project.title ?? "");
+      setDescription(project.description ?? "");
     }
-  }, [project]);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!newTitle.trim()) {
-      alert("Please enter a project title");
-      return;
+    if (isOpen && !project) {
+      setTitle("");
+      setDescription("");
     }
-
-    if (project) {
-      // Edit existing project
-      handleEditProject(newTitle, newDescription, project.id);
-    } else {
-      // Add new project
-      handleAddProject(newTitle, newDescription);
-    }
-
-    // Reset form
-    setNewTitle("");
-    setNewDescription("");
-    onClose();
-  };
+  }, [isOpen, project]);
 
   if (!isOpen) return null;
 
+  const onSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!title.trim()) return;
+
+    try {
+      setSubmitting(true);
+      if (isEditMode) {
+        await handleEditProject(title.trim(), description.trim(), project.id);
+      } else {
+        await handleAddProject(title.trim(), description.trim());
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-lg">
-        <h2 className="mb-4 text-2xl font-bold text-gray-800">
-          {project ? "Edit Project" : "Add New Project"}
-        </h2>
-
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label className="mb-2 block text-sm font-medium text-gray-700">
-              Project Title <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              className="w-full rounded-md border border-gray-300 p-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Enter project title"
-              required
-              maxLength={100}
-            />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      {/* Modal container */}
+      <div className="w-full max-w-xl  rounded-[24px] bg-white shadow-[0_24px_80px_rgba(15,23,42,0.16)]">
+        <form onSubmit={onSubmit}>
+          {/* Header */}
+          <div className="px-8 py-6">
+            <h2 className="text-[20px] font-semibold leading-[28px] text-ink">
+              {isEditMode ? "Edit Project" : "Add New Project"}
+            </h2>
           </div>
 
-          <div className="mb-6">
-            <label className="mb-2 block text-sm font-medium text-gray-700">
-              Description
-            </label>
-            <textarea
-              value={newDescription}
-              onChange={(e) => setNewDescription(e.target.value)}
-              className="w-full rounded-md border border-gray-300 p-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Enter project description (optional)"
-              rows={4}
-              maxLength={500}
-            />
-            <p className="mt-1 text-xs text-gray-500">
-              {newDescription.length}/500 characters
-            </p>
+          {/* Body */}
+          <div className="space-y-4 px-8 py-">
+            {/* Title field with floating label */}
+            <div className="relative">
+              <label className="pointer-events-none absolute -top-2 left-3 inline-flex bg-white px-1 text-[13px] font-medium text-[#637381]">
+                Add Title
+                <span className="ml-0.5 text-[#FF5630]">*</span>
+              </label>
+
+              <input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="--"
+                className="h-[56px] w-full rounded-[12px] border border-slate500_12 bg-white px-3 pt-3 text-[14px] text-ink outline-none transition focus:border-[#1D7BF5] focus:ring-2 focus:ring-[#1D7BF5]/20"
+              />
+            </div>
+
+            {/* Description field with floating label */}
+            <div className="relative">
+              <label className="pointer-events-none absolute -top-2 left-3 inline-flex bg-white px-1 text-[13px] font-medium text-[#637381]">
+                Description
+                
+              </label>
+
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="--"
+                rows={4}
+                className="w-full rounded-[12px] border border-slate500_12 bg-white px-3 pt-3 text-[14px] text-ink outline-none transition focus:border-[#1D7BF5] focus:ring-2 focus:ring-[#1D7BF5]/20"
+              />
+            </div>
           </div>
 
-          <div className="flex justify-end space-x-3">
+          {/* Footer / actions */}
+          <div className="flex items-center justify-end gap-3 px-8 py-5">
             <button
               type="button"
-              onClick={() => {
-                setNewTitle("");
-                setNewDescription("");
-                onClose();
-              }}
-              className="rounded-md bg-gray-300 px-4 py-2 text-gray-700 transition-colors focus:outline-none hover:bg-gray-400"
+              onClick={onClose}
+              className="h-10 rounded-[10px] border border-slate500_20 px-4 text-[14px] font-semibold text-[#1C252E]  hover:bg-slate500_08"
             >
               Cancel
             </button>
 
             <button
               type="submit"
-              className="rounded-md bg-blue-500 px-4 py-2 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 hover:bg-blue-600"
+              disabled={submitting || !title.trim()}
+              className="h-10 rounded-[10px] bg-[#1C252E] px-5 text-[14px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-70"
             >
-              {project ? "Update Project" : "Create Project"}
+              {submitting
+                ? isEditMode
+                  ? "Saving..."
+                  : "Creating..."
+                : isEditMode
+                ? "Save"
+                : "Create"}
             </button>
           </div>
         </form>
       </div>
     </div>
   );
-};
-
-export default AddEditProjectModal;
+}

@@ -5,7 +5,7 @@ import { Bell, Settings, Users2, Search } from "lucide-react";
 export default function Topbar() {
   return (
     <header className="sticky top-0 z-30 bg-white">
-      <div className="mx-auto flex max-w-[1120px] items-center justify-end px-6 py-4">
+      <div className="mx-auto flex max-w-[1120px] items-center justify-end px-0 py-4">
         <div className="flex items-center gap-3">
           {/* mini search chip */}
           <div className="flex h-9 items-center rounded-full border border-slate500_20 bg-[#F9FAFB] px-3 text-[13px] text-slate600">
