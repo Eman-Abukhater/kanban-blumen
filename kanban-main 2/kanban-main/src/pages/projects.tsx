@@ -263,11 +263,13 @@ export default function ProjectsList() {
       {!isNavigating && userInfo && (
         <Shell>
           <Topbar />
-          <SectionHeader
-            search={search}
-            setSearch={setSearch}
-            onCreate={() => openEditModal(null)}
-          />
+            <SectionHeader
+    search={search}
+    setSearch={setSearch}
+    onCreate={() => openEditModal(null)}
+    createLabel="Create Project"
+  />
+
 
           <section className="mx-auto max-w-[1120px] px-0 py-6">
             {isLoading ? (

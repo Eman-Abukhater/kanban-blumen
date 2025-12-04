@@ -7,22 +7,30 @@ type Props = {
   search?: string;
   setSearch?: (v: string) => void;
   onCreate?: () => void;
+  /** Text of the primary button (default: "Create Project") */
+  createLabel?: string;
 };
 
-export default function SectionHeader({ search = "", setSearch, onCreate }: Props) {
+export default function SectionHeader({
+  search = "",
+  setSearch,
+  onCreate,
+  createLabel = "Create Project",
+}: Props) {
   const router = useRouter();
-  const path = router.pathname.split("/").filter(Boolean);  // ["projects"] or ["boardList", "12"]
+  const path = router.pathname.split("/").filter(Boolean); // ["projects"] or ["boardList", "[projectId]"]
 
-  /** 🔥 Build breadcrumb items based on route */
-  const breadcrumb = [];
+  /** 🔗 Build breadcrumb items based on route */
+  const breadcrumb: { label: string; href?: string }[] = [];
 
-  // Always first item
+  // Always first item = Project
   breadcrumb.push({
     label: "Project",
     href: "/projects",
   });
 
   if (path[0] === "projects") {
+    // Page: /projects
     breadcrumb.push({
       label: "Project List",
       href: "/projects",
@@ -30,6 +38,7 @@ export default function SectionHeader({ search = "", setSearch, onCreate }: Prop
   }
 
   if (path[0] === "boardList") {
+    // Page: /boardList/[id]
     breadcrumb.push({
       label: "Project List",
       href: "/projects",
@@ -40,53 +49,61 @@ export default function SectionHeader({ search = "", setSearch, onCreate }: Prop
     });
   }
 
+  const currentTitle =
+    breadcrumb.length > 0
+      ? breadcrumb[breadcrumb.length - 1].label
+      : "Project";
+
   return (
     <div className="mx-auto max-w-[1120px] bg-white px-0 pt-8">
       {/* Top Row: Title + Button */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-[26px] font-semibold leading-[28px] text-ink pb-3">
-            {breadcrumb[breadcrumb.length - 1].label}
+          {/* Page title (H1) */}
+          <h1 className="pb-3 text-[26px] font-semibold leading-[28px] text-ink">
+            {currentTitle}
           </h1>
 
           {/* BREADCRUMB */}
-          <div className="mt-1 flex items-center text-[13px] gap-1.5">
-
+          <div className="mt-1 flex items-center gap-1.5 text-[13px]">
             {breadcrumb.map((item, i) => {
               const isLast = i === breadcrumb.length - 1;
 
               return (
                 <div key={i} className="flex items-center">
-                  {!isLast ? (
+                  {!isLast && item.href ? (
                     <Link href={item.href}>
-                      <span className="text-ink font-medium cursor-pointer hover:underline">
+                      <span className="cursor-pointer font-medium text-ink hover:underline">
                         {item.label}
                       </span>
                     </Link>
                   ) : (
+                    // last item = gray (current page)
                     <span className="text-slate500">{item.label}</span>
                   )}
 
-                  {/* • dot separator except last */}
-                  {!isLast && <span className="mx-1 text-slate500">•</span>}
+                  {/* separator dot (not after last) */}
+                  {!isLast && (
+                    <span className="mx-1 text-slate500">•</span>
+                  )}
                 </div>
               );
             })}
-
           </div>
         </div>
 
+        {/* Primary button (Create Project / Create Board) */}
         {onCreate && (
           <button
             onClick={onCreate}
             className="h-10 rounded-[10px] bg-ink px-5 text-[14px] font-semibold text-white hover:opacity-90"
           >
-            Create Project
+            {createLabel}
           </button>
         )}
       </div>
 
-      {/* Second Row */}
+      {/* Second Row: Search + view icons (optional) */}
       {setSearch && (
         <div className="mt-6 flex items-center justify-between">
           {/* Search */}
@@ -104,9 +121,15 @@ export default function SectionHeader({ search = "", setSearch, onCreate }: Prop
 
           {/* Icons */}
           <div className="flex items-center gap-5">
-            <button className="rounded-[10px] p-2 hover:bg-slate500_12"><Filter className="h-4 w-4 text-slate500" /></button>
-            <button className="rounded-[10px] p-2 hover:bg-slate500_12"><List className="h-4 w-4 text-slate500" /></button>
-            <button className="rounded-[10px] p-2 hover:bg-slate500_12"><Grid className="h-4 w-4 text-slate500" /></button>
+            <button className="rounded-[10px] p-2 hover:bg-slate500_12">
+              <Filter className="h-4 w-4 text-slate500" />
+            </button>
+            <button className="rounded-[10px] p-2 hover:bg-slate500_12">
+              <List className="h-4 w-4 text-slate500" />
+            </button>
+            <button className="rounded-[10px] p-2 hover:bg-slate500_12">
+              <Grid className="h-4 w-4 text-slate500" />
+            </button>
           </div>
         </div>
       )}
