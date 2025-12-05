@@ -1,4 +1,3 @@
-// src/pages/boardList/[id].tsx
 export const getServerSideProps = async () => ({ props: {} });
 
 import type { GetServerSideProps } from "next";
@@ -38,7 +37,6 @@ export default function BoardListPage() {
 
   const router = useRouter();
 
-  // ----- project id (fkpoid) from route -----
   const fkpoid = useMemo(() => {
     if (!router.isReady) return null as number | null;
     const raw = router.query.id;
@@ -47,7 +45,6 @@ export default function BoardListPage() {
     return Number.isFinite(n) ? n : null;
   }, [router.isReady, router.query.id]);
 
-  // ----- state -----
   const [boards, setBoards] = useState<ApiBoard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreatingBoard, setIsCreatingBoard] = useState(false);
@@ -57,7 +54,6 @@ export default function BoardListPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedBoard, setSelectedBoard] = useState<ApiBoard | null>(null);
 
-  // ----- route change "flash" guard -----
   useEffect(() => {
     const handleStart = () => setIsNavigating(true);
     const handleDone = () => setIsNavigating(false);
@@ -73,7 +69,6 @@ export default function BoardListPage() {
     };
   }, [router]);
 
-  // ----- fetch boards from backend -----
   const fetchData = async () => {
     if (fkpoid == null) return;
     try {
@@ -96,7 +91,6 @@ export default function BoardListPage() {
     }
   };
 
-  // ----- auth check + initial fetch + SignalR -----
   useEffect(() => {
     if (!router.isReady) return;
 
@@ -119,7 +113,6 @@ export default function BoardListPage() {
       fetchData();
     }
 
-    // SignalR connection (same logic as old file)
     if (!signalRConnection && userInfo) {
       const joinRoom = async (
         userid: string,
@@ -186,7 +179,6 @@ export default function BoardListPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router.isReady, fkpoid, userInfo, signalRConnection]);
 
-  // ----- modal helpers -----
   const openAddModal = () => {
     setSelectedBoard(null);
     setIsModalOpen(true);
@@ -202,12 +194,10 @@ export default function BoardListPage() {
     setIsModalOpen(false);
   };
 
-  // 👉 This is what you passed to SectionHeader
   const handleCreateBoard = () => {
     openAddModal();
   };
 
-  // ----- edit board title -----
   const handleEditTitle = async (newTitle: string, boardId: number) => {
     if (!userInfo) return;
     const res = await EditBoard(newTitle, boardId, userInfo.username);
@@ -224,14 +214,12 @@ export default function BoardListPage() {
     closeModal();
   };
 
-  // ----- create board + default lists -----
   const handleAddBoardClick = async (newTitle: string) => {
     if (!userInfo || fkpoid == null) return;
 
     try {
       setIsCreatingBoard(true);
 
-      // 1) create board
       const res = await AddBoard(newTitle, fkpoid, userInfo.id, userInfo.username);
       if (res?.status !== 200 || !res?.data) {
         toast.error("Failed to add board.", {
@@ -242,7 +230,6 @@ export default function BoardListPage() {
 
       const newBoardId = res.data;
 
-      // 2) create default lists
       const defaultListTitles = ["To do", "In progress", "In review", "Done"];
       for (let i = 0; i < defaultListTitles.length; i++) {
         const title = defaultListTitles[i];
@@ -259,7 +246,6 @@ export default function BoardListPage() {
         }
       }
 
-      // 3) update local state
       setBoards((prev) => [
         ...prev,
         { boardId: newBoardId, title: newTitle },
@@ -274,14 +260,12 @@ export default function BoardListPage() {
     }
   };
 
-  // ----- filter by search -----
   const filteredBoards = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return boards;
     return boards.filter((b) => b.title.toLowerCase().includes(q));
   }, [boards, search]);
 
-  // ----- click handlers for card -----
   const handleAddClick = (board: ApiBoard) => {
     if (!userInfo) return;
     handleSetUserInfo({
@@ -300,7 +284,6 @@ export default function BoardListPage() {
     <Shell>
       <Topbar />
 
-      {/* Header with breadcrumb + search + "Create Board" button */}
       <SectionHeader
         search={search}
         setSearch={setSearch}
@@ -308,22 +291,23 @@ export default function BoardListPage() {
         createLabel="Create Board"
       />
 
-      {/* Board cards grid */}
       <section className="mx-auto max-w-[1120px] px-0 py-6">
         {isLoading ? (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             <BoardCardSkeleton count={4} />
           </div>
         ) : filteredBoards.length === 0 ? (
-          <div className="rounded-[16px] border border-slate500_12 bg-white p-10 text-center">
-            <h3 className="text-[18px] font-semibold text-ink">No Boards yet</h3>
-            <p className="mt-1 text-[14px] text-[#637381]">
+          <div className="rounded-[16px] border border-slate500_12 bg-white p-10 text-center dark:border-slate500_20 dark:bg-[#1B232D]">
+            <h3 className="text-[18px] font-semibold text-ink dark:text-white">
+              No Boards yet
+            </h3>
+            <p className="mt-1 text-[14px] text-[#637381] dark:text-slate500_80">
               Try creating a new board for this project.
             </p>
             <button
               type="button"
               onClick={handleCreateBoard}
-              className="mt-4 inline-flex h-9 items-center justify-center rounded-[10px] bg-ink px-5 text-[14px] font-semibold text-white shadow-[0_10px_25px_rgba(15,23,42,0.18)] hover:opacity-95"
+              className="mt-4 inline-flex h-9 items-center justify-center rounded-[10px] bg-ink px-5 text-[14px] font-semibold text-white shadow-[0_10px_25px_rgba(15,23,42,0.18)] hover:opacity-95 dark:bg-white dark:text-[#1C252E] dark:shadow-none"
             >
               Create Board
             </button>
@@ -336,7 +320,7 @@ export default function BoardListPage() {
                 key={board.boardId}
                 idLabel={String(board.boardId).padStart(3, "0")}
                 title={board.title}
-                taskCount={"20+"} // TEMP until backend provides real count
+                taskCount={"20+"}
                 tags={[
                   { label: "New Project" },
                   { label: "Urgent" },
@@ -350,7 +334,6 @@ export default function BoardListPage() {
         )}
       </section>
 
-      {/* Add / Edit Board modal */}
       <AddEditBoardModal
         isOpen={isModalOpen}
         onClose={closeModal}
