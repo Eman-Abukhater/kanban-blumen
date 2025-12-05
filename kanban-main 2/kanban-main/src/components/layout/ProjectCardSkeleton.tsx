@@ -8,47 +8,59 @@ function ProjectCardSkeleton({ count = 1 }: ProjectCardSkeletonProps) {
   return (
     <>
       {Array.from({ length: count }).map((_, index) => (
-        <div
+        <article
           key={`skeleton-${index}`}
-          className="relative flex animate-pulse flex-col justify-between rounded-md bg-white p-4 shadow-md"
+          className="flex h-full flex-col rounded-[20px] border border-slate500_08 bg-white shadow-[0_20px_60px_rgba(15,23,42,0.04)] dark:border-slate500_20 dark:bg-[#1B232D] dark:shadow-none"
         >
-          <div>
-            {/* Project ID skeleton */}
-            <div className="mb-2">
-              <div className="mb-1 h-3 w-12 rounded bg-gray-200"></div>
-              {/* Project title skeleton */}
-              <div className="h-5 w-3/4 rounded bg-gray-300"></div>
+          {/* Top content */}
+          <div className="flex-1 px-4 pt-3 pb-4 animate-pulse">
+            {/* ID + menu */}
+            <div className="flex items-start justify-between">
+              {/* badge placeholder */}
+              <div className="h-6 w-24 rounded-[6px] border-[3px] border-[#8E33FF33] bg-gray-200 dark:bg-slate500_48" />
+
+              {/* menu icon placeholder */}
+              <div className="h-8 w-8 rounded-full bg-gray-200 dark:bg-slate500_48" />
             </div>
 
-            {/* Description skeleton */}
-            <div className="mb-3 space-y-2">
-              <div className="h-3 w-full rounded bg-gray-200"></div>
-              <div className="h-3 w-5/6 rounded bg-gray-200"></div>
-            </div>
+            {/* Title */}
+            <div className="mt-2 h-5 w-2/3 rounded bg-gray-300 dark:bg-slate500_48" />
 
-            {/* Created by skeleton */}
-            <div className="mb-3">
-              <div className="h-3 w-32 rounded bg-gray-200"></div>
-            </div>
+            {/* Meta rows */}
+            <div className="mt-4 space-y-3 text-[13px] leading-[18px]">
+              {/* Created By */}
+              <div className="flex items-center gap-2">
+                <div className="h-3 w-20 rounded bg-gray-200 dark:bg-slate500_48" />
+                <div className="h-3 w-16 rounded bg-gray-300 dark:bg-slate500_48" />
+              </div>
 
-            {/* Boards count skeleton */}
-            <div className="mb-3">
-              <div className="h-3 w-24 rounded bg-gray-200"></div>
-            </div>
+              {/* Member(s) */}
+              <div className="flex items-center gap-2">
+                <div className="h-3 w-20 rounded bg-gray-200 dark:bg-slate500_48" />
+                <div className="flex items-center gap-1">
+                  <div className="h-6 w-6 rounded-full bg-gray-300 dark:bg-slate500_48" />
+                  <div className="h-6 w-6 rounded-full bg-gray-300 dark:bg-slate500_48" />
+                  <div className="h-6 w-6 rounded-full bg-gray-300 dark:bg-slate500_48" />
+                  <div className="h-6 w-6 rounded-full bg-gray-300 dark:bg-slate500_48" />
+                </div>
+              </div>
 
-            {/* Members count skeleton */}
-            <div className="mb-3">
-              <div className="h-3 w-28 rounded bg-gray-200"></div>
+              {/* Artboard */}
+              <div className="flex items-center gap-2">
+                <div className="h-3 w-20 rounded bg-gray-200 dark:bg-slate500_48" />
+                <div className="h-3 w-10 rounded bg-gray-300 dark:bg-slate500_48" />
+              </div>
             </div>
           </div>
 
-          {/* Action buttons skeleton */}
-          <div className="flex items-center justify-end space-x-3">
-            <div className="h-10 w-10 rounded-full bg-gray-300"></div>
-            <div className="h-10 w-10 rounded-full bg-gray-300"></div>
-            <div className="h-10 w-10 rounded-full bg-gray-300"></div>
+          {/* Dotted divider like Figma */}
+          <div className="w-full border-t border-dashed border-[#E5EAF1] dark:border-[#232C36]" />
+
+          {/* Footer / View button placeholder */}
+          <div className="px-4 py-4">
+            <div className="h-9 w-20 rounded-[10px] bg-gray-300 dark:bg-slate500_48" />
           </div>
-        </div>
+        </article>
       ))}
     </>
   );

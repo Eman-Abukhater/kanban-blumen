@@ -1,7 +1,7 @@
-// src/components/layout/SectionHeader.tsx
-import { Filter, List, Grid, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { useRouter } from "next/router";
 import Link from "next/link";
+import Image from "next/image";
 
 type Props = {
   search?: string;
@@ -55,12 +55,12 @@ export default function SectionHeader({
       : "Project";
 
   return (
-    <div className="mx-auto max-w-[1120px] bg-white px-0 pt-8">
+    <div className="mx-auto max-w-[1120px] bg-white px-0 pt-8 dark:bg-[#141A21]">
       {/* Top Row: Title + Button */}
       <div className="flex items-center justify-between">
         <div>
           {/* Page title (H1) */}
-          <h1 className="pb-3 text-[26px] font-semibold leading-[28px] text-ink">
+          <h1 className="pb-3 text-[26px] font-semibold leading-[28px] text-ink dark:text-white">
             {currentTitle}
           </h1>
 
@@ -73,18 +73,22 @@ export default function SectionHeader({
                 <div key={i} className="flex items-center">
                   {!isLast && item.href ? (
                     <Link href={item.href}>
-                      <span className="cursor-pointer font-medium text-ink hover:underline">
+                      <span className="cursor-pointer font-medium text-ink hover:underline dark:text-slate500_80 dark:hover:text-white">
                         {item.label}
                       </span>
                     </Link>
                   ) : (
-                    // last item = gray (current page)
-                    <span className="text-slate500">{item.label}</span>
+                    // last item
+                    <span className="text-slate500 dark:text-white">
+                      {item.label}
+                    </span>
                   )}
 
                   {/* separator dot (not after last) */}
                   {!isLast && (
-                    <span className="mx-1 text-slate500">•</span>
+                    <span className="mx-1 text-slate500 dark:text-slate500_80">
+                      •
+                    </span>
                   )}
                 </div>
               );
@@ -96,7 +100,7 @@ export default function SectionHeader({
         {onCreate && (
           <button
             onClick={onCreate}
-            className="h-10 rounded-[10px] bg-ink px-5 text-[14px] font-semibold text-white hover:opacity-90"
+            className="h-10 rounded-[10px] bg-ink px-5 text-[14px] font-semibold text-white hover:opacity-90 transition-colors dark:bg-white dark:text-[#141A21]"
           >
             {createLabel}
           </button>
@@ -109,26 +113,44 @@ export default function SectionHeader({
           {/* Search */}
           <div className="w-[320px]">
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate500" />
+              <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate500 dark:text-slate500_80" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search..."
-                className="h-10 w-full rounded-[12px] border border-slate500_20 bg-white pl-9 pr-3 text-[14px] text-ink placeholder-slate500 outline-none focus:ring-2 focus:ring-brand/40"
+                className="h-10 w-full rounded-[12px] border border-slate500_20 bg-white pl-9 pr-3 text-[14px] text-ink placeholder-slate500 outline-none focus:ring-2 focus:ring-brand/40 dark:border-slate500_20 dark:bg-[#1B232D] dark:text-slate500_80 dark:placeholder-slate500_80"
               />
             </div>
           </div>
 
           {/* Icons */}
-          <div className="flex items-center gap-5">
-            <button className="rounded-[10px] p-2 hover:bg-slate500_12">
-              <Filter className="h-4 w-4 text-slate500" />
+          <div className="flex items-center gap-3">
+            <button className="rounded-[10px] p-2 hover:bg-slate500_12 dark:hover:bg-slate500_20">
+              <Image
+                src="/icons/filter-icon.svg"
+                alt="filter"
+                width={20}
+                height={20}
+                className="opacity-80"
+              />
             </button>
-            <button className="rounded-[10px] p-2 hover:bg-slate500_12">
-              <List className="h-4 w-4 text-slate500" />
+            <button className="rounded-[10px] p-2 hover:bg-slate500_12 dark:hover:bg-slate500_20">
+              <Image
+                src="/icons/column.svg"
+                alt="column"
+                width={20}
+                height={20}
+                className="opacity-80"
+              />
             </button>
-            <button className="rounded-[10px] p-2 hover:bg-slate500_12">
-              <Grid className="h-4 w-4 text-slate500" />
+            <button className="rounded-[10px] p-2 hover:bg-slate500_12 dark:hover:bg-slate500_20">
+              <Image
+                src="/icons/grid-icon.svg"
+                alt="grid"
+                width={20}
+                height={20}
+                className="opacity-80"
+              />
             </button>
           </div>
         </div>

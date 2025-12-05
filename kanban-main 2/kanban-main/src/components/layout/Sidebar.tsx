@@ -5,7 +5,7 @@ import { useRouter } from "next/router";
 
 type ItemProps = {
   href: string;
-  icon: string;       // e.g. "dashboard", "kanban"
+  icon: string; // e.g. "dashboard", "kanban"
   label: string;
   active: boolean;
 };
@@ -15,11 +15,10 @@ const Item = ({ href, icon, label, active }: ItemProps) => (
     href={href}
     className={`
       flex items-center gap-3 rounded-[12px] px-3 py-2 text-[14px] transition
-
       ${
         active
-          ? "bg-[#FFAB0014]"   /* ACTIVE background */
-          : "hover:bg-[#FFAB0014]" /* HOVER background */
+          ? "bg-[#FFAB0014] dark:bg-[#FFAB0030]"
+          : "hover:bg-[#FFAB0014] dark:hover:bg-[#FFAB0030]"
       }
     `}
   >
@@ -31,7 +30,7 @@ const Item = ({ href, icon, label, active }: ItemProps) => (
       height={25}
       className={`
         shrink-0 transition
-        ${active ? "brightness-0 saturate-100" : "opacity-60"}
+        ${active ? "brightness-0 saturate-100" : "opacity-60 dark:opacity-80"}
       `}
       style={{
         filter: active
@@ -44,7 +43,11 @@ const Item = ({ href, icon, label, active }: ItemProps) => (
     <span
       className={`
         font-medium text-[14px] transition
-        ${active ? "text-[#FFAB00]" : "text-[#637381]"}
+        ${
+          active
+            ? "text-[#FFAB00] dark:text-[#FFAB00]"
+            : "text-[#637381] dark:text-slate500_80"
+        }
       `}
     >
       {label}
@@ -52,22 +55,19 @@ const Item = ({ href, icon, label, active }: ItemProps) => (
   </Link>
 );
 
-
-
 export default function Sidebar() {
   const { pathname } = useRouter();
 
   return (
-    <aside className="hidden md:flex md:w-64 shrink-0 border-r border-slate500_12">
-      <div className="w-full p-4 ">
-
+    <aside className="hidden shrink-0 border-r border-slate500_12 bg-white dark:border-slate500_20 dark:bg-[#141A21] md:flex md:w-64">
+      <div className="w-full p-4 text-ink dark:text-slate500_80">
         {/* Logo */}
         <div className="mb-6 flex items-center gap-3 px-2">
-<Image src="/Logo.png" alt="Blumen Cafe" width={170} height={70} />
+          <Image src="/Logo.png" alt="Blumen Cafe" width={170} height={70} />
         </div>
 
         {/* SECTION: OVERVIEW */}
-        <div className="mb-2 px-2 text-[11px] font-semibold text-[#919EAB]">
+        <div className="mb-2 px-2 text-[11px] font-semibold text-[#919EAB] dark:text-slate500_80">
           OVER VIEW
         </div>
 
@@ -81,24 +81,72 @@ export default function Sidebar() {
         </div>
 
         {/* SECTION: MANAGEMENT */}
-        <div className="mb-2 px-2 text-[11px] font-semibold text-[#919EAB]">
+        <div className="mb-2 px-2 text-[11px] font-semibold text-[#919EAB] dark:text-slate500_80">
           MANAGEMENT
         </div>
 
         <div className="space-y-1">
-
-          <Item href="/user"         icon="user"        label="User"             active={pathname === "/user"} />
-          <Item href="/role"         icon="lock"        label="Role"             active={pathname === "/product"} />
-          <Item href="/approval"     icon="label"       label="Approval"         active={pathname === "/label"} />
-          <Item href="/projects"     icon="kanban"      label="Project"          active={pathname === "/projects"} />
-          <Item href="/organization" icon="banking"     label="Organization"     active={pathname === "/organization"} />
-          <Item href="/hr"           icon="job"         label="HR"               active={pathname === "/hr"} />
-          <Item href="/category"     icon="menu-item"   label="Category"         active={pathname === "/category"} />
-          <Item href="/stock"        icon="product"     label="Stock Operation"  active={pathname === "/stock"} />
-          <Item href="/purchase"     icon="order"       label="Purchase"         active={pathname === "/purchase"} />
-          <Item href="/logistic"     icon="tour"        label="Logistic"         active={pathname === "/logistic"} />
-          <Item href="/reports"      icon="analytics"   label="Reports"          active={pathname === "/analytics"} />
-
+          <Item
+            href="/user"
+            icon="user"
+            label="User"
+            active={pathname === "/user"}
+          />
+          <Item
+            href="/role"
+            icon="lock"
+            label="Role"
+            active={pathname === "/product"}
+          />
+          <Item
+            href="/approval"
+            icon="label"
+            label="Approval"
+            active={pathname === "/label"}
+          />
+          <Item
+            href="/projects"
+            icon="kanban"
+            label="Project"
+            active={pathname === "/projects"}
+          />
+          <Item
+            href="/organization"
+            icon="banking"
+            label="Organization"
+            active={pathname === "/organization"}
+          />
+          <Item href="/hr" icon="job" label="HR" active={pathname === "/hr"} />
+          <Item
+            href="/category"
+            icon="menu-item"
+            label="Category"
+            active={pathname === "/category"}
+          />
+          <Item
+            href="/stock"
+            icon="product"
+            label="Stock Operation"
+            active={pathname === "/stock"}
+          />
+          <Item
+            href="/purchase"
+            icon="order"
+            label="Purchase"
+            active={pathname === "/purchase"}
+          />
+          <Item
+            href="/logistic"
+            icon="tour"
+            label="Logistic"
+            active={pathname === "/logistic"}
+          />
+          <Item
+            href="/reports"
+            icon="analytics"
+            label="Reports"
+            active={pathname === "/analytics"}
+          />
         </div>
       </div>
     </aside>

@@ -1,4 +1,3 @@
-// src/pages/projects.tsx
 export const getServerSideProps = async () => ({ props: {} });
 
 import SectionHeader from "@/components/layout/SectionHeader";
@@ -91,7 +90,9 @@ export default function ProjectsList() {
         const res = await fetchUserProjects();
         if (res?.status === 200 && res?.data?.success) {
           // filter out default project id = 1
-          const filtered = (res.data.data || []).filter((p: any) => p.id !== 1);
+          const filtered = (res.data.data || []).filter(
+            (p: any) => p.id !== 1
+          );
           setProjects(filtered);
         } else {
           toast.error("Could not fetch projects.", {
@@ -263,13 +264,12 @@ export default function ProjectsList() {
       {!isNavigating && userInfo && (
         <Shell>
           <Topbar />
-            <SectionHeader
-    search={search}
-    setSearch={setSearch}
-    onCreate={() => openEditModal(null)}
-    createLabel="Create Project"
-  />
-
+          <SectionHeader
+            search={search}
+            setSearch={setSearch}
+            onCreate={() => openEditModal(null)}
+            createLabel="Create Project"
+          />
 
           <section className="mx-auto max-w-[1120px] px-0 py-6">
             {isLoading ? (
@@ -278,8 +278,10 @@ export default function ProjectsList() {
               </div>
             ) : filtered.length === 0 ? (
               <div className="card p-10 text-center">
-                <h3 className="text-[18px] font-semibold">No Projects</h3>
-                <p className="mt-1 text-muted">
+                <h3 className="text-[18px] font-semibold text-ink dark:text-white">
+                  No Projects
+                </h3>
+                <p className="mt-1 text-muted dark:text-slate500_80">
                   Try creating a new project or clear the search.
                 </p>
                 <button
@@ -320,11 +322,14 @@ export default function ProjectsList() {
               <button
                 type="button"
                 onClick={() => setDense((d) => !d)}
-                className="flex items-center gap-2 text-ink"
+                className="flex items-center gap-2 text-ink dark:text-slate500_80"
               >
                 <span
-                  className={`relative flex h-5 w-9 items-center rounded-full border ${dense ? "border-brand bg-brand/10" : "border-slate500_20 bg-white"
-                    } transition`}
+                  className={`relative flex h-5 w-9 items-center rounded-full border ${
+                    dense
+                      ? "border-brand bg-brand/10 dark:bg-brand/20"
+                      : "border-slate500_20 bg-white dark:bg-[#1B232D] dark:border-slate500_20"
+                  } transition`}
                 >
                   <span
                     className={`absolute h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
@@ -332,31 +337,32 @@ export default function ProjectsList() {
                     }`}
                   />
                 </span>
-                <span className="text-[#212B36]">Dense</span>
+                <span className="text-[#212B36] dark:text-slate500_80">
+                  Dense
+                </span>
               </button>
 
               {/* Right side: rows per page + range + arrows */}
-              <div className="flex items-center gap-5 text-[#637381]">
+              <div className="flex items-center gap-5 text-[#637381] dark:text-slate500_80">
                 {/* Rows per page */}
                 <div className="flex items-center gap-2">
                   <span>Rows per page:</span>
                   <div className="relative">
                     <button
                       type="button"
-                      className="flex h-9 items-center gap-1 rounded-[10px] border border-slate500_20 px-3 text-[13px] text-[#212B36]"
+                      className="flex h-9 items-center gap-1 rounded-[10px] border border-slate500_20 px-3 text-[13px] text-[#212B36] dark:border-slate500_20 dark:bg-[#1B232D] dark:text-slate500_80"
                     >
                       {rowsPerPage}
-                      <ChevronDown className="h-4 w-4 text-slate500" />
+                      <ChevronDown className="h-4 w-4 text-slate500 dark:text-slate500_80" />
                     </button>
-
-                    {/* very simple dropdown (always visible on clickless version is ok for now) */}
-                    {/* If you want real dropdown later we can add onClick/open state */}
                   </div>
                 </div>
 
                 {/* Range text */}
-                <span className="text-[#212B36]">
-                  {total === 0 ? "0-0 of 0" : `${startIndex + 1}-${endIndex} of ${total}`}
+                <span className="text-[#212B36] dark:text-slate500_80">
+                  {total === 0
+                    ? "0-0 of 0"
+                    : `${startIndex + 1}-${endIndex} of ${total}`}
                 </span>
 
                 {/* Arrows */}
@@ -365,8 +371,10 @@ export default function ProjectsList() {
                     type="button"
                     onClick={handlePrev}
                     disabled={!canPrev}
-                    className={`flex h-8 w-8 items-center justify-center rounded-[10px] border border-slate500_12 text-slate500 ${
-                      !canPrev ? "opacity-40 cursor-default" : "hover:bg-slate500_08"
+                    className={`flex h-8 w-8 items-center justify-center rounded-[10px] border border-slate500_12 text-slate500 dark:border-slate500_20 dark:text-slate500_80 dark:bg-[#1B232D] ${
+                      !canPrev
+                        ? "cursor-default opacity-40"
+                        : "hover:bg-slate500_08 dark:hover:bg-slate500_20"
                     }`}
                   >
                     <ChevronLeft className="h-4 w-4" />
@@ -376,8 +384,10 @@ export default function ProjectsList() {
                     type="button"
                     onClick={handleNext}
                     disabled={!canNext}
-                    className={`flex h-8 w-8 items-center justify-center rounded-[10px] border border-slate500_12 text-slate500 ${
-                      !canNext ? "opacity-40 cursor-default" : "hover:bg-slate500_08"
+                    className={`flex h-8 w-8 items-center justify-center rounded-[10px] border border-slate500_12 text-slate500 dark:border-slate500_20 dark:text-slate500_80 dark:bg-[#1B232D] ${
+                      !canNext
+                        ? "cursor-default opacity-40"
+                        : "hover:bg-slate500_08 dark:hover:bg-slate500_20"
                     }`}
                   >
                     <ChevronRight className="h-4 w-4" />
@@ -399,9 +409,11 @@ export default function ProjectsList() {
           {/* Delete Confirmation Modal */}
           {deleteConfirmModal.isOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-              <div className="w-full max-w-md rounded-[12px] border border-slate500_20 bg-surface p-6 shadow-soft">
-                <h3 className="text-xl font-bold text-ink">Delete Project?</h3>
-                <p className="mt-2 text-slate600">
+              <div className="w-full max-w-md rounded-[12px] border border-slate500_20 bg-surface p-6 shadow-soft dark:border-slate500_20 dark:bg-[#1B232D]">
+                <h3 className="text-xl font-bold text-ink dark:text-white">
+                  Delete Project?
+                </h3>
+                <p className="mt-2 text-slate600 dark:text-slate500_80">
                   Are you sure you want to delete{" "}
                   <span className="font-semibold">
                     &ldquo;{deleteConfirmModal.projectTitle}&rdquo;
