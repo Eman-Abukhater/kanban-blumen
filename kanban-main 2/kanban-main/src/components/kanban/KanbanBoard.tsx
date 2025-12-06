@@ -10,6 +10,7 @@ export interface IKanbanBoardProps {}
 export function KanbanBoard(props: IKanbanBoardProps) {
   const { kanbanState, handleDragEnd, handleCreateList, userInfo } =
     useContext(KanbanContext);
+
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
       <Droppable
@@ -19,26 +20,42 @@ export function KanbanBoard(props: IKanbanBoardProps) {
       >
         {(provided) => (
           <div
-            className="flex h-full flex-1 flex-row items-start p-1 pb-10"
-            {...provided.droppableProps}
             ref={provided.innerRef}
+            {...provided.droppableProps}
+            className="
+              flex h-full flex-1 flex-row items-start
+              gap-6
+              overflow-x-auto
+              px-1 pb-10 pt-2
+              scrollbar-thin scrollbar-thumb-slate500_20 scrollbar-track-transparent
+              dark:scrollbar-thumb-slate500_48
+            "
           >
-            {kanbanState.map((_list, index) => (
+            {kanbanState.map((list, index) => (
               <KanbanListComponent
-                key={_list.id}
+                key={list.id}
                 listIndex={index}
-                list={_list}
+                list={list}
               />
             ))}
+
             {provided.placeholder}
-            <div className={classNames(kanbanState.length > 0 ? "ml-4" : "")}>
+
+            {/* Add new list column */}
+            <div
+              className={classNames(
+                "flex-shrink-0",
+                kanbanState.length > 0 ? "ml-2" : ""
+              )}
+            >
               {kanbanState.length < 6 && (
-              <AddForm
-                text="Add list"
-                placeholder="New list name..."
-                onSubmit={handleCreateList}
-                userInfo={userInfo}
-              />)}
+                <AddForm
+                  text="Add list"
+                  placeholder="New list name..."
+                  onSubmit={handleCreateList}
+                  userInfo={userInfo}
+                />
+              )}
             </div>
           </div>
         )}

@@ -271,7 +271,7 @@ export default function ProjectsList() {
             createLabel="Create Project"
           />
 
-          <section className="mx-auto max-w-[1120px] px-0 py-6">
+          <section className="mx-auto max-w-[1120px] px-3 py-6">
             {isLoading ? (
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 <ProjectCardSkeleton count={6} />
@@ -317,7 +317,7 @@ export default function ProjectsList() {
 
           {/* 🔹 DENSE + PAGINATION FOOTER */}
           {!isLoading && filtered.length > 0 && (
-            <div className="mx-auto flex max-w-[1120px] items-center justify-between px-0 pb-6 pt-4 text-[13px]">
+            <div className="mx-auto flex max-w-[1120px] items-center justify-between  pb-6 pt-4 text-[13px]">
               {/* Dense toggle */}
               <button
                 type="button"

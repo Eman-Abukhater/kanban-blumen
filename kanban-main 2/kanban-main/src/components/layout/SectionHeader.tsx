@@ -55,7 +55,7 @@ export default function SectionHeader({
       : "Project";
 
   return (
-    <div className="mx-auto max-w-[1120px] bg-white px-0 pt-8 dark:bg-[#141A21]">
+    <div className="mx-auto max-w-[1120px] bg-white px-3 pt-8 dark:bg-[#141A21]">
       {/* Top Row: Title + Button */}
       <div className="flex items-center justify-between">
         <div>

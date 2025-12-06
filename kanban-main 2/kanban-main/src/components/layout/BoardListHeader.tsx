@@ -9,7 +9,7 @@ type Props = {
 
 export default function BoardListHeader({ search, setSearch, onCreate }: Props) {
   return (
-    <div className="mx-auto max-w-[1120px] bg-white px-0 pt-8">
+    <div className="mx-auto max-w-[1120px] bg-white px-1 pt-8">
       {/* Top row: Title + Create button */}
       <div className="flex items-center justify-between">
         <div>
