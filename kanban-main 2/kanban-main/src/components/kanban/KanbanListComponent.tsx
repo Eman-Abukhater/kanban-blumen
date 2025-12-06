@@ -6,6 +6,7 @@ import KanbanContext from "../../context/kanbanContext";
 import { classNames } from "../../utility/css";
 import { ListMenu } from "./ListMenu";
 import KanbanCardComponent from "./KanbanCardComponent";
+import { Plus } from "lucide-react";
 
 export interface IKanbanListComponentProps {
   listIndex: number;
@@ -14,38 +15,79 @@ export interface IKanbanListComponentProps {
 
 function KanbanListComponent(props: IKanbanListComponentProps) {
   const { handleCreateCard, userInfo } = useContext(KanbanContext);
+  const listNumber = props.listIndex + 1;
+
   return (
     <Draggable draggableId={props.list.id} index={props.listIndex}>
       {(provided) => (
         <div
-          className={classNames(
-            props.listIndex > 0 ? "ml-4" : "",
-            "rounded-lg border border-slate-300 bg-slate-100 dark:border-slate-900 dark:bg-slate-600"
-          )}
-          {...provided.draggableProps}
           ref={provided.innerRef}
+          {...provided.draggableProps}
+          className="flex-shrink-0 w-[300px]"
         >
           <div className="flex cursor-grab touch-manipulation flex-col">
+            {/* Column container – matches Figma card */}
             <div
-              {...provided.dragHandleProps}
-              className="flex flex-row items-center justify-between rounded-t-lg p-4 focus:border-none focus:border-indigo-600 focus:outline-none focus:ring focus:ring-indigo-600 dark:text-white"
+              className="
+                flex h-full flex-col rounded-[20px]
+                bg-[#F4F6F8] shadow-soft
+                dark:bg-[#1B232D] dark:shadow-none
+              "
             >
-              <div className="font-semibold">{props.list.title}</div>
-              <ListMenu
-                listid={props.list.kanbanListId}
-                listIndex={props.listIndex}
-                title={props.list.title}
-                userInfo={userInfo}
-              />
-            </div>
-            <Droppable droppableId={props.list.id}>
-              {(provided) => (
-                <div
-                  className="flex min-h-[50px] flex-col"
-                  {...provided.droppableProps}
-                  ref={provided.innerRef}
-                >
-                  <div className="p-3">
+              {/* Header */}
+              <div
+                {...provided.dragHandleProps}
+                className="
+                  flex items-center justify-between
+                  rounded-t-[20px] px-4 pt-4 pb-3
+                  text-[15px] font-semibold text-ink
+                  dark:text-white
+                "
+              >
+                <div className="flex items-center gap-2">
+                  {/* number badge like Figma (3, 2, …) */}
+                  <span className="
+                    flex h-7 w-7 items-center justify-center rounded-full
+                    bg-white text-[13px] font-semibold text-[#637381]
+                    shadow-[0_2px_6px_rgba(15,23,42,0.08)]
+                    dark:bg-[#141A21] dark:text-slate500_80
+                  ">
+                    {listNumber}
+                  </span>
+                  <span>{props.list.title}</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {/* small + button – visual only, add card is still at bottom */}
+                  <button
+                    type="button"
+                    className="
+                      flex h-7 w-7 items-center justify-center rounded-full
+                      bg-white text-[#1C252E] shadow-soft
+                      hover:opacity-90
+                      dark:bg-[#141A21] dark:text-slate500_80
+                    "
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+
+                  <ListMenu
+                    listid={props.list.kanbanListId}
+                    listIndex={props.listIndex}
+                    title={props.list.title}
+                    userInfo={userInfo}
+                  />
+                </div>
+              </div>
+
+              {/* Cards area */}
+              <Droppable droppableId={props.list.id}>
+                {(provided) => (
+                  <div
+                    ref={provided.innerRef}
+                    {...provided.droppableProps}
+                    className="flex min-h-[40px] flex-col gap-3 px-3 pb-4 pt-2"
+                  >
                     {props.list.kanbanCards?.map((_card, index) => (
                       <KanbanCardComponent
                         key={_card.id}
@@ -55,26 +97,36 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
                       />
                     ))}
                     {provided.placeholder}
+
+                    {/* “Task name / Add card” zone (bottom) */}
                     {props.list.kanbanCards.length < 31 && (
-                    <AddCardForm
-                      text="Add card"
-                      placeholder="New card name..."
-                      onSubmit={(title, kanbanCardId, seqNo, fkKanbanListId) =>
-                        handleCreateCard(
-                          props.listIndex,
-                          title,
-                          kanbanCardId,
-                          seqNo,
-                          fkKanbanListId
-                        )
-                      }
-                      userInfo={userInfo}
-                      fkKanbanListId={props.list.kanbanListId}
-                    />)}
+                      <div className="mt-1">
+                        <AddCardForm
+                          text="Add card"
+                          placeholder="New card name..."
+                          onSubmit={(
+                            title,
+                            kanbanCardId,
+                            seqNo,
+                            fkKanbanListId
+                          ) =>
+                            handleCreateCard(
+                              props.listIndex,
+                              title,
+                              kanbanCardId,
+                              seqNo,
+                              fkKanbanListId
+                            )
+                          }
+                          userInfo={userInfo}
+                          fkKanbanListId={props.list.kanbanListId}
+                        />
+                      </div>
+                    )}
                   </div>
-                </div>
-              )}
-            </Droppable>
+                )}
+              </Droppable>
+            </div>
           </div>
         </div>
       )}

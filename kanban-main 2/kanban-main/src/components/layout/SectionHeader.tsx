@@ -1,3 +1,4 @@
+// src/components/layout/SectionHeader.tsx
 import { Search } from "lucide-react";
 import { useRouter } from "next/router";
 import Link from "next/link";
@@ -18,7 +19,7 @@ export default function SectionHeader({
   createLabel = "Create Project",
 }: Props) {
   const router = useRouter();
-  const path = router.pathname.split("/").filter(Boolean); // ["projects"] or ["boardList", "[projectId]"]
+  const path = router.pathname.split("/").filter(Boolean); // ["projects"], ["boardList", "[id]"], ["kanbanList", "[id]"]
 
   /** 🔗 Build breadcrumb items based on route */
   const breadcrumb: { label: string; href?: string }[] = [];
@@ -49,8 +50,28 @@ export default function SectionHeader({
     });
   }
 
+  if (path[0] === "kanbanList") {
+    // Page: /kanbanList/[id]  -> Figma: Project • Project List • Board List • kanban
+    breadcrumb.push({
+      label: "Project List",
+      href: "/projects",
+    });
+    breadcrumb.push({
+      label: "Board List",
+      href: "/boardList", // adjust if your list route is different
+    });
+    breadcrumb.push({
+      label: "kanban",
+      href: router.asPath,
+    });
+  }
+
+  const isKanbanPage = path[0] === "kanbanList";
+
   const currentTitle =
-    breadcrumb.length > 0
+    isKanbanPage
+      ? "Kanban" // ✅ Title from Figma
+      : breadcrumb.length > 0
       ? breadcrumb[breadcrumb.length - 1].label
       : "Project";
 
@@ -100,7 +121,7 @@ export default function SectionHeader({
         {onCreate && (
           <button
             onClick={onCreate}
-            className="h-10 rounded-[10px] bg-ink px-5 text-[14px] font-semibold text-white hover:opacity-90 transition-colors dark:bg-white dark:text-[#141A21]"
+            className="h-10 rounded-[10px] bg-ink px-5 text-[14px] font-semibold text-white transition-colors hover:opacity-90 dark:bg-white dark:text-[#141A21]"
           >
             {createLabel}
           </button>

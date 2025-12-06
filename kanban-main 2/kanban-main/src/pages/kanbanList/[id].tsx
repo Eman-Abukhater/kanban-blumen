@@ -1,58 +1,53 @@
-import { MainLayout } from "../../components/layout/MainLayout";
-import { useEffect, useState, useRef } from "react";
+// src/pages/kanbanList/[id].tsx
+export const getServerSideProps = async () => ({ props: {} });
+
+import { useEffect, useState, useContext } from "react";
 import { useRouter } from "next/router";
-import { fetchKanbanList } from "../../services/kanbanApi";
-import { useContext } from "react";
-import KanbanContext from "../../context/kanbanContext";
-import LoadingPage2 from "@/components/layout/LoadingPage2";
-import KanbanBoardSkeleton from "@/components/layout/KanbanBoardSkeleton";
 import { useQuery } from "@tanstack/react-query";
-import { ToastContainer } from "react-toastify";
-import { toast } from "react-toastify";
+import { ToastContainer, toast } from "react-toastify";
 
-// Removed SSR prefetching to prevent hydration blink
+import Shell from "@/components/layout/Shell";
+import Topbar from "@/components/layout/Topbar";
+import { KanbanBoard } from "@/components/kanban/KanbanBoard";
+import KanbanBoardSkeleton from "@/components/layout/KanbanBoardSkeleton";
+import KanbanContext from "@/context/kanbanContext";
+import SectionHeader from "@/components/layout/SectionHeader";
+import { fetchKanbanList } from "@/services/kanbanApi";
 
-export default function getKanbanList() {
+export default function GetKanbanList() {
   const {
     setKanbanListState,
     userInfo,
     handleSetUserInfo,
     signalRConnection,
-    setSignalRConnection,
-    setUsersOnline,
   } = useContext(KanbanContext);
 
-  // Local state to control loading visibility
   const [showContent, setShowContent] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
 
-  // Get the 'id' parameter from the URL using useRouter and make it integer
   const router = useRouter();
   const { id } = router.query as { id: string };
-  let fkboardid: number | null = null;
 
+  let fkboardid: number | null = null;
   if (id !== null) {
-    const parsedId = parseInt(id, 10); // Assuming base 10
+    const parsedId = parseInt(id, 10);
     if (!isNaN(parsedId)) {
       fkboardid = parsedId;
     }
   }
 
-  // Handle client-side navigation loading state
+  // -------- route change loading state --------
   useEffect(() => {
     const handleRouteChangeStart = () => {
-      console.log("🚀 Route change started - showing loading");
       setIsNavigating(true);
-      setShowContent(false); // Immediately hide content
+      setShowContent(false);
     };
 
     const handleRouteChangeComplete = () => {
-      console.log("✅ Route change complete");
       setIsNavigating(false);
     };
 
     const handleRouteChangeError = () => {
-      console.log("❌ Route change error");
       setIsNavigating(false);
     };
 
@@ -67,20 +62,20 @@ export default function getKanbanList() {
     };
   }, [router]);
 
-  //react query - fetch as soon as router and boardid are ready (don't wait for userInfo)
+  // -------- fetch kanban lists (React Query) --------
   const { data, isLoading, isError, error, refetch, isFetched } = useQuery<
     any,
     Error | null
   >({
     queryKey: ["kanbanlist", fkboardid],
     queryFn: () => fetchKanbanList(fkboardid),
-    enabled: router.isReady && !!fkboardid, // Removed userInfo dependency for faster loading
-    staleTime: 30000, // Consider data fresh for 30 seconds
-    refetchOnMount: false, // Don't refetch on component mount
-    refetchOnWindowFocus: false, // Don't refetch on window focus
+    enabled: router.isReady && !!fkboardid,
+    staleTime: 30000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 
-  // Auth check - runs once on mount and restores userInfo from sessionStorage on refresh
+  // -------- auth check + restore user from sessionStorage --------
   useEffect(() => {
     if (!router.isReady) return;
 
@@ -92,7 +87,7 @@ export default function getKanbanList() {
           return;
         }
         const storedUserInfo = JSON.parse(storeddata);
-        // Restore user info from sessionStorage instead of redirecting
+
         const updatedUserData = {
           ...storedUserInfo,
           fkboardid,
@@ -101,32 +96,17 @@ export default function getKanbanList() {
         return;
       }
 
-      // Update fkboardid if userInfo already exists
       const updatedUserData = {
         ...userInfo,
         fkboardid,
       };
-
       handleSetUserInfo(updatedUserData);
     };
 
     checkUserExist();
-  }, [router.isReady, fkboardid]);
+  }, [router.isReady, fkboardid, userInfo, handleSetUserInfo, router]);
 
-  // SignalR connection check with delay (only show warning, not error)
-  useEffect(() => {
-    if (!userInfo || !router.isReady) return;
-
-    const signalRTimeout = setTimeout(() => {
-      if (!signalRConnection) {
-        console.warn("SignalR connection not established yet");
-      }
-    }, 5000);
-
-    return () => clearTimeout(signalRTimeout);
-  }, [userInfo, signalRConnection, router.isReady]);
-
-  // SignalR message listener
+  // -------- SignalR messages (refresh on updates) --------
   useEffect(() => {
     if (!signalRConnection) return;
 
@@ -144,53 +124,38 @@ export default function getKanbanList() {
     };
   }, [signalRConnection, refetch]);
 
-  // Handle data after it's fetched - just set the state
+  // -------- when data arrives, push into context state --------
   useEffect(() => {
     if (isFetched && !isError && data) {
-      // Default lists are now created when the board is created,
-      // so we just display whatever data we get from the API
       setKanbanListState(Array.isArray(data) ? data : []);
     }
-  }, [isFetched, isError, data]);
+  }, [isFetched, isError, data, setKanbanListState]);
 
-  // Instant loading - show content as soon as data is ready
+  // -------- decide when to reveal the real UI --------
   useEffect(() => {
     const shouldShowContent =
       router.isReady && userInfo && (isFetched || isError);
 
     if (shouldShowContent) {
       setShowContent(true);
-      console.log("✅ Showing content immediately");
     }
   }, [router.isReady, userInfo, isFetched, isError]);
 
-  // Single source of truth for showing loading
   const shouldShowLoading = isNavigating || !showContent || isLoading;
 
+  // ======================================================
+  //                   RENDER
+  // ======================================================
   return (
     <>
-      {/* Show skeleton for kanban board during loading */}
+      {/* Full-page skeleton while loading (matches light/dark bg) */}
       {shouldShowLoading && (
-        <>
-          <div className="fixed inset-0 z-40 bg-gray-50">
-            <div className="flex h-screen flex-col">
-              {/* Navbar skeleton */}
-              <div className="h-16 border-b border-gray-200 bg-white px-4 py-3">
-                <div className="flex items-center justify-between">
-                  <div className="h-8 w-48 animate-pulse rounded bg-gray-200"></div>
-                  <div className="flex gap-4">
-                    <div className="h-8 w-8 animate-pulse rounded-full bg-gray-200"></div>
-                    <div className="h-8 w-24 animate-pulse rounded bg-gray-200"></div>
-                  </div>
-                </div>
-              </div>
-              {/* Kanban board skeleton */}
-              <KanbanBoardSkeleton />
-            </div>
-          </div>
-        </>
+        <div className="fixed inset-0 z-40 bg-[#F4F6F8] dark:bg-[#141A21]">
+          <KanbanBoardSkeleton />
+        </div>
       )}
 
+      {/* Error state */}
       {!isNavigating && showContent && isError && (
         <div className="flex h-screen items-center justify-center">
           <div className="text-center">
@@ -208,11 +173,21 @@ export default function getKanbanList() {
         </div>
       )}
 
+      {/* Main Kanban page */}
       {!isNavigating && showContent && data && (
-        <>
-          <MainLayout />
+        <Shell>
+          <Topbar />
+
+          {/* ⭐ Header = Kanban + breadcrumb (no search, no button) */}
+          <SectionHeader />
+
+          {/* Kanban board columns */}
+          <section className="mx-auto max-w-[1120px] px-0 py-6">
+            <KanbanBoard />
+          </section>
+
           <ToastContainer />
-        </>
+        </Shell>
       )}
     </>
   );
