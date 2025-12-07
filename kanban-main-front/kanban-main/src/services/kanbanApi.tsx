@@ -1,7 +1,7 @@
 import axios from "axios";
 import { DateValueType } from "react-tailwindcss-datepicker/dist/types";
 
-const Base_URL: string = "https://kanban-backend-lofy.onrender.com/api";
+const Base_URL: string = "https://kanban-backend-final.onrender.com/api";
 
 // Configure axios with better defaults for performance
 const apiClient = axios.create({
