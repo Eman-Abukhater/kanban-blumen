@@ -91,11 +91,10 @@ export function Navbar(props: INavbarProps) {
                 <LottieClient animationData={animationBack} loop={true} />
               </div>
             </button>
-            <ThemeSwitch
-              buttonClass="flex h-6 w-6 items-center justify-center rounded-md transition hover:bg-zinc-900/5 dark:hover:bg-white/5"
-              sunSvgClass="h-5 w-5 stroke-zinc-900 dark:hidden"
-              moonSvgClass="hidden h-5 w-5 dark:block stroke-slate-300"
-            />
+           <ThemeSwitch
+  buttonClass="flex h-6 w-6 items-center justify-center rounded-md transition hover:bg-zinc-900/5 dark:hover:bg-white/5"
+/>
+
           </div>
         </div>
       </div>
