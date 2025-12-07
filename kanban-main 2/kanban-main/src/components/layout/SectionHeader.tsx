@@ -10,6 +10,11 @@ type Props = {
   onCreate?: () => void;
   /** Text of the primary button (default: "Create Project") */
   createLabel?: string;
+
+  /** ✅ Board List view mode (true = table/rows, false = cards) */
+  isTableView?: boolean;
+  /** Called when user clicks column / grid icon */
+  onChangeViewMode?: (mode: "cards" | "table") => void;
 };
 
 export default function SectionHeader({
@@ -17,6 +22,8 @@ export default function SectionHeader({
   setSearch,
   onCreate,
   createLabel = "Create Project",
+  isTableView = false,
+  onChangeViewMode,
 }: Props) {
   const router = useRouter();
   const path = router.pathname.split("/").filter(Boolean); // ["projects"], ["boardList","[id]"], ["kanbanList","[id]"]
@@ -25,7 +32,7 @@ export default function SectionHeader({
   const breadcrumb: { label: string; href?: string }[] = [];
 
   if (path[0] === "projects") {
-    // /projects  → Project • Project List  (Project List is current page)
+    // /projects  → Project • Project List
     breadcrumb.push({ label: "Project" });
     breadcrumb.push({ label: "Project List" });
   } else if (path[0] === "boardList") {
@@ -37,7 +44,6 @@ export default function SectionHeader({
     // /kanbanList/[id] → Project • Project List • Board List • kanban
     breadcrumb.push({ label: "Project", href: "/projects" });
     breadcrumb.push({ label: "Project List", href: "/projects" });
-    // Board List exists conceptually, but you said page not ready yet → no href
     breadcrumb.push({ label: "Board List" });
     breadcrumb.push({ label: "kanban" });
   } else {
@@ -50,6 +56,8 @@ export default function SectionHeader({
   let currentTitle = "Project List";
   if (path[0] === "boardList") currentTitle = "Board List";
   if (path[0] === "kanbanList") currentTitle = "Kanban";
+
+  const isBoardListPage = path[0] === "boardList";
 
   return (
     <div className="mx-auto max-w-[1120px] bg-white px-3 pt-8 dark:bg-[#141A21]">
@@ -110,8 +118,9 @@ export default function SectionHeader({
         )}
       </div>
 
-      {/* Second Row: Search + icons (optional) */}
-      {setSearch && (
+      {/* Second Row: Search + icons
+          ❗ Hidden when isTableView = true (because in table view they move inside the card) */}
+      {setSearch && !isTableView && (
         <div className="mt-6 flex items-center justify-between">
           {/* Search */}
           <div className="w-[320px]">
@@ -128,6 +137,7 @@ export default function SectionHeader({
 
           {/* Icons */}
           <div className="flex items-center gap-3">
+            {/* Filter icon (no logic yet) */}
             <button className="rounded-[10px] p-2 hover:bg-slate500_12 dark:hover:bg-slate500_20">
               <Image
                 src="/icons/filter-icon.svg"
@@ -137,7 +147,18 @@ export default function SectionHeader({
                 className="opacity-80"
               />
             </button>
-            <button className="rounded-[10px] p-2 hover:bg-slate500_12 dark:hover:bg-slate500_20">
+
+            {/* Column view = cards */}
+            <button
+              type="button"
+              onClick={() => onChangeViewMode?.("cards")}
+              className={
+                "rounded-[10px] p-2 hover:bg-slate500_12 dark:hover:bg-slate500_20" +
+                (isBoardListPage && !isTableView
+                  ? " bg-slate500_08 dark:bg-slate500_20"
+                  : "")
+              }
+            >
               <Image
                 src="/icons/column.svg"
                 alt="column"
@@ -146,7 +167,18 @@ export default function SectionHeader({
                 className="opacity-80"
               />
             </button>
-            <button className="rounded-[10px] p-2 hover:bg-slate500_12 dark:hover:bg-slate500_20">
+
+            {/* Grid icon = TABLE / ROWS view for Board List */}
+            <button
+              type="button"
+              onClick={() => onChangeViewMode?.("table")}
+              className={
+                "rounded-[10px] p-2 hover:bg-slate500_12 dark:hover:bg-slate500_20" +
+                (isBoardListPage && isTableView
+                  ? " bg-slate500_08 dark:bg-slate500_20"
+                  : "")
+              }
+            >
               <Image
                 src="/icons/grid-icon.svg"
                 alt="grid"

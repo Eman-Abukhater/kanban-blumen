@@ -1,3 +1,4 @@
+// src/pages/projects.tsx
 export const getServerSideProps = async () => ({ props: {} });
 
 import SectionHeader from "@/components/layout/SectionHeader";
@@ -27,7 +28,19 @@ import ProjectCardSkeleton from "@/components/layout/ProjectCardSkeleton";
 import Shell from "@/components/layout/Shell";
 import Topbar from "@/components/layout/Topbar";
 import ProjectCard from "@/components/kanban/ProjectCard";
-import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import Image from "next/image";
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  Eye,
+  Edit2,
+  MoreVertical,
+  Search,
+} from "lucide-react";
+
+type SortField = "id" | "title" | "createdBy" | "members" | "artboard";
 
 export default function ProjectsList() {
   const { userInfo, handleSetUserInfo } = useContext(KanbanContext);
@@ -50,10 +63,17 @@ export default function ProjectsList() {
     projectTitle: "",
   });
 
-  // 🔹 NEW – footer state
+  // 🔹 footer state
   const [dense, setDense] = useState(false);
-  const [rowsPerPage, setRowsPerPage] = useState(6); // default 6 cards
+  const [rowsPerPage, setRowsPerPage] = useState(6); // default 6 rows/cards
   const [page, setPage] = useState(0); // 0-based page index
+
+  // 🔹 view mode: false = cards, true = table (row view)
+  const [isTableView, setIsTableView] = useState(false);
+
+  // 🔹 sort state (for table)
+  const [sortField, setSortField] = useState<SortField>("id");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
   // Track navigation to hide content immediately
   useEffect(() => {
@@ -239,11 +259,33 @@ export default function ProjectsList() {
     );
   }, [projects, search]);
 
-  // 🔹 pagination calculations
-  const total = filtered.length;
+  // sort (for table view + cards so order is same)
+  const sorted = useMemo(() => {
+    const arr = [...filtered];
+    arr.sort((a, b) => {
+      let cmp = 0;
+      if (sortField === "id") {
+        cmp = a.id - b.id;
+      } else if (sortField === "title") {
+        cmp = (a.title ?? "").localeCompare(b.title ?? "");
+      } else if (sortField === "createdBy") {
+        cmp = (a.createdBy?.username ?? "").localeCompare(
+          b.createdBy?.username ?? ""
+        );
+      } else {
+        // members / artboard – no real data, fallback to id
+        cmp = a.id - b.id;
+      }
+      return sortDirection === "asc" ? cmp : -cmp;
+    });
+    return arr;
+  }, [filtered, sortField, sortDirection]);
+
+  // pagination calculations
+  const total = sorted.length;
   const startIndex = page * rowsPerPage;
   const endIndex = Math.min(startIndex + rowsPerPage, total);
-  const paginated = filtered.slice(startIndex, endIndex);
+  const paginated = sorted.slice(startIndex, endIndex);
 
   const canPrev = page > 0;
   const canNext = endIndex < total;
@@ -259,65 +301,369 @@ export default function ProjectsList() {
     if (canNext) setPage((p) => p + 1);
   };
 
+  const handleSortClick = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
+
+  const renderSortIcon = (field: SortField) => {
+    if (sortField !== field) {
+      return (
+        <ChevronDown className="h-3 w-3 text-slate500 dark:text-slate500_80" />
+      );
+    }
+    return sortDirection === "asc" ? (
+      <ChevronUp className="h-3 w-3 text-slate600 dark:text-slate500_80" />
+    ) : (
+      <ChevronDown className="h-3 w-3 text-slate600 dark:text-slate500_80" />
+    );
+  };
+
   return (
     <>
       {!isNavigating && userInfo && (
         <Shell>
           <Topbar />
+
           <SectionHeader
             search={search}
             setSearch={setSearch}
             onCreate={() => openEditModal(null)}
             createLabel="Create Project"
+            isTableView={isTableView}
+            onChangeViewMode={(mode) => setIsTableView(mode === "table")}
           />
 
           <section className="mx-auto max-w-[1120px] px-3 py-6">
-            {isLoading ? (
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                <ProjectCardSkeleton count={6} />
-              </div>
-            ) : filtered.length === 0 ? (
-              <div className="card p-10 text-center">
-                <h3 className="text-[18px] font-semibold text-ink dark:text-white">
-                  No Projects
-                </h3>
-                <p className="mt-1 text-muted dark:text-slate500_80">
-                  Try creating a new project or clear the search.
-                </p>
-                <button
-                  className="btn-dark mt-4"
-                  onClick={() => openEditModal(null)}
-                >
-                  Create Project
-                </button>
-              </div>
+            {/* =================== CARD VIEW =================== */}
+            {!isTableView ? (
+              <>
+                {isLoading ? (
+                  <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                    <ProjectCardSkeleton count={6} />
+                  </div>
+                ) : total === 0 ? (
+                  <div className="card p-10 text-center">
+                    <h3 className="text-[18px] font-semibold text-ink dark:text-white">
+                      No Projects
+                    </h3>
+                    <p className="mt-1 text-muted dark:text-slate500_80">
+                      Try creating a new project or clear the search.
+                    </p>
+                    <button
+                      className="btn-dark mt-4"
+                      onClick={() => openEditModal(null)}
+                    >
+                      Create Project
+                    </button>
+                  </div>
+                ) : (
+                  <div
+                    className={`grid gap-5 ${
+                      dense
+                        ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+                        : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+                    }`}
+                  >
+                    {isCreatingProject && <ProjectCardSkeleton count={1} />}
+                    {paginated.map((project: any) => (
+                      <ProjectCard
+                        key={project.id}
+                        project={project}
+                        onView={() => handleViewProject(project)}
+                        onEdit={() => openEditModal(project)}
+                        onDelete={() =>
+                          openDeleteConfirm(project.id, project.title)
+                        }
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
             ) : (
-              <div
-                className={`grid gap-5 ${
-                  dense
-                    ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
-                    : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
-                }`}
-              >
-                {isCreatingProject && <ProjectCardSkeleton count={1} />}
-                {paginated.map((project: any) => (
-                  <ProjectCard
-                    key={project.id}
-                    project={project}
-                    onView={() => handleViewProject(project)}
-                    onEdit={() => openEditModal(project)}
-                    onDelete={() =>
-                      openDeleteConfirm(project.id, project.title)
-                    }
-                  />
-                ))}
+              /* =================== TABLE / ROW VIEW =================== */
+              <div className="overflow-hidden rounded-[24px] border border-slate500_12 bg-white dark:border-slate500_20 dark:bg-[#1B232D]">
+                {/* Search + icons INSIDE card top bar */}
+                <div className="flex items-center justify-between border-b border-slate500_12 px-6 py-4 dark:border-slate500_20">
+                  {/* search */}
+                  <div className="w-[320px]">
+                    <div className="relative">
+                      <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate500 dark:text-slate500_80" />
+                      <input
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder="Search..."
+                        className="h-10 w-full rounded-[12px] border border-slate500_20 bg-white pl-9 pr-3 text-[14px] text-ink placeholder-slate500 outline-none focus:ring-2 focus:ring-brand/40 dark:border-slate500_20 dark:bg-[#1B232D] dark:text-slate500_80 dark:placeholder-slate500_80"
+                      />
+                    </div>
+                  </div>
+
+                  {/* icons right */}
+                  <div className="flex items-center gap-3">
+                    {/* Filter (visual) */}
+                    <button className="rounded-[10px] p-2 hover:bg-slate500_12 dark:hover:bg-slate500_20">
+                      <Image
+                        src="/icons/filter-icon.svg"
+                        alt="filter"
+                        width={20}
+                        height={20}
+                        className="opacity-80"
+                      />
+                    </button>
+
+                    {/* Column (cards) */}
+                    <button
+                      className="rounded-[10px] p-2 hover:bg-slate500_12 dark:hover:bg-slate500_20"
+                      onClick={() => setIsTableView(false)}
+                    >
+                      <Image
+                        src="/icons/column.svg"
+                        alt="column"
+                        width={20}
+                        height={20}
+                        className="opacity-80"
+                      />
+                    </button>
+
+                    {/* Grid (table) – active */}
+                    <button className="rounded-[10px] bg-slate500_12 p-2 dark:bg-slate500_20">
+                      <Image
+                        src="/icons/grid-icon.svg"
+                        alt="grid"
+                        width={20}
+                        height={20}
+                        className="opacity-80"
+                      />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Header row */}
+                <div className="flex items-center border-b border-slate500_12 bg-[#F4F6F8] px-6 py-4 text-[13px] font-medium text-slate600 dark:border-slate500_20 dark:bg-[#141A21] dark:text-slate500_80">
+                  {/* checkbox col */}
+                  <div className="w-10">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded-[6px] border-1 border-[#1C252E] text-brand focus:ring-0 dark:border-slate500_20"
+                    />
+                  </div>
+
+                  {/* ID */}
+                  <button
+                    type="button"
+                    onClick={() => handleSortClick("id")}
+                    className="flex w-16 items-center gap-1 text-left"
+                  >
+                    <span>ID</span>
+                    {renderSortIcon("id")}
+                  </button>
+
+                  {/* Project Name */}
+                  <button
+                    type="button"
+                    onClick={() => handleSortClick("title")}
+                    className="flex flex-1 items-center gap-1 text-left"
+                  >
+                    <span>Project Name</span>
+                    {renderSortIcon("title")}
+                  </button>
+
+                  {/* Created By */}
+                  <button
+                    type="button"
+                    onClick={() => handleSortClick("createdBy")}
+                    className="flex w-32 items-center gap-1 text-left"
+                  >
+                    <span>Created By</span>
+                    {renderSortIcon("createdBy")}
+                  </button>
+
+                  {/* Member(s) */}
+                  <button
+                    type="button"
+                    onClick={() => handleSortClick("members")}
+                    className="flex w-24 items-center gap-1 text-left"
+                  >
+                    <span>Member(s)</span>
+                    {renderSortIcon("members")}
+                  </button>
+
+                  {/* Artboard */}
+                  <button
+                    type="button"
+                    onClick={() => handleSortClick("artboard")}
+                    className="flex w-24 items-center gap-1 text-left"
+                  >
+                    <span>Artboard</span>
+                    {renderSortIcon("artboard")}
+                  </button>
+
+                  {/* actions header */}
+                  <div className="w-24" />
+                </div>
+
+                {/* Body */}
+                {isLoading ? (
+                  <>
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center border-b border-dashed border-slate500_12 px-6 py-4 text-sm animate-pulse dark:border-slate500_20"
+                      >
+                        <div className="w-10">
+                          <div className="h-4 w-4 rounded-[6px] bg-slate500_12 dark:bg-slate500_20" />
+                        </div>
+                        <div className="w-16">
+                          <div className="h-4 w-10 rounded bg-slate500_12 dark:bg-slate500_20" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="h-4 w-2/3 rounded bg-slate500_12 dark:bg-slate500_20" />
+                        </div>
+                        <div className="w-32">
+                          <div className="h-4 w-3/4 rounded bg-slate500_12 dark:bg-slate500_20" />
+                        </div>
+                        <div className="w-24">
+                          <div className="h-4 w-10 rounded bg-slate500_12 dark:bg-slate500_20" />
+                        </div>
+                        <div className="w-24">
+                          <div className="h-4 w-10 rounded bg-slate500_12 dark:bg-slate500_20" />
+                        </div>
+                        <div className="flex w-24 items-center justify-end gap-3">
+                          <div className="h-4 w-4 rounded-full bg-slate500_12 dark:bg-slate500_20" />
+                          <div className="h-4 w-4 rounded-full bg-slate500_12 dark:bg-slate500_20" />
+                          <div className="h-4 w-4 rounded-full bg-slate500_12 dark:bg-slate500_20" />
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                ) : total === 0 ? (
+                  <div className="p-10 text-center">
+                    <h3 className="text-[18px] font-semibold text-ink dark:text-white">
+                      No Projects
+                    </h3>
+                    <p className="mt-1 text-[14px] text-[#637381] dark:text-slate500_80">
+                      Try creating a new project or clear the search.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => openEditModal(null)}
+                      className="mt-4 inline-flex h-9 items-center justify-center rounded-[10px] bg-ink px-5 text-[14px] font-semibold text-white shadow-[0_10px_25px_rgba(15,23,42,0.18)] hover:opacity-95 dark:bg-white dark:text-[#1C252E] dark:shadow-none"
+                    >
+                      Create Project
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    {isCreatingProject && (
+                      <div className="flex items-center border-b border-dashed border-slate500_12 px-6 py-4 text-sm animate-pulse dark:border-slate500_20">
+                        <div className="w-10">
+                          <div className="h-4 w-4 rounded-[6px] bg-slate500_12 dark:bg-slate500_20" />
+                        </div>
+                        <div className="w-16">
+                          <div className="h-4 w-10 rounded bg-slate500_12 dark:bg-slate500_20" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="h-4 w-2/3 rounded bg-slate500_12 dark:bg-slate500_20" />
+                        </div>
+                        <div className="w-32">
+                          <div className="h-4 w-3/4 rounded bg-slate500_12 dark:bg-slate500_20" />
+                        </div>
+                        <div className="w-24">
+                          <div className="h-4 w-10 rounded bg-slate500_12 dark:bg-slate500_20" />
+                        </div>
+                        <div className="w-24">
+                          <div className="h-4 w-10 rounded bg-slate500_12 dark:bg-slate500_20" />
+                        </div>
+                        <div className="flex w-24 items-center justify-end gap-3">
+                          <div className="h-4 w-4 rounded-full bg-slate500_12 dark:bg-slate500_20" />
+                          <div className="h-4 w-4 rounded-full bg-slate500_12 dark:bg-slate500_20" />
+                          <div className="h-4 w-4 rounded-full bg-slate500_12 dark:bg-slate500_20" />
+                        </div>
+                      </div>
+                    )}
+
+                    {paginated.map((project: any) => (
+                      <div
+                        key={project.id}
+                        className="flex items-center border-b border-dashed border-slate500_12 px-6 py-4 text-[14px] text-ink last:border-b-0 dark:border-slate500_20 dark:text-slate500_80"
+                      >
+                        {/* checkbox */}
+                        <div className="w-10">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 rounded-[6px] border-1 border-[#1C252E] text-brand focus:ring-0 dark:border-slate500_20"
+                          />
+                        </div>
+
+                        {/* ID */}
+                        <div className="w-16 text-[[#1C252E] dark:text-slate500_80">
+                          {String(project.id).padStart(3, "0")}
+                        </div>
+
+                        {/* Project Name */}
+                        <div className="flex-1">
+                          {project.title ?? "Project title"}
+                        </div>
+
+                        {/* Created By */}
+                        <div className="w-32 text-[#1C252E] dark:text-[#FFFFFF]">
+                          {project.createdBy?.username ?? "Admin"}
+                        </div>
+
+                        {/* Member(s) – static for now */}
+                        <div className="w-24  text-[#1C252E] dark:text-[#FFFFFF]">
+                          20+
+                        </div>
+
+                        {/* Artboard – static for now */}
+                      <div className="w-24 text-[[#1C252E] dark:text-[#FFFFFF]">
+                          20+
+                        </div>
+
+                        {/* actions */}
+                        <div className="flex w-24 items-center justify-end gap-3">
+                          <button
+                            type="button"
+                            title="Quick View"
+                            onClick={() => handleViewProject(project)}
+                            className="rounded-full p-1.5 hover:bg-slate500_08 dark:hover:bg-slate500_20"
+                          >
+                            <Eye className="h-4 w-4 text-slate600 dark:text-slate500_80" />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => openEditModal(project)}
+                            className="rounded-full p-1.5 hover:bg-slate500_08 dark:hover:bg-slate500_20"
+                          >
+                            <Edit2 className="h-4 w-4 text-slate600 dark:text-slate500_80" />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              openDeleteConfirm(project.id, project.title)
+                            }
+                            className="rounded-full p-1.5 hover:bg-slate500_08 dark:hover:bg-slate500_20"
+                          >
+                            <MoreVertical className="h-4 w-4 text-slate600 dark:text-slate500_80" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
               </div>
             )}
           </section>
 
-          {/* 🔹 DENSE + PAGINATION FOOTER */}
-          {!isLoading && filtered.length > 0 && (
-            <div className="mx-auto flex max-w-[1120px] items-center justify-between  pb-6 pt-4 text-[13px]">
+          {/* 🔹 DENSE + PAGINATION FOOTER (shared for both views) */}
+          {!isLoading && total > 0 && (
+            <div className="mx-auto flex max-w-[1120px] items-center justify-between pb-6 pt-4 text-[13px]">
               {/* Dense toggle */}
               <button
                 type="button"
