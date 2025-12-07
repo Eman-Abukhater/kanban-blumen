@@ -1,3 +1,4 @@
+// src/components/kanban/KanbanBoard.tsx
 import { useContext } from "react";
 import { DragDropContext, Droppable } from "react-beautiful-dnd";
 import KanbanContext from "../../context/kanbanContext";
@@ -20,7 +21,8 @@ export function KanbanBoard(props: IKanbanBoardProps) {
       >
         {(provided) => (
           <div
-            className="flex h-full flex-1 flex-row items-start gap-6 pb-10"
+            // ⬇️ added flex-wrap + w-full so columns go to a new line instead of overflowing
+            className="flex h-full w-full flex-1 flex-row flex-wrap items-start gap-6 pb-10"
             {...provided.droppableProps}
             ref={provided.innerRef}
           >

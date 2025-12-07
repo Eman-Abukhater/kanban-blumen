@@ -53,7 +53,7 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
                 {/* plus = add card (just focuses the AddCardForm area visually) */}
                 <button
                   type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-ink shadow-soft hover:bg-[#F4F6F8] dark:bg-[#232C36] dark:text-white dark:hover:bg-[#28313C]"
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-black text-white shadow-soft  dark:bg-white dark:text-black "
                   // we keep behaviour simple: scroll to bottom where AddCardForm is
                   onClick={() => {
                     const el = document.getElementById(
