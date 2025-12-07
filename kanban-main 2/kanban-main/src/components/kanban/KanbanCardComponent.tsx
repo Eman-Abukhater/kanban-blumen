@@ -5,12 +5,20 @@ import KanbanContext from "../../context/kanbanContext";
 import { classNames } from "../../utility/css";
 import { KanbanCard } from "./KanbanTypes";
 import { GetCardImagePath } from "@/utility/baseUrl";
+import { MessageCircle, Paperclip } from "lucide-react";
 
 export interface IKanbanCardComponentProps {
   listIndex: number;
   cardIndex: number;
   card: KanbanCard;
 }
+
+/** helper types – keep them optional so nothing breaks if backend doesn't send them */
+type Assignee = {
+  id?: string | number;
+  name?: string;
+  avatarUrl?: string;
+};
 
 export default function KanbanCardComponent(props: IKanbanCardComponentProps) {
   const { handleOpenModal } = useContext(KanbanContext);
@@ -27,8 +35,9 @@ export default function KanbanCardComponent(props: IKanbanCardComponentProps) {
 
   const CardImagePath = GetCardImagePath();
 
-  const isCloudinaryUrl = (url: string) =>
-    url && (url.startsWith("http://") || url.startsWith("https://"));
+  const isCloudinaryUrl = (url: string) => {
+    return url && (url.startsWith("http://") || url.startsWith("https://"));
+  };
 
   const getImageUrl = () => {
     if (!props.card.imageUrl) return "";
@@ -36,39 +45,48 @@ export default function KanbanCardComponent(props: IKanbanCardComponentProps) {
     return `${CardImagePath}/${props.card.kanbanCardId}/${props.card.imageUrl}`;
   };
 
-  const handleClick = () =>
-    handleOpenModal({
-      type: "UPDATE_CARD",
-      modalProps: {
-        listIndex: props.listIndex,
-        cardIndex: props.cardIndex,
-        card: props.card,
-      },
-    });
+  // Figma footer data (all optional, so UI never crashes)
+  const commentCount =
+    (props.card as any).commentCount ??
+    (props.card as any).commentsCount ??
+    0;
+  const attachmentCount =
+    (props.card as any).attachmentCount ??
+    (props.card as any).attachmentsCount ??
+    0;
+  const assignees: Assignee[] =
+    ((props.card as any).assignees as Assignee[]) ??
+    ((props.card as any).members as Assignee[]) ??
+    [];
+
+  const visibleAssignees = assignees.slice(0, 3);
+  const extraAssignees = assignees.length - visibleAssignees.length;
 
   return (
     <Draggable draggableId={props.card.id} index={props.cardIndex}>
       {(provided) => (
-        <article
-          ref={provided.innerRef}
+        <div
+          className="w-full rounded-[16px] border border-slate500_08 bg-white shadow-[0_18px_45px_rgba(15,23,42,0.06)] transition-shadow duration-200 ease-in-out hover:shadow-[0_24px_60px_rgba(15,23,42,0.10)] focus:outline-none dark:border-slate500_20 dark:bg-[#1B232D] dark:text-white dark:hover:shadow-none"
           {...provided.draggableProps}
           {...provided.dragHandleProps}
-          onClick={handleClick}
-          className="
-            w-[272px] cursor-pointer rounded-[18px]
-            border border-slate500_08 bg-white
-            shadow-[0_12px_30px_rgba(15,23,42,0.08)]
-            transition-transform duration-150 ease-out
-            hover:-translate-y-[1px] hover:shadow-[0_18px_45px_rgba(15,23,42,0.18)]
-            dark:border-slate500_20 dark:bg-[#1B232D] dark:shadow-none
-          "
+          ref={provided.innerRef}
+          onClick={() =>
+            handleOpenModal({
+              type: "UPDATE_CARD",
+              modalProps: {
+                listIndex: props.listIndex,
+                cardIndex: props.cardIndex,
+                card: props.card,
+              },
+            })
+          }
         >
-          {/* Optional banner image */}
+          {/* Banner image */}
           {props.card.imageUrl && (
             <div
               className={classNames(
-                props.card.completed ? "opacity-60" : "opacity-100",
-                "h-[160px] overflow-hidden rounded-t-[18px]"
+                props.card.completed ? "opacity-50" : "opacity-100",
+                "h-40 overflow-hidden rounded-t-[16px]"
               )}
             >
               <img
@@ -83,25 +101,25 @@ export default function KanbanCardComponent(props: IKanbanCardComponentProps) {
             </div>
           )}
 
-          {/* Content */}
+          {/* Card body */}
           <div className="px-4 py-3">
-            {/* Title + status */}
-            <div className="mb-1 flex items-center justify-between gap-3">
+            <div className="flex items-center justify-between gap-3">
               <span
                 className={classNames(
                   props.card.completed
-                    ? "text-slate-400 dark:text-slate500_80"
+                    ? "text-slate-400 dark:text-slate-500"
                     : "text-ink dark:text-white",
-                  "truncate text-[14px] font-semibold leading-[20px]"
+                  "truncate text-[15px] font-semibold"
                 )}
               >
                 {props.card.title}
               </span>
 
+            {/* tasks count badge (small, upper-right) */}
               {!props.card.completed && props.card.kanbanTasks.length > 0 && (
-                <span className="text-[12px] font-medium text-[#637381] dark:text-slate500_80">
+                <div className="text-[12px] font-medium text-slate600 dark:text-slate500_80">
                   {calculateTaskCompleted()}/{props.card.kanbanTasks.length}
-                </span>
+                </div>
               )}
 
               {props.card.completed && (
@@ -109,32 +127,92 @@ export default function KanbanCardComponent(props: IKanbanCardComponentProps) {
               )}
             </div>
 
-            {/* Description */}
-            {props.card.completed === false && props.card.desc && (
-              <p className="mb-2 truncate text-[12px] text-[#919EAB] dark:text-slate500_80">
-                {props.card.desc}
-              </p>
+            {props.card.completed === false && (
+              <>
+                {props.card.desc && (
+                  <div className="mb-1 mt-2">
+                    <p className="truncate text-[13px] text-slate500 dark:text-slate400">
+                      {props.card.desc}
+                    </p>
+                  </div>
+                )}
+
+                {/* Tags row */}
+                {props.card.kanbanTags.length > 0 && (
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {props.card.kanbanTags.map((tag, index) => (
+                      <span
+                        key={index}
+                        className={classNames(
+                          "rounded-[999px] px-3 py-1 text-[12px] font-semibold",
+                          tag.color
+                        )}
+                      >
+                        {tag.title}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
 
-            {/* Tags row */}
-            {props.card.completed === false && (
-              <div className="flex flex-wrap gap-1.5">
-                {props.card.kanbanTags.map((_tag, index) => (
-                  <span
-                    key={index}
-                    className={classNames(
-                      props.card.kanbanTags.length > 0 ? "mt-1" : "",
-                      "rounded-full px-3 py-[3px] text-[11px] font-semibold",
-                      _tag.color // your color classes (bg-*)
-                    )}
-                  >
-                    {_tag.title}
-                  </span>
-                ))}
+            {/* FOOTER: comments + attachments + assignees (Figma style) */}
+            <div className="mt-3 flex items-center justify-between">
+              {/* left: comments + attachments */}
+              <div className="flex items-center gap-4 text-[12px] text-slate500 dark:text-slate500_80">
+                <div className="flex items-center gap-1">
+                  <MessageCircle className="h-4 w-4" />
+                  <span>{commentCount}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Paperclip className="h-4 w-4" />
+                  <span>{attachmentCount}</span>
+                </div>
               </div>
-            )}
+
+              {/* right: avatars */}
+              {assignees.length > 0 && (
+                <div className="flex items-center">
+                  {visibleAssignees.map((user, idx) => {
+                    const initials =
+                      user.name
+                        ?.split(" ")
+                        .map((p) => p[0])
+                        .join("")
+                        .toUpperCase() || "?";
+
+                    return (
+                      <div
+                        key={user.id ?? idx}
+                        className={classNames(
+                          idx > 0 ? "-ml-2" : "",
+                          "flex h-7 w-7 items-center justify-center rounded-full bg-[#E5EAF1] text-[11px] font-semibold text-slate700 shadow-[0_0_0_2px_#FFFFFF] dark:bg-[#232C36] dark:text-white dark:shadow-[0_0_0_2px_#1B232D]"
+                        )}
+                      >
+                        {user.avatarUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={user.avatarUrl}
+                            alt={user.name || "user"}
+                            className="h-full w-full rounded-full object-cover"
+                          />
+                        ) : (
+                          initials
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {extraAssignees > 0 && (
+                    <div className="-ml-2 flex h-7 w-7 items-center justify-center rounded-full bg-[#FFEFAF] text-[11px] font-semibold text-[#D7941B] shadow-[0_0_0_2px_#FFFFFF] dark:shadow-[0_0_0_2px_#1B232D]">
+                      +{extraAssignees}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-        </article>
+        </div>
       )}
     </Draggable>
   );

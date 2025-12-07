@@ -20,17 +20,11 @@ export function KanbanBoard(props: IKanbanBoardProps) {
       >
         {(provided) => (
           <div
-            ref={provided.innerRef}
+            className="flex h-full flex-1 flex-row items-start gap-6 pb-10"
             {...provided.droppableProps}
-            className="
-              flex h-full flex-1 flex-row items-start
-              gap-6
-              overflow-x-auto
-              px-1 pb-10 pt-2
-              scrollbar-thin scrollbar-thumb-slate500_20 scrollbar-track-transparent
-              dark:scrollbar-thumb-slate500_48
-            "
+            ref={provided.innerRef}
           >
+            {/* Columns */}
             {kanbanState.map((list, index) => (
               <KanbanListComponent
                 key={list.id}
@@ -41,22 +35,21 @@ export function KanbanBoard(props: IKanbanBoardProps) {
 
             {provided.placeholder}
 
-            {/* Add new list column */}
-            <div
-              className={classNames(
-                "flex-shrink-0",
-                kanbanState.length > 0 ? "ml-2" : ""
-              )}
-            >
-              {kanbanState.length < 6 && (
+            {/* Add column card – styled like Figma “Add column” */}
+            {kanbanState.length < 6 && (
+              <div
+                className={classNames(
+                  "flex h-full min-h-[260px] w-[340px] items-center justify-center rounded-[24px] border border-dashed border-slate500_20 bg-[#F4F6F8] px-6 py-5 text-center text-[15px] font-semibold text-slate600 shadow-soft dark:border-slate500_20 dark:bg-[#1B232D] dark:text-slate500_80"
+                )}
+              >
                 <AddForm
-                  text="Add list"
-                  placeholder="New list name..."
+                  text="Add column"
+                  placeholder="New column name..."
                   onSubmit={handleCreateList}
                   userInfo={userInfo}
                 />
-              )}
-            </div>
+              </div>
+            )}
           </div>
         )}
       </Droppable>

@@ -19,61 +19,37 @@ export default function SectionHeader({
   createLabel = "Create Project",
 }: Props) {
   const router = useRouter();
-  const path = router.pathname.split("/").filter(Boolean); // ["projects"], ["boardList", "[id]"], ["kanbanList", "[id]"]
+  const path = router.pathname.split("/").filter(Boolean); // ["projects"], ["boardList","[id]"], ["kanbanList","[id]"]
 
   /** 🔗 Build breadcrumb items based on route */
   const breadcrumb: { label: string; href?: string }[] = [];
 
-  // Always first item = Project
-  breadcrumb.push({
-    label: "Project",
-    href: "/projects",
-  });
-
   if (path[0] === "projects") {
-    // Page: /projects
-    breadcrumb.push({
-      label: "Project List",
-      href: "/projects",
-    });
+    // /projects  → Project • Project List  (Project List is current page)
+    breadcrumb.push({ label: "Project" });
+    breadcrumb.push({ label: "Project List" });
+  } else if (path[0] === "boardList") {
+    // /boardList/[id] → Project • Project List • Board List
+    breadcrumb.push({ label: "Project", href: "/projects" });
+    breadcrumb.push({ label: "Project List", href: "/projects" });
+    breadcrumb.push({ label: "Board List" });
+  } else if (path[0] === "kanbanList") {
+    // /kanbanList/[id] → Project • Project List • Board List • kanban
+    breadcrumb.push({ label: "Project", href: "/projects" });
+    breadcrumb.push({ label: "Project List", href: "/projects" });
+    // Board List exists conceptually, but you said page not ready yet → no href
+    breadcrumb.push({ label: "Board List" });
+    breadcrumb.push({ label: "kanban" });
+  } else {
+    // Fallback – treat like /projects
+    breadcrumb.push({ label: "Project" });
+    breadcrumb.push({ label: "Project List" });
   }
 
-  if (path[0] === "boardList") {
-    // Page: /boardList/[id]
-    breadcrumb.push({
-      label: "Project List",
-      href: "/projects",
-    });
-    breadcrumb.push({
-      label: "Board List",
-      href: router.asPath,
-    });
-  }
-
-  if (path[0] === "kanbanList") {
-    // Page: /kanbanList/[id]  -> Figma: Project • Project List • Board List • kanban
-    breadcrumb.push({
-      label: "Project List",
-      href: "/projects",
-    });
-    breadcrumb.push({
-      label: "Board List",
-      href: "/boardList", // adjust if your list route is different
-    });
-    breadcrumb.push({
-      label: "kanban",
-      href: router.asPath,
-    });
-  }
-
-  const isKanbanPage = path[0] === "kanbanList";
-
-  const currentTitle =
-    isKanbanPage
-      ? "Kanban" // ✅ Title from Figma
-      : breadcrumb.length > 0
-      ? breadcrumb[breadcrumb.length - 1].label
-      : "Project";
+  // Page title
+  let currentTitle = "Project List";
+  if (path[0] === "boardList") currentTitle = "Board List";
+  if (path[0] === "kanbanList") currentTitle = "Kanban";
 
   return (
     <div className="mx-auto max-w-[1120px] bg-white px-3 pt-8 dark:bg-[#141A21]">
@@ -92,20 +68,26 @@ export default function SectionHeader({
 
               return (
                 <div key={i} className="flex items-center">
-                  {!isLast && item.href ? (
+                  {isLast ? (
+                    // ⭐ current page = grey
+                    <span className="text-slate500 dark:text-slate500_80">
+                      {item.label}
+                    </span>
+                  ) : item.href ? (
+                    // previous crumbs with link → white in dark mode
                     <Link href={item.href}>
-                      <span className="cursor-pointer font-medium text-ink hover:underline dark:text-slate500_80 dark:hover:text-white">
+                      <span className="cursor-pointer font-medium text-ink hover:underline dark:text-white">
                         {item.label}
                       </span>
                     </Link>
                   ) : (
-                    // last item
-                    <span className="text-slate500 dark:text-white">
+                    // previous crumbs without link → also white in dark
+                    <span className="font-medium text-ink dark:text-white">
                       {item.label}
                     </span>
                   )}
 
-                  {/* separator dot (not after last) */}
+                  {/* Dot separator except last */}
                   {!isLast && (
                     <span className="mx-1 text-slate500 dark:text-slate500_80">
                       •
@@ -128,7 +110,7 @@ export default function SectionHeader({
         )}
       </div>
 
-      {/* Second Row: Search + view icons (optional) */}
+      {/* Second Row: Search + icons (optional) */}
       {setSearch && (
         <div className="mt-6 flex items-center justify-between">
           {/* Search */}
