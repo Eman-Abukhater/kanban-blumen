@@ -1,6 +1,6 @@
 // kanban-main/src/services/auth.ts
 import axios from "axios";
-const API = "https://kanban-backend-lofy.onrender.com/api";
+const API = "https://kanban-backend-final.onrender.com/api";
 const TOKEN_KEY = "token";
 
 export const setToken = (t: string) => localStorage.setItem(TOKEN_KEY, t);
