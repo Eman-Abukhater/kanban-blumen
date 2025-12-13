@@ -9,11 +9,13 @@ import { HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
 import {
   Eye,
   Edit2,
+  Trash2,
   MoreVertical,
   ChevronDown,
   ChevronUp,
   Search,
 } from "lucide-react";
+
 import Image from "next/image";
 
 import Shell from "@/components/layout/Shell";
@@ -29,6 +31,7 @@ import {
   AddBoard,
   EditBoard,
   AddKanbanList,
+  DeleteBoard,
 } from "@/services/kanbanApi";
 
 type ApiBoard = {
@@ -241,7 +244,12 @@ export default function BoardListPage() {
     try {
       setIsCreatingBoard(true);
 
-      const res = await AddBoard(newTitle, fkpoid, userInfo.id, userInfo.username);
+      const res = await AddBoard(
+        newTitle,
+        fkpoid,
+        userInfo.id,
+        userInfo.username
+      );
       if (res?.status !== 200 || !res?.data) {
         toast.error("Failed to add board.", {
           position: toast.POSITION.TOP_CENTER,
@@ -267,10 +275,7 @@ export default function BoardListPage() {
         }
       }
 
-      setBoards((prev) => [
-        ...prev,
-        { boardId: newBoardId, title: newTitle },
-      ]);
+      setBoards((prev) => [...prev, { boardId: newBoardId, title: newTitle }]);
 
       toast.success(`Board "${newTitle}" created with default lists!`, {
         position: toast.POSITION.TOP_CENTER,
@@ -278,6 +283,37 @@ export default function BoardListPage() {
       closeModal();
     } finally {
       setIsCreatingBoard(false);
+    }
+  };
+  const handleDeleteBoard = async (boardId: number) => {
+    if (!userInfo) return;
+
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this board?"
+    );
+    if (!confirmed) return;
+
+    try {
+      const res = await DeleteBoard(boardId);
+
+      if (!res || res.status !== 200) {
+        toast.error("Failed to delete board.", {
+          position: toast.POSITION.TOP_CENTER,
+        });
+        return;
+      }
+
+      // remove board from state
+      setBoards((prev) => prev.filter((b) => b.boardId !== boardId));
+
+      // backend usually returns a message string
+      toast.success(res.data || "Board deleted successfully", {
+        position: toast.POSITION.TOP_CENTER,
+      });
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to delete board.", {
+        position: toast.POSITION.TOP_CENTER,
+      });
     }
   };
 
@@ -394,8 +430,9 @@ export default function BoardListPage() {
                       { label: "Urgent" },
                       { label: "2+" },
                     ]}
-                    onAdd={() => handleAddClick(board)}
-                    onMore={() => handleMoreClick(board)}
+                    onAdd={() => handleAddClick(board)} // enter list
+                    onEdit={() => openEditModal(board)} // open edit modal
+                    onDelete={() => handleDeleteBoard(board.boardId)} // delete board
                   />
                 ))}
               </div>
@@ -467,7 +504,7 @@ export default function BoardListPage() {
               <div className="w-10">
                 <input
                   type="checkbox"
-                  className="h-4 w-4 rounded-[6px] border-1 border-[#1C252E] text-brand focus:ring-0 dark:border-slate500_20"
+                  className="border-1 h-4 w-4 rounded-[6px] border-[#1C252E] text-brand focus:ring-0 dark:border-slate500_20"
                 />
               </div>
 
@@ -511,7 +548,7 @@ export default function BoardListPage() {
                 {Array.from({ length: 4 }).map((_, i) => (
                   <div
                     key={i}
-                    className="flex items-center border-b border-dashed border-slate500_12 px-6 py-4 text-sm animate-pulse dark:border-slate500_20"
+                    className="flex animate-pulse items-center border-b border-dashed border-slate500_12 px-6 py-4 text-sm dark:border-slate500_20"
                   >
                     <div className="w-10">
                       <div className="h-4 w-4 rounded-[6px] bg-slate500_12 dark:bg-slate500_20" />
@@ -551,7 +588,7 @@ export default function BoardListPage() {
             ) : (
               <>
                 {isCreatingBoard && (
-                  <div className="flex items-center border-b border-dashed border-slate500_12 px-6 py-4 text-sm animate-pulse dark:border-slate500_20">
+                  <div className="flex animate-pulse items-center border-b border-dashed border-slate500_12 px-6 py-4 text-sm dark:border-slate500_20">
                     <div className="w-10">
                       <div className="h-4 w-4 rounded-[6px] bg-slate500_12 dark:bg-slate500_20" />
                     </div>
@@ -580,7 +617,7 @@ export default function BoardListPage() {
                     <div className="w-10">
                       <input
                         type="checkbox"
-                        className="h-4 w-4 rounded-[6px] border-1 border-[#1C252E] text-brand focus:ring-0 dark:border-slate500_20"
+                        className="border-1 h-4 w-4 rounded-[6px] border-[#1C252E] text-brand focus:ring-0 dark:border-slate500_20"
                       />
                     </div>
 
@@ -605,7 +642,7 @@ export default function BoardListPage() {
                         type="button"
                         title="Quick View"
                         onClick={() => handleAddClick(board)}
-                        className="rounded-full p-1.5 hover:bg-slate500_08 dark:hover:bg-slate500_20"
+                        className="hover:bg-slate500_08 rounded-full p-1.5 dark:hover:bg-slate500_20"
                       >
                         <Eye className="h-4 w-4 text-slate600 dark:text-slate500_80" />
                       </button>
@@ -613,7 +650,7 @@ export default function BoardListPage() {
                       <button
                         type="button"
                         onClick={() => handleMoreClick(board)}
-                        className="rounded-full p-1.5 hover:bg-slate500_08 dark:hover:bg-slate500_20"
+                        className="hover:bg-slate500_08 rounded-full p-1.5 dark:hover:bg-slate500_20"
                       >
                         <Edit2 className="h-4 w-4 text-slate600 dark:text-slate500_80" />
                       </button>
@@ -621,7 +658,7 @@ export default function BoardListPage() {
                       <button
                         type="button"
                         onClick={() => handleMoreClick(board)}
-                        className="rounded-full p-1.5 hover:bg-slate500_08 dark:hover:bg-slate500_20"
+                        className="hover:bg-slate500_08 rounded-full p-1.5 dark:hover:bg-slate500_20"
                       >
                         <MoreVertical className="h-4 w-4 text-slate600 dark:text-slate500_80" />
                       </button>
@@ -642,7 +679,16 @@ export default function BoardListPage() {
         board={selectedBoard}
       />
 
-      <ToastContainer />
+      <ToastContainer
+        position="top-right"
+        autoClose={4000}
+        pauseOnHover
+        closeOnClick
+        draggable
+        toastClassName="blumen-toast"
+        bodyClassName="blumen-toast-body"
+        progressClassName="blumen-toast-progress"
+      />
     </Shell>
   );
 }

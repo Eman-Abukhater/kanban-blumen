@@ -11,6 +11,7 @@ import { Plus } from "lucide-react";
 export interface IKanbanListComponentProps {
   listIndex: number;
   list: KanbanList;
+  dense: boolean;
 }
 
 function KanbanListComponent(props: IKanbanListComponentProps) {
@@ -50,17 +51,18 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
 
               {/* right icons: + and list menu */}
               <div className="flex items-center gap-2">
-                {/* plus = add card (just focuses the AddCardForm area visually) */}
+                {/* plus = focus the Task name input at the top */}
                 <button
                   type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-full bg-black text-white shadow-soft  dark:bg-white dark:text-black "
-                  // we keep behaviour simple: scroll to bottom where AddCardForm is
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-black text-white shadow-soft dark:bg-white dark:text-black"
                   onClick={() => {
                     const el = document.getElementById(
                       `add-card-${props.list.kanbanListId}`
                     );
                     if (el) {
-                      el.scrollIntoView({ behavior: "smooth", block: "end" });
+                      el.scrollIntoView({ behavior: "smooth", block: "start" });
+                      const input = el.querySelector("input");
+                      if (input) (input as HTMLInputElement).focus();
                     }
                   }}
                 >
@@ -77,7 +79,7 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
               </div>
             </div>
 
-            {/* BODY (cards + add card) */}
+            {/* BODY: Task name block + cards */}
             <Droppable droppableId={props.list.id}>
               {(provided) => (
                 <div
@@ -85,7 +87,32 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
                   {...provided.droppableProps}
                   ref={provided.innerRef}
                 >
-                  <div className="space-y-3 px-4 pb-4 pt-1">
+                  <div className="space-y-3 px-4 pb-4 pt-3">
+                    {/* 🔼 Task name block at the TOP (Figma) */}
+                    <div id={`add-card-${props.list.kanbanListId}`}>
+                      <AddCardForm
+                        text="Add card"
+                        placeholder="Task name"
+                        onSubmit={(
+                          title,
+                          kanbanCardId,
+                          seqNo,
+                          fkKanbanListId
+                        ) =>
+                          handleCreateCard(
+                            props.listIndex,
+                            title,
+                            kanbanCardId,
+                            seqNo,
+                            fkKanbanListId
+                          )
+                        }
+                        userInfo={userInfo}
+                        fkKanbanListId={props.list.kanbanListId}
+                      />
+                    </div>
+
+                    {/* Cards */}
                     {props.list.kanbanCards?.map((card, index) => (
                       <KanbanCardComponent
                         key={card.id}
@@ -94,33 +121,8 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
                         card={card}
                       />
                     ))}
-                    {provided.placeholder}
 
-                    {/* Add card area – bottom like Figma */}
-                    {props.list.kanbanCards.length < 31 && (
-                      <div id={`add-card-${props.list.kanbanListId}`}>
-                        <AddCardForm
-                          text="Add card"
-                          placeholder="New card name..."
-                          onSubmit={(
-                            title,
-                            kanbanCardId,
-                            seqNo,
-                            fkKanbanListId
-                          ) =>
-                            handleCreateCard(
-                              props.listIndex,
-                              title,
-                              kanbanCardId,
-                              seqNo,
-                              fkKanbanListId
-                            )
-                          }
-                          userInfo={userInfo}
-                          fkKanbanListId={props.list.kanbanListId}
-                        />
-                      </div>
-                    )}
+                    {provided.placeholder}
                   </div>
                 </div>
               )}

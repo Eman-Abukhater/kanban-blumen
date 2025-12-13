@@ -176,6 +176,28 @@ export async function addProjectMember(
     return null;
   }
 }
+// Delete Board
+export async function DeleteBoard(
+  boardid: number
+): Promise<AddCustomResponse<any> | null> {
+  try {
+    // pattern is same as DeleteTag / DeleteTask
+    const response = await apiClient.get(
+      `/ProjKanbanBoards/deleteboard?boardid=${boardid}`
+    );
+
+    const customResponse: AddCustomResponse<any> = {
+      status: response.status,
+      data: response.data,
+    };
+
+    return customResponse;
+  } catch (error) {
+    console.error("Error deleting board:", error);
+    return null;
+  }
+}
+
 
 // Define a custom response type
 interface GetListCustomResponse<T> {

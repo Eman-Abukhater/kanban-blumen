@@ -1,106 +1,116 @@
-import { useState, useEffect } from "react";
+// src/components/modal/AddEditBoardModal.tsx
+import { useEffect, useState, FormEvent } from "react";
+
+type Board = {
+  boardId: number;
+  title: string;
+};
+
+type Props = {
+  isOpen: boolean;
+  onClose: () => void;
+  board: Board | null;
+  handleAddBoardClick: (title: string) => Promise<void> | void;
+  handleEditTitle: (title: string, boardId: number) => Promise<void> | void;
+};
 
 export default function AddEditBoardModal({
   isOpen,
   onClose,
-  handleEditTitle,
-  handleAddBoardClick,
   board,
-}: any) {
-  const [title, setTitle] = useState<string | null>(null);
-  const [isEditing, setisEditing] = useState(false);
+  handleAddBoardClick,
+  handleEditTitle,
+}: Props) {
+  const [title, setTitle] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleTitleChange = (e: any) => {
-    setTitle(e.target.value);
-  };
+  const isEditMode = Boolean(board);
 
+  // fill/reset when open
   useEffect(() => {
-    board ? setisEditing(true) : setisEditing(false);
-    setTitle(board?.title);
-  }, [board]);
-
-  const handleSubmit = async () => {
-    //if empty return
-    if (!title) {
-      // Prevent adding an empty board title
+    if (isOpen && board) {
+      setTitle(board.title ?? "");
+    }
+    if (isOpen && !board) {
       setTitle("");
+    }
+  }, [isOpen, board]);
+
+  if (!isOpen) return null;
+
+  const onSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    const trimmed = title.trim();
+    if (!trimmed) return;
+
+    try {
+      setSubmitting(true);
+      if (isEditMode && board) {
+        await handleEditTitle(trimmed, board.boardId);
+      } else {
+        await handleAddBoardClick(trimmed);
+      }
       onClose();
-      return;
+    } finally {
+      setSubmitting(false);
     }
-
-    if (isEditing) {
-      handleEditTitle(title, board?.boardId);
-    }
-
-    if (!isEditing) {
-      handleAddBoardClick(title);
-    }
-
-    setTitle("");
-    onClose();
-  };
-
-  const handleCloseModal = () => {
-    setTitle("");
-    onClose();
   };
 
   return (
-    <div
-      className={`fixed inset-0 z-50 flex items-center justify-center ${
-        isOpen ? "" : "hidden"
-      }`}
-    >
-      <div className="modal-overlay absolute inset-0 bg-black opacity-50"></div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      {/* Modal container – same style as AddEditProjectModal */}
+      <div className="w-full max-w-xl rounded-[24px] bg-white shadow-[0_24px_80px_rgba(15,23,42,0.16)] dark:bg-[#1B232D] dark:shadow-none">
+        <form onSubmit={onSubmit}>
+          {/* Header */}
+          <div className="px-8 py-6">
+            <h2 className="text-[20px] font-semibold leading-[28px] text-ink dark:text-white">
+              {isEditMode ? "Edit Board Title" : "Add New Board"}
+            </h2>
+          </div>
 
-      <div className="modal-container z-50 mx-auto w-11/12 overflow-y-auto rounded bg-white shadow-lg md:max-w-md">
-        {/* Add your modal content here */}
-        <div className="modal-content px-6 py-4 text-left">
-          <h1 className="flex flex-row text-xl font-semibold">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={1.5}
-              stroke="currentColor"
-              className="h-6 w-6"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z"
+          {/* Body – single Title field with floating label */}
+          <div className="px-8 pb-4">
+            <div className="relative">
+              <label className="pointer-events-none absolute -top-2 left-3 inline-flex bg-white px-1 text-[13px] font-medium text-[#637381] dark:bg-[#1B232D] dark:text-slate500_80">
+                Add Title
+                <span className="ml-0.5 text-[#FF5630]">*</span>
+              </label>
+
+              <input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="--"
+                maxLength={25}
+                className="h-[56px] w-full rounded-[12px] border border-slate500_12 bg-white px-3 pt-3 text-[14px] text-ink outline-none transition focus:border-[#1D7BF5] focus:ring-2 focus:ring-[#1D7BF5]/20 dark:border-slate500_20 dark:bg-[#141A21] dark:text-slate500_80"
               />
-            </svg>
+            </div>
+          </div>
 
-            {isEditing ? "Edit Board Title" : "Add New Board"}
-          </h1>
-          <input
-            type="text"
-            value={title?.toString()}
-            onChange={handleTitleChange}
-            className="mt-2 w-full rounded border p-2"
-            defaultValue={""}
-            maxLength={25}
-          />
-          <div className="mt-4 flex justify-end space-x-4">
+          {/* Footer / actions */}
+          <div className="flex items-center justify-end gap-3 px-8 py-5">
             <button
-              onClick={handleCloseModal}
-              className="modal-close p-2 text-gray-600 hover:text-gray-900"
+              type="button"
+              onClick={onClose}
+              className="h-10 rounded-[10px] border border-slate500_20 px-4 text-[14px] font-semibold text-[#1C252E] hover:bg-slate500_08 dark:border-slate500_20 dark:text-slate500_80 dark:hover:bg-[#232C36]"
             >
               Cancel
             </button>
+
             <button
-              onClick={handleSubmit}
-              className={`modal-close ${
-                isEditing
-                  ? "bg-blue-500 hover:bg-blue-600"
-                  : "bg-green-500 hover:bg-green-600"
-              } rounded p-2 text-white`}
+              type="submit"
+              disabled={submitting || !title.trim()}
+              className="h-10 rounded-[10px] bg-[#1C252E] px-5 text-[14px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-70 dark:bg:white dark:text-[#1C252E]"
             >
-              {isEditing ? "Save" : "Add"}
+              {submitting
+                ? isEditMode
+                  ? "Saving..."
+                  : "Creating..."
+                : isEditMode
+                ? "Save"
+                : "Create"}
             </button>
           </div>
-        </div>
+        </form>
       </div>
     </div>
   );

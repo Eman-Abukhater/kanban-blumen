@@ -22,55 +22,80 @@ export default function BoardCard({
   onMore,
 }: Props) {
   return (
-    <article className="flex h-full flex-col rounded-[20px] border border-slate500_08 bg-white shadow-[0_20px_60px_rgba(15,23,42,0.04)] dark:border-slate500_20 dark:bg-[#1B232D] dark:shadow-none">
-      <div className="flex-1 px-6 pt-5 pb-4">
-        {/* ID + menu */}
-        <div className="mb-3 flex items-start justify-between">
-          <span className="inline-flex rounded-[6px] bg-[#FF563029] px-2 py-[3px] text-[12px] font-bold leading-[14px] text-[#B71D18]">
-            ID : {idLabel}
-          </span>
-
-          <button
-            type="button"
-            onClick={onMore}
-            className="rounded-full p-1.5 hover:bg-slate500_08 dark:hover:bg-slate500_20"
-          >
-            <MoreVertical className="h-4 w-4 text-[#637381] dark:text-slate500_80" />
-          </button>
-        </div>
-
-        {/* Title */}
-        <h3 className="mb-3 text-[16px] font-semibold leading-[24px] text-ink dark:text-white">
-          {title}
-        </h3>
-
-        {/* Task row */}
-        <div className="mb-3 flex items-center gap-2 text-[13px] leading-[18px]">
-          <span className="text-[#919EAB] dark:text-slate500_80">Task</span>
-          <span className="font-semibold text-[#637381] dark:text-slate500_80">
-            {taskCount}
-          </span>
-        </div>
-
-        {/* Tags */}
-        <div className="flex flex-wrap gap-2">
-          {tags.map((tag) => (
-            <span
-              key={tag.label}
-              className="inline-flex items-center rounded-[999px] border border-slate500_20 px-3 py-1 text-[12px] font-medium text-slate700 dark:border-slate500_20 dark:text-slate500_80 dark:bg-[#141A21]"
-            >
-              {tag.label}
+    // OUTER CARD (dark frame)
+    <article
+      className="
+        flex h-full flex-col
+        rounded-[24px] border border-slate500_08 bg-white
+        shadow-[0_20px_60px_rgba(15,23,42,0.04)]
+        dark:border-[#1C252E] dark:bg-[#1C252E]
+        dark:shadow-[0_20px_60px_rgba(2,6,23,0.90)]
+      "
+    >
+      {/* TOP AREA: adds the 'space' around the inner dark panel */}
+      <div className="flex-1 px-2 pt-2 pb-2">
+        {/* INNER TOP CARD (this is the part you showed in the screenshot) */}
+        <div className="h-full rounded-[20px] bg-white px-4 pt-5 pb-4 dark:bg-[#141A21] dark:border dark:border-[#141A21]">
+          {/* ID + menu */}
+          <div className="mb-3 flex items-start justify-between">
+            <span className="inline-flex rounded-[6px] bg-[#FFE2DC] px-2 py-[4px] text-[12px] font-bold leading-[14px] text-[#B71D18] dark:bg-[#FF563029] dark:text-[#FFAC82]">
+              ID : {idLabel}
             </span>
-          ))}
+
+            <button
+              type="button"
+              onClick={onMore}
+              className="rounded-full p-1.5 hover:bg-slate500_08 dark:hover:bg-slate500_20"
+            >
+              <MoreVertical className="h-4 w-4 text-[#637381] dark:text-slate500_80" />
+            </button>
+          </div>
+
+          {/* Title */}
+          <h3 className="mb-3 text-[16px] font-semibold leading-[24px] text-ink dark:text-white">
+            {title}
+          </h3>
+
+          {/* Task row */}
+          <div className="mb-3 flex items-center gap-2 text-[13px] leading-[18px]">
+            <span className="text-[#919EAB] dark:text-slate500_80">Task</span>
+            <span className="font-semibold text-[#637381] dark:text-white">
+              {taskCount}
+            </span>
+          </div>
+
+          {/* Tags */}
+          <div className="flex flex-wrap gap-2">
+            {tags.map((tag) => (
+              <span
+                key={tag.label}
+                className="
+                  inline-flex items-center rounded-[999px]
+                  border border-slate500_20 px-3 py-1
+                  text-[12px] font-medium text-slate700
+                  dark:border-[#374151] dark:text-slate300 dark:bg-transparent
+                "
+              >
+                {tag.label}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Footer: Add button */}
-      <div className="px-4 pb-5 pt-3">
+      {/* BOTTOM STRIP */}
+      <div className="rounded-b-[24px]  px-6 pb-5 pt-3 dark:bg-[#1C252E]">
         <button
           type="button"
           onClick={onAdd}
-          className="inline-flex items-center gap-2 rounded-[10px] bg-[#1C252E] px-2 py-1.5 text-[13px] font-semibold text-white shadow-[0_10px_25px_rgba(15,23,42,0.18)] hover:opacity-95 dark:bg-white dark:text-[#1C252E] dark:shadow-none"
+          className="
+            inline-flex items-center gap-2
+            rounded-[10px] bg-[#1C252E] px-4 py-2
+            text-[13px] font-semibold text-white
+            shadow-[0_10px_25px_rgba(15,23,42,0.18)]
+            hover:opacity-95
+            dark:bg-white dark:text-[#1C252E] dark:shadow-none
+          "
         >
           <Plus className="h-5 w-5" />
           Add

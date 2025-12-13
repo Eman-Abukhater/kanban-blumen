@@ -36,7 +36,7 @@ import {
   ChevronUp,
   Eye,
   Edit2,
-  MoreVertical,
+  Trash2,
   Search,
 } from "lucide-react";
 
@@ -67,6 +67,7 @@ export default function ProjectsList() {
   const [dense, setDense] = useState(false);
   const [rowsPerPage, setRowsPerPage] = useState(6); // default 6 rows/cards
   const [page, setPage] = useState(0); // 0-based page index
+  const [rowsMenuOpen, setRowsMenuOpen] = useState(false);
 
   // 🔹 view mode: false = cards, true = table (row view)
   const [isTableView, setIsTableView] = useState(false);
@@ -110,9 +111,7 @@ export default function ProjectsList() {
         const res = await fetchUserProjects();
         if (res?.status === 200 && res?.data?.success) {
           // filter out default project id = 1
-          const filtered = (res.data.data || []).filter(
-            (p: any) => p.id !== 1
-          );
+          const filtered = (res.data.data || []).filter((p: any) => p.id !== 1);
           setProjects(filtered);
         } else {
           toast.error("Could not fetch projects.", {
@@ -351,7 +350,7 @@ export default function ProjectsList() {
                     <h3 className="text-[18px] font-semibold text-ink dark:text-white">
                       No Projects
                     </h3>
-                    <p className="mt-1 text-muted dark:text-slate500_80">
+                    <p className="text-muted mt-1 dark:text-slate500_80">
                       Try creating a new project or clear the search.
                     </p>
                     <button
@@ -448,7 +447,7 @@ export default function ProjectsList() {
                   <div className="w-10">
                     <input
                       type="checkbox"
-                      className="h-4 w-4 rounded-[6px] border-1 border-[#1C252E] text-brand focus:ring-0 dark:border-slate500_20"
+                      className="border-1 h-4 w-4 rounded-[6px] border-[#1C252E] text-brand focus:ring-0 dark:border-slate500_20"
                     />
                   </div>
 
@@ -512,7 +511,7 @@ export default function ProjectsList() {
                     {Array.from({ length: 4 }).map((_, i) => (
                       <div
                         key={i}
-                        className="flex items-center border-b border-dashed border-slate500_12 px-6 py-4 text-sm animate-pulse dark:border-slate500_20"
+                        className="flex animate-pulse items-center border-b border-dashed border-slate500_12 px-6 py-4 text-sm dark:border-slate500_20"
                       >
                         <div className="w-10">
                           <div className="h-4 w-4 rounded-[6px] bg-slate500_12 dark:bg-slate500_20" />
@@ -559,7 +558,7 @@ export default function ProjectsList() {
                 ) : (
                   <>
                     {isCreatingProject && (
-                      <div className="flex items-center border-b border-dashed border-slate500_12 px-6 py-4 text-sm animate-pulse dark:border-slate500_20">
+                      <div className="flex animate-pulse items-center border-b border-dashed border-slate500_12 px-6 py-4 text-sm dark:border-slate500_20">
                         <div className="w-10">
                           <div className="h-4 w-4 rounded-[6px] bg-slate500_12 dark:bg-slate500_20" />
                         </div>
@@ -595,12 +594,12 @@ export default function ProjectsList() {
                         <div className="w-10">
                           <input
                             type="checkbox"
-                            className="h-4 w-4 rounded-[6px] border-1 border-[#1C252E] text-brand focus:ring-0 dark:border-slate500_20"
+                            className="border-1 h-4 w-4 rounded-[6px] border-[#1C252E] text-brand focus:ring-0 dark:border-slate500_20"
                           />
                         </div>
 
                         {/* ID */}
-                        <div className="w-16 text-[[#1C252E] dark:text-slate500_80">
+                        <div className="text-[[#1C252E] w-16 dark:text-slate500_80">
                           {String(project.id).padStart(3, "0")}
                         </div>
 
@@ -620,37 +619,42 @@ export default function ProjectsList() {
                         </div>
 
                         {/* Artboard – static for now */}
-                      <div className="w-24 text-[[#1C252E] dark:text-[#FFFFFF]">
+                        <div className="text-[[#1C252E] w-24 dark:text-[#FFFFFF]">
                           20+
                         </div>
 
                         {/* actions */}
                         <div className="flex w-24 items-center justify-end gap-3">
+                          {/* View */}
                           <button
                             type="button"
-                            title="Quick View"
+                            title="Open board"
                             onClick={() => handleViewProject(project)}
-                            className="rounded-full p-1.5 hover:bg-slate500_08 dark:hover:bg-slate500_20"
+                            className="hover:bg-slate500_08 rounded-full p-1.5 dark:hover:bg-slate500_20"
                           >
                             <Eye className="h-4 w-4 text-slate600 dark:text-slate500_80" />
                           </button>
 
+                          {/* Edit */}
                           <button
                             type="button"
+                            title="Edit project"
                             onClick={() => openEditModal(project)}
-                            className="rounded-full p-1.5 hover:bg-slate500_08 dark:hover:bg-slate500_20"
+                            className="hover:bg-slate500_08 rounded-full p-1.5 dark:hover:bg-slate500_20"
                           >
                             <Edit2 className="h-4 w-4 text-slate600 dark:text-slate500_80" />
                           </button>
 
+                          {/* Delete */}
                           <button
                             type="button"
+                            title="Delete project"
                             onClick={() =>
                               openDeleteConfirm(project.id, project.title)
                             }
-                            className="rounded-full p-1.5 hover:bg-slate500_08 dark:hover:bg-slate500_20"
+                            className="hover:bg-slate500_08 rounded-full p-1.5 dark:hover:bg-slate500_20"
                           >
-                            <MoreVertical className="h-4 w-4 text-slate600 dark:text-slate500_80" />
+                            <Trash2 className="h-4 w-4 text-slate600 dark:text-slate500_80" />
                           </button>
                         </div>
                       </div>
@@ -662,19 +666,19 @@ export default function ProjectsList() {
           </section>
 
           {/* 🔹 DENSE + PAGINATION FOOTER (shared for both views) */}
+          {/* 🔹 DENSE + PAGINATION FOOTER (shared for both views) */}
           {!isLoading && total > 0 && (
             <div className="mx-auto flex max-w-[1120px] items-center justify-between pb-6 pt-4 text-[13px]">
-              {/* Dense toggle */}
+              {/* Dense toggle – already fixed colors above */}
+
               <button
                 type="button"
                 onClick={() => setDense((d) => !d)}
                 className="flex items-center gap-2 text-ink dark:text-slate500_80"
               >
                 <span
-                  className={`relative flex h-5 w-9 items-center rounded-full border ${
-                    dense
-                      ? "border-brand bg-brand/10 dark:bg-brand/20"
-                      : "border-slate500_20 bg-white dark:bg-[#1B232D] dark:border-slate500_20"
+                  className={`relative flex h-5 w-9 items-center rounded-full ${
+                    dense ? "bg-[#111827]" : "bg-slate500_20"
                   } transition`}
                 >
                   <span
@@ -689,18 +693,41 @@ export default function ProjectsList() {
               </button>
 
               {/* Right side: rows per page + range + arrows */}
-              <div className="flex items-center gap-5 text-[#637381] dark:text-slate500_80">
+              <div className="flex items-center gap-5 text-black dark:text-slate500_80">
                 {/* Rows per page */}
                 <div className="flex items-center gap-2">
                   <span>Rows per page:</span>
+
                   <div className="relative">
+                    {/* looks like plain text + chevron (no box) */}
                     <button
                       type="button"
-                      className="flex h-9 items-center gap-1 rounded-[10px] border border-slate500_20 px-3 text-[13px] text-[#212B36] dark:border-slate500_20 dark:bg-[#1B232D] dark:text-slate500_80"
+                      onClick={() => setRowsMenuOpen((o) => !o)}
+                      className="flex items-center gap-1 text-[13px] text-[#111827] dark:text-slate500_80"
                     >
                       {rowsPerPage}
                       <ChevronDown className="h-4 w-4 text-slate500 dark:text-slate500_80" />
                     </button>
+
+                    {/* dropdown menu (you can keep what you already have here) */}
+                    {rowsMenuOpen && (
+                      <div className="absolute right-0 mt-1 w-20 rounded-[10px] border border-slate500_20 bg-white py-1 shadow-lg dark:border-slate500_20 dark:bg-[#1B232D]">
+                        {[3, 5, 6, 9].map((option) => (
+                          <button
+                            key={option}
+                            type="button"
+                            onClick={() => handleChangeRowsPerPage(option)}
+                            className={`hover:bg-slate500_08 flex w-full items-center justify-between px-3 py-1 text-left text-[13px] dark:hover:bg-slate500_20 ${
+                              rowsPerPage === option
+                                ? "font-semibold text-[#111827] dark:text-white"
+                                : "text-[#637381] dark:text-slate500_80"
+                            }`}
+                          >
+                            <span>{option}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -711,16 +738,16 @@ export default function ProjectsList() {
                     : `${startIndex + 1}-${endIndex} of ${total}`}
                 </span>
 
-                {/* Arrows */}
+                {/* Arrows – only icons, no box */}
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={handlePrev}
                     disabled={!canPrev}
-                    className={`flex h-8 w-8 items-center justify-center rounded-[10px] border border-slate500_12 text-slate500 dark:border-slate500_20 dark:text-slate500_80 dark:bg-[#1B232D] ${
+                    className={`flex h-5 w-5 items-center justify-center ${
                       !canPrev
-                        ? "cursor-default opacity-40"
-                        : "hover:bg-slate500_08 dark:hover:bg-slate500_20"
+                        ? "text-slate300 cursor-default dark:text-slate600"
+                        : "hover:text-slate900 text-slate500 dark:text-slate500_80 dark:hover:text-white"
                     }`}
                   >
                     <ChevronLeft className="h-4 w-4" />
@@ -730,10 +757,10 @@ export default function ProjectsList() {
                     type="button"
                     onClick={handleNext}
                     disabled={!canNext}
-                    className={`flex h-8 w-8 items-center justify-center rounded-[10px] border border-slate500_12 text-slate500 dark:border-slate500_20 dark:text-slate500_80 dark:bg-[#1B232D] ${
+                    className={`flex h-5 w-5 items-center justify-center ${
                       !canNext
-                        ? "cursor-default opacity-40"
-                        : "hover:bg-slate500_08 dark:hover:bg-slate500_20"
+                        ? "text-slate300 cursor-default dark:text-slate600"
+                        : "hover:text-slate900 text-slate500 dark:text-slate500_80 dark:hover:text-white"
                     }`}
                   >
                     <ChevronRight className="h-4 w-4" />
@@ -784,7 +811,17 @@ export default function ProjectsList() {
             </div>
           )}
 
-          <ToastContainer />
+          <ToastContainer
+            position="top-right"
+            autoClose={4000}
+            pauseOnHover
+            closeOnClick
+            draggable
+            toastClassName="blumen-toast"
+            bodyClassName="blumen-toast-body"
+            progressClassName="blumen-toast-progress"
+          />
+
           <div className="h-10" />
         </Shell>
       )}

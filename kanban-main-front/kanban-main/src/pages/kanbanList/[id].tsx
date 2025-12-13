@@ -15,12 +15,8 @@ import SectionHeader from "@/components/layout/SectionHeader";
 import { fetchKanbanList } from "@/services/kanbanApi";
 
 export default function GetKanbanList() {
-  const {
-    setKanbanListState,
-    userInfo,
-    handleSetUserInfo,
-    signalRConnection,
-  } = useContext(KanbanContext);
+  const { setKanbanListState, userInfo, handleSetUserInfo, signalRConnection } =
+    useContext(KanbanContext);
 
   const [showContent, setShowContent] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
@@ -183,10 +179,21 @@ export default function GetKanbanList() {
 
           {/* Kanban board columns */}
           <section className="mx-auto max-w-[1120px] px-0 py-6">
-            <KanbanBoard />
+            <div className="kanban-scroll overflow-x-auto pb-4">
+              <KanbanBoard />
+            </div>
           </section>
 
-          <ToastContainer />
+          <ToastContainer
+            position="top-right"
+            autoClose={4000}
+            pauseOnHover
+            closeOnClick
+            draggable
+            toastClassName="blumen-toast"
+            bodyClassName="blumen-toast-body"
+            progressClassName="blumen-toast-progress"
+          />
         </Shell>
       )}
     </>

@@ -1,4 +1,5 @@
-import { MoreVertical } from "lucide-react";
+import { useState } from "react";
+import { MoreVertical, Pencil, Trash2 } from "lucide-react";
 
 type Props = {
   project: any;
@@ -33,10 +34,22 @@ export default function ProjectCard({
   onEdit,
   onDelete,
 }: Props) {
+  const [menuOpen, setMenuOpen] = useState(false);
+
   const artboardCount = project?.artboardCount ?? "20+";
   const rawCreatedBy = project?.createdBy?.username ?? "Admin";
   const createdBy =
     rawCreatedBy.charAt(0).toUpperCase() + rawCreatedBy.slice(1);
+
+  const handleEditClick = () => {
+    setMenuOpen(false);
+    onEdit();
+  };
+
+  const handleDeleteClick = () => {
+    setMenuOpen(false);
+    onDelete();
+  };
 
   return (
     <article className="flex h-full flex-col rounded-[20px] border border-slate500_08 bg-white shadow-[0_20px_60px_rgba(15,23,42,0.04)] dark:border-slate500_20 dark:bg-[#1B232D] dark:shadow-none">
@@ -48,9 +61,40 @@ export default function ProjectCard({
             ID : {String(project?.id ?? "1").padStart(3, "0")}
           </span>
 
-          <button className="rounded-full p-1.5 hover:bg-slate500_08 dark:hover:bg-slate500_20">
-            <MoreVertical className="h-5 w-5 text-[#637381] dark:text-slate500_80" />
-          </button>
+          {/* Three-dots + menu */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setMenuOpen((prev) => !prev)}
+              className="rounded-full p-1.5 hover:bg-slate500_08 dark:hover:bg-slate500_20"
+            >
+              <MoreVertical className="h-5 w-5 text-[#637381] dark:text-slate500_80" />
+            </button>
+
+            {menuOpen && (
+              <div className="absolute right-0 mt-2 w-32 rounded-2xl bg-white py-2 text-sm text-black shadow-[0_18px_45px_rgba(15,23,42,0.40)] dark:bg-[#232C36] dark:text-white">
+                {/* Edit */}
+                <button
+                  type="button"
+                  onClick={handleEditClick}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-white/10"
+                >
+                  <Pencil className="h-4 w-4" />
+                  <span>Edit</span>
+                </button>
+
+                {/* Delete */}
+                <button
+                  type="button"
+                  onClick={handleDeleteClick}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-white/10"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span>Delete</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Title */}
@@ -77,22 +121,15 @@ export default function ProjectCard({
             </span>
 
             <div className="flex items-center">
-              {/* avatar 1 */}
               <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#EFD6FF] text-[#C684FF] shadow-[0_0_0_3px_#FFFFFF] dark:shadow-[0_0_0_2px_#1B232D]">
                 <MemberIcon className="h-4 w-4" />
               </div>
-
-              {/* avatar 2 */}
               <div className="-ml-1 flex h-6 w-6 items-center justify-center rounded-full bg-[#FFE1CC] text-[#F3A56B] shadow-[0_0_0_2px_#FFFFFF] dark:shadow-[0_0_0_2px_#1B232D]">
                 <MemberIcon className="h-4 w-4" />
               </div>
-
-              {/* avatar 3 */}
               <div className="-ml-1 flex h-6 w-6 items-center justify-center rounded-full bg-[#C7F5FF] text-[#08B4E0] shadow-[0_0_0_2px_#FFFFFF] dark:shadow-[0_0_0_2px_#1B232D]">
                 <MemberIcon className="h-4 w-4" />
               </div>
-
-              {/* +2 */}
               <div className="-ml-1 flex h-6 w-6 items-center justify-center rounded-full bg-[#FFEFAF] text-[11px] font-semibold text-[#D7941B] shadow-[0_0_0_2px_#FFFFFF] dark:shadow-[0_0_0_2px_#1B232D]">
                 +2
               </div>
