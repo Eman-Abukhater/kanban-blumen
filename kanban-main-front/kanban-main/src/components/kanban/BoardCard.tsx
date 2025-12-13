@@ -1,4 +1,6 @@
-import { MoreVertical, Plus } from "lucide-react";
+// src/components/kanban/BoardCard.tsx
+import { useState } from "react";
+import { MoreVertical, Plus, Pencil, Trash2 } from "lucide-react";
 
 type Tag = {
   label: string;
@@ -9,8 +11,9 @@ type Props = {
   title: string;          // board name
   taskCount: string;      // e.g. "20+"
   tags: Tag[];
-  onAdd: () => void;
-  onMore: () => void;
+  onAdd: () => void;      // "Add" button (go to kanban list)
+  onEdit: () => void;     // open edit modal
+  onDelete: () => void;   // delete this board
 };
 
 export default function BoardCard({
@@ -19,8 +22,21 @@ export default function BoardCard({
   taskCount,
   tags,
   onAdd,
-  onMore,
+  onEdit,
+  onDelete,
 }: Props) {
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const handleEditClick = () => {
+    setMenuOpen(false);
+    onEdit();
+  };
+
+  const handleDeleteClick = () => {
+    setMenuOpen(false);
+    onDelete();
+  };
+
   return (
     // OUTER CARD (dark frame)
     <article
@@ -34,7 +50,7 @@ export default function BoardCard({
     >
       {/* TOP AREA: adds the 'space' around the inner dark panel */}
       <div className="flex-1 px-2 pt-2 pb-2">
-        {/* INNER TOP CARD (this is the part you showed in the screenshot) */}
+        {/* INNER TOP CARD */}
         <div className="h-full rounded-[20px] bg-white px-4 pt-5 pb-4 dark:bg-[#141A21] dark:border dark:border-[#141A21]">
           {/* ID + menu */}
           <div className="mb-3 flex items-start justify-between">
@@ -42,13 +58,40 @@ export default function BoardCard({
               ID : {idLabel}
             </span>
 
-            <button
-              type="button"
-              onClick={onMore}
-              className="rounded-full p-1.5 hover:bg-slate500_08 dark:hover:bg-slate500_20"
-            >
-              <MoreVertical className="h-4 w-4 text-[#637381] dark:text-slate500_80" />
-            </button>
+            {/* Three-dots + menu (like ProjectCard) */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setMenuOpen((prev) => !prev)}
+                className="rounded-full p-1.5 hover:bg-slate500_08 dark:hover:bg-slate500_20"
+              >
+                <MoreVertical className="h-4 w-4 text-[#637381] dark:text-slate500_80" />
+              </button>
+
+              {menuOpen && (
+                <div className="absolute right-0 mt-2 w-32 rounded-2xl bg-white py-2 text-sm text-black shadow-[0_18px_45px_rgba(15,23,42,0.40)] dark:bg-[#232C36] dark:text-white">
+                  {/* Edit */}
+                  <button
+                    type="button"
+                    onClick={handleEditClick}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-white/10 dark:hover:bg-white/10"
+                  >
+                    <Pencil className="h-4 w-4" />
+                    <span>Edit</span>
+                  </button>
+
+                  {/* Delete */}
+                  <button
+                    type="button"
+                    onClick={handleDeleteClick}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-white/10 dark:hover:bg-white/10"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    <span>Delete</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Title */}
@@ -84,7 +127,7 @@ export default function BoardCard({
       </div>
 
       {/* BOTTOM STRIP */}
-      <div className="rounded-b-[24px]  px-6 pb-5 pt-3 dark:bg-[#1C252E]">
+      <div className="rounded-b-[24px] px-6 pb-5 pt-3 dark:bg-[#1C252E]">
         <button
           type="button"
           onClick={onAdd}
