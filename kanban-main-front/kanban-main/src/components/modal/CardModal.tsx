@@ -1,17 +1,11 @@
 // src/components/modal/CardModal.tsx
 import { Fragment, useContext, useRef, useState } from "react";
 import { Dialog, Transition, Disclosure } from "@headlessui/react";
-import {
-  CheckIcon,
-  DocumentCheckIcon,
-  PlusIcon,
-  TrashIcon,
-  XMarkIcon,
-} from "@heroicons/react/24/outline";
+import { PlusIcon, TrashIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { ChevronUpIcon } from "@heroicons/react/20/solid";
 import KanbanContext from "../../context/kanbanContext";
 import useAutosizeTextArea from "../../hooks/useAutosizeTextarea";
-import { KanbanCard, KanbanTask } from "../kanban/KanbanTypes";
+import { KanbanCard } from "../kanban/KanbanTypes";
 import Datepicker from "react-tailwindcss-datepicker";
 import { DateValueType } from "react-tailwindcss-datepicker/dist/types";
 import { CreateTagModal, tagColors } from "./CreateTagModal";
@@ -37,7 +31,6 @@ export interface CardModalProps {
 }
 
 export function CardModal(props: CardModalProps) {
-  const imageTextAreaRef = useRef<HTMLTextAreaElement>(null);
   const descTextAreaRef = useRef<HTMLTextAreaElement>(null);
 
   const [title, setTitle] = useState<string>(props.card.title);
@@ -93,30 +86,23 @@ export function CardModal(props: CardModalProps) {
 
   const maxFileSize = 5000000;
 
-  let imageUrl = file?.name;
-  if (!file || file === undefined || (file as any).length < 1) {
-    if (props.card.imageUrl) {
-      imageUrl = props.card.imageUrl;
-    }
-  }
+  // keep autosize for description
+  useAutosizeTextArea(descTextAreaRef, desc);
 
   const {
-    handleDeleteCard,
     handleUpdateCard,
     handleCloseModal,
     modalState,
     userInfo,
   } = useContext(KanbanContext);
 
-  useAutosizeTextArea(descTextAreaRef, desc);
-
   // ================= IMAGE UPLOAD =================
-  const handleImageUpload = async (file: File) => {
+  const handleImageUpload = async (f: File) => {
     try {
       setUploadingImage(true);
       setFileSizeExceeded(false);
 
-      const uploadResult = await uploadImageToCloudinary(file);
+      const uploadResult = await uploadImageToCloudinary(f);
 
       if (uploadResult && uploadResult.data) {
         setCloudinaryUrl(uploadResult.data.url);
@@ -164,9 +150,7 @@ export function CardModal(props: CardModalProps) {
         if (customResponse?.status != 200 || customResponse?.data == null) {
           toast.error(
             `something went wrong could not Edit the Card, please try again later`,
-            {
-              position: toast.POSITION.TOP_CENTER,
-            }
+            { position: toast.POSITION.TOP_CENTER }
           );
           setSubmit(false);
         }
@@ -182,9 +166,7 @@ export function CardModal(props: CardModalProps) {
 
   const handleSave = () => {
     if (title === "") {
-      toast.error("Title is required", {
-        position: toast.POSITION.TOP_CENTER,
-      });
+      toast.error("Title is required", { position: toast.POSITION.TOP_CENTER });
       return;
     }
 
@@ -220,207 +202,182 @@ export function CardModal(props: CardModalProps) {
     toast.info(` Please Contact The Admin as you are not Authorized`, {
       position: toast.POSITION.TOP_CENTER,
     });
-    // handleDeleteCard(props.listIndex, props.cardIndex);
-    // handleCloseModal();
   };
 
   // ================= TAGS =================
   const handleCreateTag = async (tagName: string, colorIndex: number) => {
-    if (tagName) {
-      try {
-        setIsCreatingTag(true);
-        const customResponse = await AddTag(
-          tagName,
-          tagColors[colorIndex],
-          props.card.kanbanCardId,
-          userInfo.username,
-          userInfo.id
+    if (!tagName) {
+      toast.error(`Tag Name is Empty`, { position: toast.POSITION.TOP_CENTER });
+      return;
+    }
+
+    try {
+      setIsCreatingTag(true);
+      const customResponse = await AddTag(
+        tagName,
+        tagColors[colorIndex],
+        props.card.kanbanCardId,
+        userInfo.username,
+        userInfo.id
+      );
+
+      if (customResponse?.status === 200) {
+        const newTags = [...kanbanTags];
+        newTags.push({
+          kanbanTagId: customResponse?.data,
+          id: "",
+          color: tagColors[colorIndex],
+          title: tagName,
+          fkKanbanCardId: 1,
+          seqNo: 1,
+          createdAt: new Date(),
+          addedBy: userInfo.username,
+        });
+        setTags(newTags);
+        handleUpdateCard(props.listIndex, props.cardIndex, {
+          ...props.card,
+          kanbanTags: newTags,
+        });
+
+        toast.success(`Tag ID: ${customResponse?.data} Created Successfully`, {
+          position: toast.POSITION.TOP_CENTER,
+        });
+      } else {
+        toast.error(
+          `something went wrong could not add the Tag, please try again later`,
+          { position: toast.POSITION.TOP_CENTER }
         );
-
-        if (customResponse?.status === 200) {
-          const newTags = [...kanbanTags];
-          newTags.push({
-            kanbanTagId: customResponse?.data,
-            id: "",
-            color: tagColors[colorIndex],
-            title: tagName,
-            fkKanbanCardId: 1,
-            seqNo: 1,
-            createdAt: new Date(),
-            addedBy: userInfo.username,
-          });
-          setTags(newTags);
-          handleUpdateCard(props.listIndex, props.cardIndex, {
-            ...props.card,
-            kanbanTags: newTags,
-          });
-          toast.success(
-            `Tag ID: ${customResponse?.data} Created Successfully`,
-            {
-              position: toast.POSITION.TOP_CENTER,
-            }
-          );
-        }
-
-        if (customResponse?.status != 200 || customResponse?.data == null) {
-          toast.error(
-            `something went wrong could not add the Tag, please try again later` +
-              customResponse,
-            {
-              position: toast.POSITION.TOP_CENTER,
-            }
-          );
-        }
-      } finally {
-        setIsCreatingTag(false);
       }
-    } else {
-      toast.error(`Tag Name is Empty`, {
-        position: toast.POSITION.TOP_CENTER,
-      });
+    } finally {
+      setIsCreatingTag(false);
     }
   };
 
   const handleDeleteTag = async (tagIndex: number, tagid: number) => {
-    if (tagid) {
-      try {
-        setIsDeletingTag(tagid);
-        const customResponse = await DeleteTag(tagid);
-        if (customResponse?.status === 200) {
-          const newTags = [...kanbanTags];
-          newTags.splice(tagIndex, 1);
-          setTags(newTags);
-          handleUpdateCard(props.listIndex, props.cardIndex, {
-            ...props.card,
-            kanbanTags: newTags,
-          });
-          toast.success(` ${customResponse?.data}`, {
-            position: toast.POSITION.TOP_CENTER,
-          });
-        }
+    if (!tagid) {
+      toast.error(`Tag ID is Empty`, { position: toast.POSITION.TOP_CENTER });
+      return;
+    }
 
-        if (customResponse?.status != 200 || customResponse?.data == null) {
-          toast.error(
-            `something went wrong could not Remove the Tag, please try again later` +
-              customResponse,
-            {
-              position: toast.POSITION.TOP_CENTER,
-            }
-          );
-        }
-      } finally {
-        setIsDeletingTag(null);
+    try {
+      setIsDeletingTag(tagid);
+      const customResponse = await DeleteTag(tagid);
+
+      if (customResponse?.status === 200) {
+        const newTags = [...kanbanTags];
+        newTags.splice(tagIndex, 1);
+        setTags(newTags);
+        handleUpdateCard(props.listIndex, props.cardIndex, {
+          ...props.card,
+          kanbanTags: newTags,
+        });
+        toast.success(` ${customResponse?.data}`, {
+          position: toast.POSITION.TOP_CENTER,
+        });
+      } else {
+        toast.error(
+          `something went wrong could not Remove the Tag, please try again later`,
+          { position: toast.POSITION.TOP_CENTER }
+        );
       }
-    } else {
-      toast.error(`Tag ID is Empty`, {
-        position: toast.POSITION.TOP_CENTER,
-      });
+    } finally {
+      setIsDeletingTag(null);
     }
   };
 
   // ================= TASKS (SUBTASKS TAB) =================
   const handleDeleteTask = async (taskIndex: number, taskid: number) => {
-    if (taskid) {
-      try {
-        setIsDeletingTask(taskid);
-        const customResponse = await DeleteTask(taskid);
-        if (customResponse?.status === 200) {
-          const tempTask = [...kanbanTasks];
-          tempTask.splice(taskIndex, 1);
-          setTasks(tempTask);
-          handleUpdateCard(props.listIndex, props.cardIndex, {
-            ...props.card,
-            kanbanTasks: tempTask,
-          });
-          toast.success(` ${customResponse?.data}`, {
-            position: toast.POSITION.TOP_CENTER,
-          });
-        }
+    if (!taskid) {
+      toast.error(`Task ID is Empty`, { position: toast.POSITION.TOP_CENTER });
+      return;
+    }
 
-        if (customResponse?.status != 200 || customResponse?.data == null) {
-          toast.error(
-            `something went wrong could not Remove the Task, please try again later` +
-              customResponse,
-            {
-              position: toast.POSITION.TOP_CENTER,
-            }
-          );
-        }
-      } finally {
-        setIsDeletingTask(null);
+    try {
+      setIsDeletingTask(taskid);
+      const customResponse = await DeleteTask(taskid);
+
+      if (customResponse?.status === 200) {
+        const tempTask = [...kanbanTasks];
+        tempTask.splice(taskIndex, 1);
+        setTasks(tempTask);
+        handleUpdateCard(props.listIndex, props.cardIndex, {
+          ...props.card,
+          kanbanTasks: tempTask,
+        });
+        toast.success(` ${customResponse?.data}`, {
+          position: toast.POSITION.TOP_CENTER,
+        });
+      } else {
+        toast.error(
+          `something went wrong could not Remove the Task, please try again later`,
+          { position: toast.POSITION.TOP_CENTER }
+        );
       }
-    } else {
-      toast.error(`Task ID is Empty`, {
-        position: toast.POSITION.TOP_CENTER,
-      });
+    } finally {
+      setIsDeletingTask(null);
     }
   };
 
   const handleCreateTask = async (taskTitle: string, selectedOptions: any[]) => {
-    if (taskTitle) {
-      try {
-        setIsCreatingTask(true);
-        const assignToJoin = selectedOptions
-          .map((option) => `${option.value}`)
-          .join(" - ");
-        const customResponse = await AddTask(
-          taskTitle,
-          props.card.kanbanCardId,
-          userInfo.username,
-          userInfo.id,
-          assignToJoin,
-          userInfo.fkboardid,
-          userInfo.fkpoid
-        );
-        if (customResponse?.status === 200) {
-          const tempTask = [...kanbanTasks];
-          tempTask.push({
-            kanbanTaskId: customResponse?.data,
-            id: "",
-            title: taskTitle,
-            completed: false,
-            fkKanbanCardId: props.card.kanbanCardId,
-            seqNo: 1,
-            createdAt: new Date(),
-            addedBy: userInfo.username,
-            assignTo: assignToJoin,
-            imageUrl: "",
-            updatedBy: "",
-          });
-          setTasks(tempTask);
-          handleUpdateCard(props.listIndex, props.cardIndex, {
-            ...props.card,
-            kanbanTasks: tempTask,
-          });
-          toast.success(
-            `Task ID: ${customResponse?.data} Created Successfully`,
-            {
-              position: toast.POSITION.TOP_CENTER,
-            }
-          );
-        }
+    if (!taskTitle) {
+      toast.error(`Task Title is Empty`, { position: toast.POSITION.TOP_CENTER });
+      return;
+    }
 
-        if (customResponse?.status != 200 || customResponse?.data == null) {
-          toast.error(
-            `something went wrong could not add the Task, please try again later` +
-              customResponse,
-            {
-              position: toast.POSITION.TOP_CENTER,
-            }
-          );
-        }
-      } finally {
-        setIsCreatingTask(false);
+    try {
+      setIsCreatingTask(true);
+
+      const assignToJoin = selectedOptions
+        .map((option) => `${option.value}`)
+        .join(" - ");
+
+      const customResponse = await AddTask(
+        taskTitle,
+        props.card.kanbanCardId,
+        userInfo.username,
+        userInfo.id,
+        assignToJoin,
+        userInfo.fkboardid,
+        userInfo.fkpoid
+      );
+
+      if (customResponse?.status === 200) {
+        const tempTask = [...kanbanTasks];
+        tempTask.push({
+          kanbanTaskId: customResponse?.data,
+          id: "",
+          title: taskTitle,
+          completed: false,
+          fkKanbanCardId: props.card.kanbanCardId,
+          seqNo: 1,
+          createdAt: new Date(),
+          addedBy: userInfo.username,
+          assignTo: assignToJoin,
+          imageUrl: "",
+          updatedBy: "",
+        });
+        setTasks(tempTask);
+        handleUpdateCard(props.listIndex, props.cardIndex, {
+          ...props.card,
+          kanbanTasks: tempTask,
+        });
+        toast.success(`Task ID: ${customResponse?.data} Created Successfully`, {
+          position: toast.POSITION.TOP_CENTER,
+        });
+      } else {
+        toast.error(
+          `something went wrong could not add the Task, please try again later`,
+          { position: toast.POSITION.TOP_CENTER }
+        );
       }
-    } else {
-      toast.error(`Task Title is Empty`, {
-        position: toast.POSITION.TOP_CENTER,
-      });
+    } finally {
+      setIsCreatingTask(false);
     }
   };
 
   const handleSubmitTask = async (kanbanTaskId: number, index: number) => {
     if (!taskCompleted) return;
+
     try {
       setSubmitTask(true);
 
@@ -462,17 +419,18 @@ export function CardModal(props: CardModalProps) {
         const tempTask = [...kanbanTasks];
         tempTask[index].completed = !tempTask[index].completed;
         tempTask[index].updatedBy = userInfo.username;
-        if (fileUrl) {
-          tempTask[index].imageUrl = fileUrl;
-        }
+        if (fileUrl) tempTask[index].imageUrl = fileUrl;
+
         setTasks(tempTask);
         handleUpdateCard(props.listIndex, props.cardIndex, {
           ...props.card,
           kanbanTasks: tempTask,
         });
+
         setSubmitTask(false);
         setTaskCompleted(false);
         setTaskFile(null);
+
         toast.success("Task submitted successfully!", {
           position: toast.POSITION.TOP_CENTER,
         });
@@ -483,9 +441,7 @@ export function CardModal(props: CardModalProps) {
         setSubmit(false);
       }
     } catch (err: any) {
-      toast.error(err, {
-        position: "top-center",
-      });
+      toast.error(err, { position: "top-center" });
       setSubmit(false);
       return err.response;
     }
@@ -499,6 +455,7 @@ export function CardModal(props: CardModalProps) {
   return (
     <Transition appear show={modalState.isOpen} as={Fragment}>
       <Dialog as="div" className="relative z-[60]" onClose={handleCloseModal}>
+        {/* Overlay */}
         <Transition.Child
           as={Fragment}
           enter="ease-in-out duration-250"
@@ -508,11 +465,11 @@ export function CardModal(props: CardModalProps) {
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-slate-500 bg-opacity-40 transition-opacity" />
+          <div className="fixed inset-0 bg-black/40 transition-opacity" />
         </Transition.Child>
 
-        <div className="fixed inset-0">
-          <div className="absolute inset-0">
+        <div className="fixed inset-0 overflow-hidden">
+          <div className="absolute inset-0 overflow-hidden">
             <div className="pointer-events-none fixed inset-y-0 right-0 flex max-w-full">
               <Transition.Child
                 as={Fragment}
@@ -523,71 +480,63 @@ export function CardModal(props: CardModalProps) {
                 leaveFrom="translate-x-0"
                 leaveTo="translate-x-full"
               >
-                <Dialog.Panel className="pointer-events-auto w-screen max-w-2xl">
-                  <div className="flex h-full flex-col bg-white shadow-xl dark:bg-slate-900">
-                    {/* Header: status + close/delete */}
+                <Dialog.Panel className="pointer-events-auto w-screen max-w-[640px]">
+                  <div className="flex h-full flex-col bg-white shadow-xl dark:bg-[#1B232D]">
+                    {/* ================= TOP BAR ================= */}
                     <div className="flex items-center justify-between border-b border-slate500_12 px-6 py-4 dark:border-slate500_20">
-                      {/* status button (Done / In progress) */}
+                      {/* Status pill */}
                       <button
                         type="button"
                         onClick={() => setCompleted((prev) => !prev)}
-                        className={classNames(
-                          "inline-flex items-center gap-2 rounded-[10px] border px-3 py-1 text-sm font-semibold",
-                          completed
-                            ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:border-emerald-500 dark:bg-emerald-900/40 dark:text-emerald-300"
-                            : "border-slate500_20 bg-[#F9FAFB] text-slate600 dark:border-slate500_20 dark:bg-[#020617] dark:text-slate500_80"
-                        )}
+                        className="inline-flex items-center gap-2 rounded-full border border-slate500_20 bg-[#F4F6F8] px-4 py-2 text-[14px] font-semibold text-ink dark:bg-[#232C36] dark:text-white"
                       >
-                        {completed ? (
-                          <>
-                            <CheckIcon className="h-4 w-4" />
-                            Done
-                          </>
-                        ) : (
-                          <>In progress</>
-                        )}
+                        {completed ? "Done" : "In progress"}
+                        <ChevronUpIcon className="h-4 w-4 rotate-180 opacity-70" />
                       </button>
 
+                      {/* Icons */}
                       <div className="flex items-center gap-2">
                         <button
                           onClick={deleteCard}
                           type="button"
-                          className="inline-flex items-center justify-center rounded-full p-2 hover:bg-slate500_12 dark:hover:bg-slate500_20"
+                          className="inline-flex items-center justify-center rounded-full p-2 hover:bg-slate500_12 dark:hover:bg-slate500_12"
                         >
-                          <TrashIcon className="h-5 w-5 text-red-600" />
+                          <TrashIcon className="h-5 w-5 text-slate500 dark:text-slate500_80" />
                         </button>
+
                         <button
                           onClick={handleCloseModal}
                           type="button"
-                          className="inline-flex items-center justify-center rounded-full p-2 hover:bg-slate500_12 dark:hover:bg-slate500_20"
+                          className="inline-flex items-center justify-center rounded-full p-2 hover:bg-slate500_12 dark:hover:bg-slate500_12"
                         >
-                          <XMarkIcon className="h-5 w-5 text-slate500" />
+                          <XMarkIcon className="h-5 w-5 text-slate500 dark:text-slate500_80" />
                         </button>
                       </div>
                     </div>
 
-                    {/* Tabs */}
-                    <div className="border-b border-slate500_12 px-6 py-3 dark:border-slate500_20">
-                      <div className="inline-flex rounded-full bg-[#F4F6F8] p-1 text-[13px] dark:bg-[#020617]">
+                    {/* ================= TABS ================= */}
+                    <div className="border-b border-slate500_12 px-6 py-4 dark:border-slate500_20">
+                      <div className="grid w-full grid-cols-2 rounded-[14px] bg-[#F4F6F8] p-1 dark:bg-[#232C36]">
                         <button
                           type="button"
                           onClick={() => setActiveTab("overview")}
                           className={classNames(
-                            "rounded-full px-4 py-1 font-medium",
+                            "w-full rounded-[12px] px-4 py-3 text-[14px] font-semibold transition",
                             activeTab === "overview"
-                              ? "bg-white shadow-sm text-ink dark:bg-slate-800 dark:text-white"
+                              ? "bg-white text-ink shadow-sm dark:bg-[#1B232D] dark:text-white"
                               : "text-slate500 dark:text-slate500_80"
                           )}
                         >
                           Overview
                         </button>
+
                         <button
                           type="button"
                           onClick={() => setActiveTab("subtasks")}
                           className={classNames(
-                            "rounded-full px-4 py-1 font-medium",
+                            "w-full rounded-[12px] px-4 py-3 text-[14px] font-semibold transition",
                             activeTab === "subtasks"
-                              ? "bg-white shadow-sm text-ink dark:bg-slate-800 dark:text-white"
+                              ? "bg-white text-ink shadow-sm dark:bg-[#1B232D] dark:text-white"
                               : "text-slate500 dark:text-slate500_80"
                           )}
                         >
@@ -596,59 +545,116 @@ export function CardModal(props: CardModalProps) {
                       </div>
                     </div>
 
-                    {/* Content */}
-                    <div className="flex-1 overflow-y-auto px-6 py-6">
-                      {/* title (always visible) */}
-                      <div className="flex flex-col gap-4 sm:flex-row sm:gap-6">
+                    {/* ================= CONTENT ================= */}
+                    <div className="relative flex-1 overflow-y-auto px-6 py-6">
+                      {/* subtle tinted background (Figma-like) */}
+                      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0)_0%,rgba(255,226,200,0.35)_100%)] dark:bg-[linear-gradient(180deg,rgba(27,35,45,0)_0%,rgba(255,226,200,0.10)_100%)]" />
+                      <div className="relative z-10">
+                        {/* Title (thick border like Figma) */}
                         <input
-                          className="flex-1 rounded-[12px] border border-slate500_20 px-4 py-3 text-lg font-semibold text-ink outline-none transition-all duration-150 hover:border-slate500 focus:border-slate600 dark:border-slate500_20 dark:bg-slate-900 dark:text-white"
+                          className="w-full rounded-[12px] border-2 border-ink bg-white/60 px-4 py-3 text-[18px] font-semibold text-ink outline-none dark:border-white dark:bg-white/5 dark:text-white"
                           type="text"
                           value={title}
                           onChange={(e) => setTitle(e.target.value)}
                           minLength={3}
                         />
-                      </div>
 
-                      {/* ============= OVERVIEW TAB ============= */}
-                      {activeTab === "overview" && (
-                        <>
-                          {/* Date */}
-                          <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:gap-3">
-                            <span className="w-28 text-sm text-slate500 dark:text-slate-400">
+                        {/* ============= OVERVIEW TAB ============= */}
+                        {activeTab === "overview" && (
+                          <div className="mt-6 grid grid-cols-[120px,1fr] items-start gap-x-6 gap-y-6">
+                            {/* Tag row */}
+                            <div className="pt-2 text-[14px] font-medium text-slate500 dark:text-slate500_80">
+                              Tag
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-2">
+                              {kanbanTags.map((tag, index) => (
+                                <div
+                                  key={tag.kanbanTagId ?? index}
+                                  className={classNames(
+                                    "flex items-center gap-2 rounded-full px-3 py-1 text-[13px] font-semibold",
+                                    // prefer Figma look, but keep your tag.color if provided
+                                    tag.color || "bg-[#D0F2FF] text-[#006C9C]",
+                                    isDeletingTag === tag.kanbanTagId
+                                      ? "opacity-50"
+                                      : ""
+                                  )}
+                                >
+                                  <span>{tag.title}</span>
+
+                                  {tag.addedBy === userInfo.username && (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        handleDeleteTag(index, tag.kanbanTagId)
+                                      }
+                                      disabled={
+                                        isDeletingTag === tag.kanbanTagId
+                                      }
+                                      className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/60 hover:bg-white"
+                                    >
+                                      <XMarkIcon className="h-4 w-4" />
+                                    </button>
+                                  )}
+                                </div>
+                              ))}
+
+                              {isCreatingTag && (
+                                <div className="h-7 w-20 animate-pulse rounded-full bg-slate500_12 dark:bg-slate500_20" />
+                              )}
+
+                              {kanbanTags.length < 6 && (
+                                <button
+                                  type="button"
+                                  onClick={() => setOpenTagModal(true)}
+                                  disabled={isCreatingTag}
+                                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-dashed border-slate500_20 text-slate500 hover:bg-slate500_08 dark:text-slate500_80"
+                                >
+                                  <PlusIcon className="h-5 w-5" />
+                                </button>
+                              )}
+
+                              <CreateTagModal
+                                show={openTagModal}
+                                handleClose={setOpenTagModal}
+                                handleSubmit={handleCreateTag}
+                              />
+                            </div>
+
+                            {/* Due date row */}
+                            <div className="pt-2 text-[14px] font-medium text-slate500 dark:text-slate500_80">
                               Due date
-                            </span>
-                            <Datepicker
-                              value={date}
-                              onChange={setDate}
-                              inputClassName="border border-slate500_20 rounded-[10px] text-[14px] px-3 py-2 w-full dark:bg-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                            />
-                          </div>
+                            </div>
 
-                          {/* Description */}
-                          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:gap-3">
-                            <span className="w-28 text-sm text-slate500 dark:text-slate-400">
+                            <div className="w-full">
+                              <Datepicker
+                                value={date}
+                                onChange={setDate}
+                                inputClassName="w-full rounded-[12px] border border-slate500_20 bg-white/60 px-4 py-3 text-[14px] text-ink outline-none dark:border-slate500_20 dark:bg-white/5 dark:text-white"
+                              />
+                            </div>
+
+                            {/* Description row */}
+                            <div className="pt-2 text-[14px] font-medium text-slate500 dark:text-slate500_80">
                               Description
-                            </span>
+                            </div>
+
                             <textarea
                               ref={descTextAreaRef}
-                              className="max-h-40 w-full rounded-[12px] border border-slate500_20 bg-white px-3 py-3 text-[14px] text-ink placeholder:text-slate400 outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate500_20 dark:bg-slate-900 dark:text-white dark:placeholder:text-slate-500"
+                              className="min-h-[120px] w-full resize-none rounded-[12px] border border-slate500_20 bg-white/60 px-4 py-3 text-[16px] text-ink outline-none dark:border-slate500_20 dark:bg-white/5 dark:text-white"
                               placeholder="Description..."
                               value={desc}
                               onChange={(e) => setDesc(e.target.value)}
                               minLength={3}
                             />
-                          </div>
 
-                          {/* Image */}
-                          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:gap-3">
-                            <span
-                              className="w-28 text-sm text-slate500 dark:text-slate-400"
-                              style={{ width: "92px" }}
-                            >
+                            {/* Image row */}
+                            <div className="pt-2 text-[14px] font-medium text-slate500 dark:text-slate500_80">
                               Image
-                            </span>
+                            </div>
+
                             <div className="flex flex-col gap-3">
-                              <label className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center rounded-[16px] border border-dashed border-slate500_20 bg-[#F9FAFB] text-[12px] text-slate500 hover:border-slate500 dark:border-slate500_20 dark:bg-slate-900 dark:text-slate-400">
+                              <label className="flex h-20 w-20 cursor-pointer items-center justify-center rounded-[14px] border border-dashed border-slate500_20 bg-white/40 hover:bg-white/60 dark:bg-white/5">
                                 <input
                                   className="hidden"
                                   type="file"
@@ -685,12 +691,16 @@ export function CardModal(props: CardModalProps) {
                                     }
                                   }}
                                 />
-                                <span className="mb-1 text-xl">☁️</span>
-                                <span>Upload</span>
+
+                                <img
+                                  src="/icons/ic-eva_cloud-upload-fill.svg"
+                                  alt="upload"
+                                  className="h-7 w-7 opacity-70"
+                                />
                               </label>
 
                               {uploadingImage && (
-                                <span className="text-sm text-emerald-600">
+                                <span className="text-[13px] text-slate500 dark:text-slate500_80">
                                   Uploading...
                                 </span>
                               )}
@@ -700,403 +710,68 @@ export function CardModal(props: CardModalProps) {
                                 <img
                                   src={cloudinaryUrl || displayImage}
                                   alt="Card image"
-                                  className="mt-1 h-40 w-full max-w-sm rounded-[16px] border border-slate500_12 object-cover dark:border-slate500_20"
+                                  className="h-40 w-full max-w-sm rounded-[16px] border border-slate500_12 object-cover dark:border-slate500_20"
                                 />
                               )}
 
                               {fileSizeExceeded && (
-                                <p className="text-xs font-semibold text-red-600">
+                                <p className="text-[13px] font-semibold text-red-600">
                                   File size exceeded the limit of 5MB
                                 </p>
                               )}
                             </div>
                           </div>
+                        )}
 
-                          {/* Tags */}
-                          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:gap-3">
-                            <span className="w-28 text-sm text-slate500 dark:text-slate-400">
-                              Tag
-                            </span>
-                            <div className="flex w-full flex-wrap gap-2">
-                              {kanbanTags.map((tag, index) => (
-                                <div
-                                  key={tag.kanbanTagId ?? index}
-                                  className={`flex items-center gap-1 rounded-[999px] py-1 pl-3 pr-1 text-xs font-semibold hover:bg-opacity-80 ${
-                                    tag.color
-                                  } ${
-                                    isDeletingTag === tag.kanbanTagId
-                                      ? "opacity-50"
-                                      : ""
-                                  }`}
-                                  role="button"
-                                  aria-label="remove tag"
-                                >
-                                  <span>{tag.title}</span>
-
-                                  {tag.addedBy === userInfo.username && (
-                                    <button
-                                      onClick={() =>
-                                        handleDeleteTag(index, tag.kanbanTagId)
-                                      }
-                                      disabled={
-                                        isDeletingTag === tag.kanbanTagId
-                                      }
-                                      className="rounded-full p-0.5 hover:bg-black/10"
-                                    >
-                                      {isDeletingTag === tag.kanbanTagId ? (
-                                        <svg
-                                          className="h-4 w-4 animate-spin"
-                                          xmlns="http://www.w3.org/2000/svg"
-                                          fill="none"
-                                          viewBox="0 0 24 24"
-                                        >
-                                          <circle
-                                            className="opacity-25"
-                                            cx="12"
-                                            cy="12"
-                                            r="10"
-                                            stroke="currentColor"
-                                            strokeWidth="4"
-                                          ></circle>
-                                          <path
-                                            className="opacity-75"
-                                            fill="currentColor"
-                                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                          ></path>
-                                        </svg>
-                                      ) : (
-                                        <XMarkIcon className="h-4 w-4" />
-                                      )}
-                                    </button>
-                                  )}
-                                </div>
-                              ))}
-
-                              {isCreatingTag && (
-                                <div className="animate-pulse rounded-[999px] bg-slate-300 px-3 py-1 text-xs dark:bg-slate-600" />
-                              )}
-
-                              {kanbanTags.length < 6 && (
-                                <button
-                                  role="button"
-                                  aria-label="create tag"
-                                  onClick={() => setOpenTagModal(true)}
-                                  disabled={isCreatingTag}
-                                >
-                                  <PlusIcon className="h-6 w-6 rounded-full border border-dashed border-slate-500 p-1 dark:border-white dark:stroke-slate-300" />
-                                </button>
-                              )}
-
-                              <CreateTagModal
-                                show={openTagModal}
-                                handleClose={setOpenTagModal}
-                                handleSubmit={handleCreateTag}
-                              />
+                        {/* ============= SUBTASKS TAB ============= */}
+                        {activeTab === "subtasks" && (
+                          <div className="mt-6">
+                            <div className="mb-3 text-[14px] font-medium text-slate500 dark:text-slate500_80">
+                              Tasks
                             </div>
-                          </div>
-                        </>
-                      )}
 
-                      {/* ============= SUBTASKS TAB ============= */}
-                      {activeTab === "subtasks" && (
-                        <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:gap-3">
-                          <span className="w-28 text-sm dark:text-slate-500">
-                            Tasks
-                          </span>
+                            <div className="w-full">
+                              {kanbanTasks.map((_t, index) => (
+                                <Disclosure key={_t.kanbanTaskId ?? index}>
+                                  {({ open }) => (
+                                    <>
+                                      <div className="mb-2 flex items-center justify-between rounded-[14px] border border-slate500_12 bg-white/60 px-4 py-3 dark:border-slate500_20 dark:bg-white/5 dark:text-white">
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-[14px] font-semibold">
+                                            {_t.title}
+                                          </span>
+                                        </div>
 
-                          <div className="w-full">
-                            {kanbanTasks.map((_t, index) => (
-                              <Disclosure
-                                key={_t.kanbanTaskId ?? index}
-                              >
-                                {({ open }) => (
-                                  <>
-                                    <div className="mb-2 flex items-center justify-between rounded-lg bg-slate-100 px-4 py-3 dark:bg-slate-800 dark:text-white">
-                                      <div>
-                                        <span className="ml-2">{_t.title}</span>
-                                      </div>
-                                      <div>
-                                        <Disclosure.Button>
-                                          <button
-                                            style={{ marginRight: "7px" }}
-                                            role="button"
-                                            aria-label="update task"
-                                          >
-                                            <span className="sr-only">
-                                              Submit task
-                                            </span>
+                                        <div className="flex items-center gap-2">
+                                          <Disclosure.Button className="rounded-full p-2 hover:bg-slate500_08 dark:hover:bg-slate500_12">
+                                            <ChevronUpIcon
+                                              className={classNames(
+                                                "h-4 w-4 text-slate500 transition-transform",
+                                                open ? "rotate-0" : "rotate-180"
+                                              )}
+                                            />
+                                          </Disclosure.Button>
 
-                                            {_t.completed ? (
-                                              <span className="h-5 w-1 text-green-600 hover:text-green-500">
-                                                <svg
-                                                  xmlns="http://www.w3.org/2000/svg"
-                                                  fill="none"
-                                                  viewBox="0 0 24 24"
-                                                  strokeWidth={1.5}
-                                                  stroke="currentColor"
-                                                  className="h-6 w-6"
-                                                >
-                                                  <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    d="M11.35 3.836c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m8.9-4.414c.376.023.75.05 1.124.08 1.131.094 1.976 1.057 1.976 2.192V16.5A2.25 2.25 0 0118 18.75h-2.25m-7.5-10.5H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V18.75m-7.5-10.5h6.375c.621 0 1.125.504 1.125 1.125v9.375m-8.25-3l1.5 1.5 3-3.75"
-                                                  />
-                                                </svg>
-                                              </span>
-                                            ) : (
-                                              <span className="h-5 w-1 text-yellow-600 hover:text-yellow-500">
-                                                <svg
-                                                  xmlns="http://www.w3.org/2000/svg"
-                                                  fill="none"
-                                                  viewBox="0 0 24 24"
-                                                  strokeWidth={1.5}
-                                                  stroke="currentColor"
-                                                  className="h-6 w-6"
-                                                >
-                                                  <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
-                                                  />
-                                                </svg>
-                                              </span>
-                                            )}
-                                          </button>
-                                        </Disclosure.Button>
-                                        {_t.addedBy === userInfo.username &&
-                                          _t.completed === false && (
-                                            <button
-                                              role="button"
-                                              aria-label="delete task"
-                                              onClick={() =>
-                                                handleDeleteTask(
-                                                  index,
+                                          {_t.addedBy === userInfo.username &&
+                                            _t.completed === false && (
+                                              <button
+                                                type="button"
+                                                onClick={() =>
+                                                  handleDeleteTask(
+                                                    index,
+                                                    _t.kanbanTaskId
+                                                  )
+                                                }
+                                                disabled={
+                                                  isDeletingTask ===
                                                   _t.kanbanTaskId
-                                                )
-                                              }
-                                              disabled={
-                                                isDeletingTask ===
-                                                _t.kanbanTaskId
-                                              }
-                                            >
-                                              <span className="sr-only">
-                                                Delete task
-                                              </span>
-                                              {isDeletingTask ===
-                                              _t.kanbanTaskId ? (
-                                                <svg
-                                                  className="h-5 w-5 animate-spin text-red-600"
-                                                  xmlns="http://www.w3.org/2000/svg"
-                                                  fill="none"
-                                                  viewBox="0 0 24 24"
-                                                >
-                                                  <circle
-                                                    className="opacity-25"
-                                                    cx="12"
-                                                    cy="12"
-                                                    r="10"
-                                                    stroke="currentColor"
-                                                    strokeWidth="4"
-                                                  ></circle>
-                                                  <path
-                                                    className="opacity-75"
-                                                    fill="currentColor"
-                                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                                  ></path>
-                                                </svg>
-                                              ) : (
-                                                <TrashIcon className="h-5 w-5 text-red-600 hover:text-red-500" />
-                                              )}
-                                            </button>
-                                          )}
-                                      </div>
-                                    </div>
-
-                                    <Disclosure.Panel className="px-4 pb-2 pt-4 text-sm text-black dark:text-white">
-                                      {/* (same detail panel as your old code – unchanged) */}
-                                      {/* created at / added by / assign to / complete / upload file / submit */}
-                                      {/* ... */}
-                                      {_t.completed ? (
-                                        <>
-                                          <div>
-                                            <div
-                                              className="flex"
-                                              style={{ marginRight: "1rem" }}
-                                            >
-                                              <label htmlFor="completed">
-                                                Completed:
-                                              </label>
-                                              <div
-                                                className="h-5 w-1 text-green-600 hover:text-green-500"
-                                                style={{
-                                                  marginLeft: "4px",
-                                                  fontWeight: "bolder",
-                                                }}
-                                              >
-                                                <svg
-                                                  xmlns="http://www.w3.org/2000/svg"
-                                                  fill="none"
-                                                  viewBox="0 0 24 24"
-                                                  strokeWidth={1.5}
-                                                  stroke="currentColor"
-                                                  className="h-6 w-6"
-                                                >
-                                                  <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                                                  />
-                                                </svg>
-                                              </div>
-                                            </div>
-                                            <div
-                                              className="flex"
-                                              style={{ marginRight: "1rem" }}
-                                            >
-                                              <label htmlFor="imageUrl">
-                                                Uploaded File:
-                                              </label>
-                                              <div
-                                                style={{
-                                                  marginLeft: "4px",
-                                                  fontWeight: "bolder",
-                                                }}
-                                              >
-                                                <a
-                                                  href={`${_t.imageUrl}`}
-                                                  target="_blank"
-                                                  rel="noopener noreferrer"
-                                                >
-                                                  <svg
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    fill="none"
-                                                    viewBox="0 0 24 24"
-                                                    strokeWidth={1.5}
-                                                    stroke="currentColor"
-                                                    className="h-6 w-6"
-                                                  >
-                                                    <path
-                                                      strokeLinecap="round"
-                                                      strokeLinejoin="round"
-                                                      d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
-                                                    />
-                                                  </svg>
-                                                </a>
-                                              </div>
-                                            </div>
-                                          </div>
-                                          <div
-                                            className="flex"
-                                            style={{ marginRight: "1rem" }}
-                                          >
-                                            <label htmlFor="completed">
-                                              Submit By:
-                                            </label>
-                                            <span
-                                              style={{
-                                                marginLeft: "4px",
-                                                fontWeight: "bolder",
-                                              }}
-                                            >
-                                              {_t.updatedBy}
-                                            </span>
-                                          </div>
-                                        </>
-                                      ) : (
-                                        <form>
-                                          <div style={{ paddingTop: "5px" }}>
-                                            <label htmlFor="completed">
-                                              Completed:
-                                            </label>
-                                            <span
-                                              style={{
-                                                marginLeft: "4px",
-                                                fontWeight: "bolder",
-                                              }}
-                                            >
-                                              <input
-                                                type="checkbox"
-                                                className="h-5 w-5 rounded-md"
-                                                value={
-                                                  taskCompleted ? "on" : "off"
                                                 }
-                                                checked={taskCompleted}
-                                                onChange={() =>
-                                                  handleToggleTaskCompleted()
-                                                }
-                                                required
-                                              />
-                                            </span>
-                                          </div>
-                                          <div
-                                            className="flex items-center"
-                                            style={{ paddingTop: "7px" }}
-                                          >
-                                            <label htmlFor="imageUrl">
-                                              Upload File:
-                                            </label>
-                                            <span
-                                              style={{
-                                                marginLeft: "4px",
-                                                fontWeight: "bolder",
-                                              }}
-                                            >
-                                              <input
-                                                onChange={(e) => {
-                                                  const selectedFile =
-                                                    e.target.files?.[0];
-
-                                                  if (selectedFile) {
-                                                    if (
-                                                      selectedFile.size >
-                                                      maxFileSize
-                                                    ) {
-                                                      setTaskFileSizeExceeded(
-                                                        true
-                                                      );
-                                                      return;
-                                                    }
-                                                    setTaskFile(selectedFile);
-                                                  } else {
-                                                    setTaskFile(null);
-                                                    setTaskFileSizeExceeded(
-                                                      false
-                                                    );
-                                                  }
-                                                }}
-                                                className="focus:border-primary focus:shadow-te-primary dark:focus:border-primary relative m-0 block max-h-5 w-full min-w-0 flex-auto cursor-pointer rounded border border-solid border-neutral-300 bg-clip-padding px-3 py-[0.32rem] text-xs font-normal text-neutral-700 transition duration-300 ease-in-out file:-mx-3 file:-my-[0.32rem] file:cursor-pointer file:overflow-hidden file:rounded-none file:border-0 file:border-solid file:border-inherit file:bg-neutral-100 file:px-3 file:py-[0.32rem] file:text-neutral-700 file:transition file:duration-150 file:ease-in-out file:[border-inline-end-width:1px] file:[margin-inline-end:0.75rem] focus:text-neutral-700 focus:outline-none hover:file:bg-neutral-200 dark:border-neutral-600 dark:text-neutral-200 dark:file:bg-neutral-700 dark:file:text-neutral-100"
-                                                type="file"
-                                                accept=".xlsx,.xls,image/*,.doc, .docx,.ppt, .pptx,.txt,.pdf"
-                                              />
-                                              {taskFileSizeExceeded && (
-                                                <div className="mt-4 flex flex-col gap-2 font-bold sm:flex-row sm:gap-3">
-                                                  <span className="w-28 text-sm text-red-600">
-                                                    ERROR:
-                                                  </span>
-                                                  <p className=" text-red-600 hover:text-red-500">
-                                                    File size exceeded the limit
-                                                    of 5MB
-                                                  </p>
-                                                </div>
-                                              )}
-                                            </span>
-                                          </div>
-                                          <div style={{ paddingTop: "18px" }}>
-                                            <button
-                                              onClick={() =>
-                                                handleSubmitTask(
-                                                  _t.kanbanTaskId,
-                                                  index
-                                                )
-                                              }
-                                              disabled={submitTask}
-                                              type="submit"
-                                              className="inline-flex items-center justify-center gap-1 rounded-md border border-transparent bg-emerald-700 px-3 py-1 text-base text-white transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50 hover:bg-emerald-600"
-                                            >
-                                              {submitTask ? (
-                                                <>
+                                                className="rounded-full p-2 hover:bg-slate500_08 dark:hover:bg-slate500_12"
+                                              >
+                                                {isDeletingTask ===
+                                                _t.kanbanTaskId ? (
                                                   <svg
-                                                    className="h-5 w-5 animate-spin"
+                                                    className="h-5 w-5 animate-spin text-slate500"
                                                     xmlns="http://www.w3.org/2000/svg"
                                                     fill="none"
                                                     viewBox="0 0 24 24"
@@ -1115,119 +790,184 @@ export function CardModal(props: CardModalProps) {
                                                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                                                     ></path>
                                                   </svg>
-                                                  Submitting...
-                                                </>
+                                                ) : (
+                                                  <TrashIcon className="h-5 w-5 text-slate500" />
+                                                )}
+                                              </button>
+                                            )}
+                                        </div>
+                                      </div>
+
+                                      <Disclosure.Panel className="mb-4 rounded-[14px] border border-slate500_12 bg-white/50 px-4 py-4 text-[14px] text-ink dark:border-slate500_20 dark:bg-white/5 dark:text-white">
+                                        {_t.completed ? (
+                                          <div className="space-y-3">
+                                            <div className="flex items-center gap-2">
+                                              <span className="text-slate500 dark:text-slate500_80">
+                                                Completed:
+                                              </span>
+                                              <span className="font-semibold">
+                                                Yes
+                                              </span>
+                                            </div>
+
+                                            <div className="flex items-center gap-2">
+                                              <span className="text-slate500 dark:text-slate500_80">
+                                                Uploaded File:
+                                              </span>
+                                              {_t.imageUrl ? (
+                                                <a
+                                                  href={`${_t.imageUrl}`}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  className="font-semibold underline"
+                                                >
+                                                  Open
+                                                </a>
                                               ) : (
-                                                <>
-                                                  <svg
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    fill="none"
-                                                    viewBox="0 0 24 24"
-                                                    strokeWidth={1.5}
-                                                    stroke="currentColor"
-                                                    className="h-6 w-6"
-                                                  >
-                                                    <path
-                                                      strokeLinecap="round"
-                                                      strokeLinejoin="round"
-                                                      d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                                                    />
-                                                  </svg>
-                                                  Submit
-                                                </>
+                                                <span className="font-semibold">
+                                                  —
+                                                </span>
                                               )}
-                                            </button>
+                                            </div>
+
+                                            <div className="flex items-center gap-2">
+                                              <span className="text-slate500 dark:text-slate500_80">
+                                                Submit By:
+                                              </span>
+                                              <span className="font-semibold">
+                                                {_t.updatedBy}
+                                              </span>
+                                            </div>
                                           </div>
-                                        </form>
-                                      )}
-                                    </Disclosure.Panel>
-                                  </>
-                                )}
-                              </Disclosure>
-                            ))}
+                                        ) : (
+                                          <form
+                                            onSubmit={(e) => {
+                                              e.preventDefault();
+                                              handleSubmitTask(
+                                                _t.kanbanTaskId,
+                                                index
+                                              );
+                                            }}
+                                            className="space-y-4"
+                                          >
+                                            <div className="flex items-center gap-3">
+                                              <span className="text-slate500 dark:text-slate500_80">
+                                                Completed
+                                              </span>
+                                              <input
+                                                type="checkbox"
+                                                className="h-5 w-5 rounded-md"
+                                                value={
+                                                  taskCompleted ? "on" : "off"
+                                                }
+                                                checked={taskCompleted}
+                                                onChange={() =>
+                                                  handleToggleTaskCompleted()
+                                                }
+                                                required
+                                              />
+                                            </div>
 
-                            {isCreatingTask && (
-                              <div className="mb-2 animate-pulse rounded-lg bg-slate-100 px-4 py-3 dark:bg-slate-800">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex-1">
-                                    <div className="h-5 w-3/4 rounded bg-slate-300 dark:bg-slate-600"></div>
-                                  </div>
-                                  <div className="flex gap-2">
-                                    <div className="h-5 w-5 rounded bg-slate-300 dark:bg-slate-600"></div>
-                                  </div>
+                                            <div className="flex flex-col gap-2">
+                                              <span className="text-slate500 dark:text-slate500_80">
+                                                Upload File
+                                              </span>
+                                              <input
+                                                onChange={(e) => {
+                                                  const selectedFile =
+                                                    e.target.files?.[0];
+
+                                                  if (selectedFile) {
+                                                    if (
+                                                      selectedFile.size >
+                                                      maxFileSize
+                                                    ) {
+                                                      setTaskFileSizeExceeded(
+                                                        true
+                                                      );
+                                                      return;
+                                                    }
+                                                    setTaskFile(selectedFile);
+                                                    setTaskFileSizeExceeded(
+                                                      false
+                                                    );
+                                                  } else {
+                                                    setTaskFile(null);
+                                                    setTaskFileSizeExceeded(
+                                                      false
+                                                    );
+                                                  }
+                                                }}
+                                                className="block w-full cursor-pointer rounded-[12px] border border-slate500_20 bg-white px-3 py-2 text-[13px] text-ink dark:bg-transparent dark:text-white"
+                                                type="file"
+                                                accept=".xlsx,.xls,image/*,.doc, .docx,.ppt, .pptx,.txt,.pdf"
+                                              />
+
+                                              {taskFileSizeExceeded && (
+                                                <p className="text-[13px] font-semibold text-red-600">
+                                                  File size exceeded the limit
+                                                  of 5MB
+                                                </p>
+                                              )}
+                                            </div>
+
+                                            <div className="flex justify-end">
+                                              <button
+                                                disabled={submitTask}
+                                                type="submit"
+                                                className="inline-flex items-center justify-center rounded-[12px] bg-[#FFAB00] px-5 py-2 text-[14px] font-semibold text-ink transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                                              >
+                                                {submitTask
+                                                  ? "Submitting..."
+                                                  : "Submit"}
+                                              </button>
+                                            </div>
+                                          </form>
+                                        )}
+                                      </Disclosure.Panel>
+                                    </>
+                                  )}
+                                </Disclosure>
+                              ))}
+
+                              {isCreatingTask && (
+                                <div className="mb-2 animate-pulse rounded-[14px] bg-slate500_08 px-4 py-3 dark:bg-slate500_12">
+                                  <div className="h-5 w-3/4 rounded bg-slate500_12 dark:bg-slate500_20"></div>
                                 </div>
-                              </div>
-                            )}
+                              )}
 
-                            {kanbanTasks.length < 21 && (
-                              <AddTaskForm
-                                text="Add task"
-                                placeholder="Task name..."
-                                onSubmit={handleCreateTask}
-                                userInfo={userInfo}
-                              />
-                            )}
+                              {kanbanTasks.length < 21 && (
+                                <AddTaskForm
+                                  text="Add task"
+                                  placeholder="Task name..."
+                                  onSubmit={handleCreateTask}
+                                  userInfo={userInfo}
+                                />
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
 
-                    {/* footer */}
-                    <div className="flex justify-between border-t border-slate-200 px-6 py-4 backdrop-blur-sm dark:border-slate-700">
-                      <div>
+                    {/* ================= STICKY BOTTOM ACTIONS (Figma) ================= */}
+                    <div className="sticky bottom-0 border-t border-slate500_12 bg-white/70 px-6 py-4 backdrop-blur dark:border-slate500_20 dark:bg-[#1B232D]/70">
+                      <div className="flex items-center justify-end gap-3">
                         <button
-                          onClick={deleteCard}
                           type="button"
-                          className="inline-flex items-center justify-center gap-1 rounded-md border border-transparent bg-red-700 px-3 py-1 text-base font-medium text-white transition-colors duration-150 hover:bg-red-600"
-                        >
-                          <TrashIcon className="h-5 w-5" />
-                          Delete card
-                        </button>
-                      </div>
-                      <div className="flex justify-end gap-2 sm:gap-3">
-                        <button
-                          disabled={submit}
-                          onClick={handleSave}
-                          type="button"
-                          className="inline-flex items-center justify-center gap-1 rounded-md border border-transparent bg-emerald-700 px-3 py-1 text-base font-medium text-white transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50 hover:bg-emerald-600"
-                        >
-                          {submit ? (
-                            <>
-                              <svg
-                                className="h-5 w-5 animate-spin"
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                              >
-                                <circle
-                                  className="opacity-25"
-                                  cx="12"
-                                  cy="12"
-                                  r="10"
-                                  stroke="currentColor"
-                                  strokeWidth="4"
-                                ></circle>
-                                <path
-                                  className="opacity-75"
-                                  fill="currentColor"
-                                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                ></path>
-                              </svg>
-                              Saving...
-                            </>
-                          ) : (
-                            <>
-                              <DocumentCheckIcon className="h-5 w-5" />
-                              Save
-                            </>
-                          )}
-                        </button>
-                        <button
                           onClick={handleCloseModal}
-                          type="button"
-                          className="inline-flex justify-center rounded-md border bg-transparent px-3 py-1 text-base font-medium transition-colors duration-150 hover:border-indigo-600 hover:text-indigo-600 focus:outline-none focus:ring-1 focus:ring-indigo-600 dark:text-white"
+                          className="inline-flex items-center justify-center rounded-[12px] border border-slate500_20 bg-white px-4 py-2 text-[14px] font-semibold text-ink hover:bg-slate500_08 dark:bg-transparent dark:text-white"
                         >
                           Cancel
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleSave}
+                          disabled={submit || uploadingImage}
+                          className="inline-flex items-center justify-center rounded-[12px] bg-[#FFAB00] px-5 py-2 text-[14px] font-semibold text-ink hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {submit ? "Saving..." : "Submit"}
                         </button>
                       </div>
                     </div>
