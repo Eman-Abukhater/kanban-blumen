@@ -212,10 +212,19 @@ router.delete("/:id", auth_1.authenticateToken, async (req, res) => {
     try {
         const userId = req.user.id;
         const { id } = req.params;
+        const projectId = parseInt(id);
+        // 🔒 PROTECTION: Prevent deletion of default project (ID 1)
+        if (projectId === 1) {
+            console.log(`🚫 User ${userId} attempted to delete default project (ID 1)`);
+            return res.status(403).json({
+                error: "Cannot delete default project",
+                message: "The default project (ID 1) is protected and cannot be deleted",
+            });
+        }
         // Check if user is admin of the project
         const membership = await database_1.db.projectMember.findFirst({
             where: {
-                projectId: parseInt(id),
+                projectId: projectId,
                 userId,
                 role: "admin",
             },
@@ -227,8 +236,9 @@ router.delete("/:id", auth_1.authenticateToken, async (req, res) => {
         }
         // Delete the project (cascade will handle members)
         await database_1.db.project.delete({
-            where: { id: parseInt(id) },
+            where: { id: projectId },
         });
+        console.log(`✅ Project ${projectId} deleted by user ${userId}`);
         return res.json({ success: true, message: "Project deleted successfully" });
     }
     catch (error) {

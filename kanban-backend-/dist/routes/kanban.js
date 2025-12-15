@@ -51,7 +51,7 @@ const addTaskSchema = zod_1.z.object({
 router.get("/authuser", async (req, res) => {
     try {
         const { fkpoid, userid } = authUserSchema.parse(req.query);
-        console.log("authuser", fkpoid, userid);
+        console.log("🔍 Auth Request - ProjectID:", fkpoid, "UserID:", userid);
         // Check if user exists and has access to the project
         const user = await database_1.db.user.findUnique({
             where: { id: userid },
@@ -65,9 +65,24 @@ router.get("/authuser", async (req, res) => {
                 isActive: true,
             },
         });
-        console.log("user", user);
+        console.log("👤 User Found:", user ? `${user.username} (ID: ${user.id})` : "NOT FOUND");
         if (!user || !user.isActive) {
             return res.status(404).json({ error: "User not found or inactive" });
+        }
+        // Check if project exists
+        const project = await database_1.db.project.findUnique({
+            where: { id: fkpoid },
+            select: {
+                id: true,
+                title: true,
+            },
+        });
+        console.log("📁 Project Found:", project ? `${project.title} (ID: ${project.id})` : "NOT FOUND");
+        if (!project) {
+            return res.status(404).json({
+                error: "Project not found",
+                details: `Project with ID ${fkpoid} does not exist in the database`,
+            });
         }
         // Check project access
         const projectMember = await database_1.db.projectMember.findFirst({
@@ -84,9 +99,21 @@ router.get("/authuser", async (req, res) => {
                 },
             },
         });
-        console.log("projectMember", projectMember);
+        console.log("🔐 Project Member:", projectMember ? `FOUND (Role: ${projectMember.role})` : "NOT FOUND");
         if (!projectMember) {
-            return res.status(403).json({ error: "Access denied to this project" });
+            // Get all projects user has access to for debugging
+            const userProjects = await database_1.db.projectMember.findMany({
+                where: { userId: userid },
+                select: { projectId: true },
+            });
+            const accessibleProjectIds = userProjects.map((pm) => pm.projectId);
+            console.log("❌ Access Denied - User", userid, "tried to access project", fkpoid);
+            console.log("✅ User has access to projects:", accessibleProjectIds);
+            return res.status(403).json({
+                error: "Access denied to this project",
+                details: `User ${userid} is not a member of project ${fkpoid}`,
+                accessibleProjects: accessibleProjectIds,
+            });
         }
         return res.json({
             ...user,

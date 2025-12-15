@@ -17,38 +17,37 @@ const registerSchema = zod_1.z.object({
     email: zod_1.z.string().email(),
     password: zod_1.z.string().min(6),
     firstName: zod_1.z.string().optional(),
-    lastName: zod_1.z.string().optional()
+    lastName: zod_1.z.string().optional(),
 });
 const loginSchema = zod_1.z.object({
     email: zod_1.z.string().email(),
-    password: zod_1.z.string()
+    password: zod_1.z.string(),
 });
 // Simple helper function - no complex typing needed
 const generateToken = (userId) => {
     const secret = process.env.JWT_SECRET;
     if (!secret) {
-        throw new Error('JWT_SECRET is not defined in environment variables');
+        throw new Error("JWT_SECRET is not defined in environment variables");
     }
     // Simple approach - use jwt.sign directly with three parameters
-    return jsonwebtoken_1.default.sign({ userId }, secret, { expiresIn: '7d' } // Hardcode the expiry for simplicity
+    return jsonwebtoken_1.default.sign({ userId }, secret, { expiresIn: "7d" } // Hardcode the expiry for simplicity
     );
 };
 // Register new user
-router.post('/register', (0, validation_1.validateBody)(registerSchema), async (req, res) => {
+router.post("/register", (0, validation_1.validateBody)(registerSchema), async (req, res) => {
     try {
         const { username, email, password, firstName, lastName } = req.body;
         // Check if user already exists
         const existingUser = await database_1.db.user.findFirst({
             where: {
-                OR: [
-                    { email },
-                    { username }
-                ]
-            }
+                OR: [{ email }, { username }],
+            },
         });
         if (existingUser) {
             return res.status(400).json({
-                error: existingUser.email === email ? 'Email already registered' : 'Username already taken'
+                error: existingUser.email === email
+                    ? "Email already registered"
+                    : "Username already taken",
             });
         }
         // Hash password
@@ -61,7 +60,7 @@ router.post('/register', (0, validation_1.validateBody)(registerSchema), async (
                 email,
                 password: hashedPassword,
                 firstName,
-                lastName
+                lastName,
             },
             select: {
                 id: true,
@@ -70,8 +69,8 @@ router.post('/register', (0, validation_1.validateBody)(registerSchema), async (
                 firstName: true,
                 lastName: true,
                 userPic: true,
-                createdAt: true
-            }
+                createdAt: true,
+            },
         });
         // Generate JWT token
         const token = generateToken(user.id);
@@ -79,30 +78,30 @@ router.post('/register', (0, validation_1.validateBody)(registerSchema), async (
             success: true,
             data: {
                 user,
-                token
-            }
+                token,
+            },
         });
     }
     catch (error) {
-        console.error('Register error:', error);
-        return res.status(500).json({ error: 'Registration failed' });
+        console.error("Register error:", error);
+        return res.status(500).json({ error: "Registration failed" });
     }
 });
 // Login user
-router.post('/login', (0, validation_1.validateBody)(loginSchema), async (req, res) => {
+router.post("/login", (0, validation_1.validateBody)(loginSchema), async (req, res) => {
     try {
         const { email, password } = req.body;
         // Find user with password
         const user = await database_1.db.user.findUnique({
-            where: { email }
+            where: { email },
         });
         if (!user || !user.isActive) {
-            return res.status(401).json({ error: 'Invalid credentials' });
+            return res.status(401).json({ error: "Invalid credentials" });
         }
         // Check password
         const isValidPassword = await bcryptjs_1.default.compare(password, user.password);
         if (!isValidPassword) {
-            return res.status(401).json({ error: 'Invalid credentials' });
+            return res.status(401).json({ error: "Invalid credentials" });
         }
         // Generate JWT token
         const token = generateToken(user.id);
@@ -114,19 +113,19 @@ router.post('/login', (0, validation_1.validateBody)(loginSchema), async (req, r
                 user: {
                     id: user.id,
                     username: user.username,
-                    email: user.email
+                    email: user.email,
                 },
-                token
-            }
+                token,
+            },
         });
     }
     catch (error) {
-        console.error('Login error:', error);
-        return res.status(500).json({ error: 'Login failed' });
+        console.error("Login error:", error);
+        return res.status(500).json({ error: "Login failed" });
     }
 });
 // Get current user
-router.get('/me', auth_1.authenticateToken, async (req, res) => {
+router.get("/me", auth_1.authenticateToken, async (req, res) => {
     try {
         const user = await database_1.db.user.findUnique({
             where: { id: req.user.id },
@@ -137,29 +136,29 @@ router.get('/me', auth_1.authenticateToken, async (req, res) => {
                 firstName: true,
                 lastName: true,
                 userPic: true,
-                createdAt: true
-            }
+                createdAt: true,
+            },
         });
         return res.json({
             success: true,
-            data: user
+            data: user,
         });
     }
     catch (error) {
-        console.error('Get current user error:', error);
-        return res.status(500).json({ error: 'Failed to get user info' });
+        console.error("Get current user error:", error);
+        return res.status(500).json({ error: "Failed to get user info" });
     }
 });
 // Verify token (lightweight - no DB lookup for speed)
-router.post('/verify-fast', async (req, res) => {
+router.post("/verify-fast", async (req, res) => {
     try {
         const { token } = req.body;
         if (!token) {
-            return res.status(400).json({ error: 'Token required' });
+            return res.status(400).json({ error: "Token required" });
         }
         const secret = process.env.JWT_SECRET;
         if (!secret) {
-            throw new Error('JWT_SECRET is not defined');
+            throw new Error("JWT_SECRET is not defined");
         }
         // Only verify JWT signature and expiry - no DB lookup
         const decoded = jsonwebtoken_1.default.verify(token, secret);
@@ -167,24 +166,24 @@ router.post('/verify-fast', async (req, res) => {
             success: true,
             data: {
                 userId: decoded.userId,
-                valid: true
-            }
+                valid: true,
+            },
         });
     }
     catch (error) {
-        return res.status(401).json({ error: 'Invalid token', success: false });
+        return res.status(401).json({ error: "Invalid token", success: false });
     }
 });
 // Verify token (full - with user data)
-router.post('/verify', async (req, res) => {
+router.post("/verify", async (req, res) => {
     try {
         const { token } = req.body;
         if (!token) {
-            return res.status(400).json({ error: 'Token required' });
+            return res.status(400).json({ error: "Token required" });
         }
         const secret = process.env.JWT_SECRET;
         if (!secret) {
-            throw new Error('JWT_SECRET is not defined');
+            throw new Error("JWT_SECRET is not defined");
         }
         const decoded = jsonwebtoken_1.default.verify(token, secret);
         const user = await database_1.db.user.findUnique({
@@ -196,72 +195,76 @@ router.post('/verify', async (req, res) => {
                 firstName: true,
                 lastName: true,
                 userPic: true,
-                isActive: true
-            }
+                isActive: true,
+            },
         });
         if (!user || !user.isActive) {
-            return res.status(401).json({ error: 'Invalid token' });
+            return res.status(401).json({ error: "Invalid token" });
         }
         return res.json({
             success: true,
-            data: user
+            data: user,
         });
     }
     catch (error) {
-        return res.status(401).json({ error: 'Invalid token' });
+        return res.status(401).json({ error: "Invalid token" });
     }
 });
 // Change password
-router.put('/change-password', auth_1.authenticateToken, async (req, res) => {
+router.put("/change-password", auth_1.authenticateToken, async (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body;
         const userId = req.user.id;
         if (!currentPassword || !newPassword) {
-            return res.status(400).json({ error: 'Current and new passwords required' });
+            return res
+                .status(400)
+                .json({ error: "Current and new passwords required" });
         }
         if (newPassword.length < 6) {
-            return res.status(400).json({ error: 'New password must be at least 6 characters' });
+            return res
+                .status(400)
+                .json({ error: "New password must be at least 6 characters" });
         }
         // Get user with password
         const user = await database_1.db.user.findUnique({
-            where: { id: userId }
+            where: { id: userId },
         });
         if (!user) {
-            return res.status(404).json({ error: 'User not found' });
+            return res.status(404).json({ error: "User not found" });
         }
         // Verify current password
         const isValidPassword = await bcryptjs_1.default.compare(currentPassword, user.password);
         if (!isValidPassword) {
-            return res.status(400).json({ error: 'Current password is incorrect' });
+            return res.status(400).json({ error: "Current password is incorrect" });
         }
         // Hash new password
         const hashedNewPassword = await bcryptjs_1.default.hash(newPassword, 12);
         // Update password
         await database_1.db.user.update({
             where: { id: userId },
-            data: { password: hashedNewPassword }
+            data: { password: hashedNewPassword },
         });
         return res.json({
             success: true,
-            message: 'Password changed successfully'
+            message: "Password changed successfully",
         });
     }
     catch (error) {
-        console.error('Change password error:', error);
-        return res.status(500).json({ error: 'Failed to change password' });
+        console.error("Change password error:", error);
+        return res.status(500).json({ error: "Failed to change password" });
     }
 });
 // Logout
-router.post('/logout', auth_1.authenticateToken, async (req, res) => {
+router.post("/logout", auth_1.authenticateToken, async (req, res) => {
     try {
         return res.json({
             success: true,
-            message: 'Logged out successfully'
+            message: "Logged out successfully",
         });
     }
     catch (error) {
-        console.error('Logout error:', error);
-        return res.status(500).json({ error: 'Logout failed' });
+        console.error("Logout error:", error);
+        return res.status(500).json({ error: "Logout failed" });
     }
 });
 exports.default = router;

@@ -40,6 +40,7 @@ const socketAllowedOrigins = [
     "http://127.0.0.1:3000",
     "http://127.0.0.1:3001",
     "https://kanban-frontend-sand.vercel.app",
+    "https://kanban-blumen-obw2.vercel.app", // ✅ NEW
 ].filter(Boolean);
 const io = new socket_io_1.Server(httpServer, {
     cors: {
@@ -80,14 +81,15 @@ app.use((0, helmet_1.default)({
 // CORS configuration with multiple allowed origins
 const allowedOrigins = [
     process.env.FRONTEND_URL,
-    process.env.FRONTEND_URL_ALT, // Additional frontend URL if needed
+    process.env.FRONTEND_URL_ALT,
     "http://localhost:3000",
     "http://localhost:3001",
-    "http://localhost:5173", // Vite default
+    "http://localhost:5173",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:3001",
     "https://kanban-frontend-sand.vercel.app",
-].filter(Boolean); // Remove undefined values
+    "https://kanban-blumen-obw2.vercel.app", // ✅ NEW
+].filter(Boolean);
 console.log("🔒 Allowed CORS origins:", allowedOrigins);
 app.use((0, cors_1.default)({
     origin: (origin, callback) => {
