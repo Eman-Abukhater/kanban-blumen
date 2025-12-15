@@ -1,7 +1,5 @@
 // src/pages/boardList/[id].tsx
 export const getServerSideProps = async () => ({ props: {} });
-
-import type { GetServerSideProps } from "next";
 import {
   useState,
   useEffect,
@@ -15,7 +13,6 @@ import { HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
 import {
   Eye,
   Edit2,
-  Trash2,
   MoreVertical,
   ChevronDown,
   ChevronUp,
@@ -224,7 +221,7 @@ export default function BoardListPage() {
           .then(() => {
             connection.on("UserInOutMsg", (message) => {
               toast.dark(`${message}`, {
-                position: toast.POSITION.TOP_LEFT,
+                position: toast.POSITION.TOP_CENTER,
               });
             });
 
@@ -273,7 +270,7 @@ export default function BoardListPage() {
     if (!signalRConnection) return;
 
     const handler = async (_message: string) => {
-      toast.info(`${_message}`, { position: toast.POSITION.TOP_RIGHT });
+      toast.info(`${_message}`, { position: toast.POSITION.TOP_CENTER });
       await fetchData({ showLoader: false });
     };
 
@@ -375,37 +372,32 @@ export default function BoardListPage() {
           null;
       }
 
-      if (!newBoardId || !Number.isFinite(newBoardId)) {
-        toast.error("Board created but ID was not returned correctly.", {
-          position: toast.POSITION.TOP_CENTER,
-        });
-        return;
-      }
+     if (newBoardId == null || !Number.isFinite(newBoardId)) {
+  toast.error("Board created but ID was not returned correctly.", {
+    position: toast.POSITION.TOP_CENTER,
+  });
+  return;
+}
+
+const boardId: number = newBoardId; // ✅ now TS knows it's number
+
 
       // create default lists
       const defaultListTitles = ["To do", "In progress", "In review", "Done"];
       for (let i = 0; i < defaultListTitles.length; i++) {
         const title = defaultListTitles[i];
         try {
-          await AddKanbanList(
-            title,
-            newBoardId,
-            userInfo.username,
-            userInfo.id,
-            fkpoid
-          );
+       await AddKanbanList(title, boardId, userInfo.username, userInfo.id, fkpoid);
+
         } catch (error) {
           console.error(`Error creating default list "${title}":`, error);
         }
       }
 
-      if (newBoardId == null) {
-  toast.error("Failed to create board: missing boardId");
-  return;
-}
+     
 
       // ✅ update local state immediately
-      setBoards((prev) => [...prev, { boardId: newBoardId, title: newTitle }]);
+setBoards((prev) => [...prev, { boardId, title: newTitle }]);
 
       const msg =
         typeof res.data === "string"
@@ -997,7 +989,7 @@ export default function BoardListPage() {
           />
 
           <ToastContainer
-            position="top-right"
+            position="top-center"
             autoClose={4000}
             pauseOnHover
             closeOnClick

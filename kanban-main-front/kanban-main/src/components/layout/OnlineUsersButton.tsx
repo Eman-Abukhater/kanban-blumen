@@ -22,7 +22,7 @@ const OnlineUsersButton = () => {
 
     const handleMessage = (message: string) => {
       toast.info(`${message}`, {
-        position: toast.POSITION.TOP_RIGHT,
+        position: toast.POSITION.TOP_CENTER,
       });
     };
 

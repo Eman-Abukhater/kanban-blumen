@@ -109,7 +109,7 @@ export default function GetKanbanList() {
     const handleMessage = (message: string) => {
       refetch();
       toast.info(`${message}`, {
-        position: toast.POSITION.TOP_RIGHT,
+        position: toast.POSITION.TOP_CENTER,
       });
     };
 
@@ -184,7 +184,7 @@ export default function GetKanbanList() {
       </section>
 
       <ToastContainer
-        position="top-right"
+        position="top-center"
         autoClose={4000}
         pauseOnHover
         closeOnClick

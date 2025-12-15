@@ -158,7 +158,7 @@ export function KanbanContextComponent(props: IAppProps) {
     );
     if (customResponse?.status === 200) {
       toast.success(` ${customResponse?.data} `, {
-        position: toast.POSITION.BOTTOM_LEFT,
+        position: toast.POSITION.TOP_CENTER,
       });
       //  lastCardId = null;
     }

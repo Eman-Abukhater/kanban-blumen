@@ -879,7 +879,7 @@ export default function ProjectsList() {
           )}
 
           <ToastContainer
-            position="top-right"
+            position="top-center"
             autoClose={4000}
             pauseOnHover
             closeOnClick
