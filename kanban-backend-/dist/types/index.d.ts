@@ -6,9 +6,11 @@ export interface AuthUser {
     firstName?: string;
     lastName?: string;
     userPic?: string;
+    isActive: boolean;
 }
 export interface AuthRequest extends Request {
     user?: AuthUser;
+    projectMembership?: any;
 }
 export interface JWTPayload {
     userId: number;

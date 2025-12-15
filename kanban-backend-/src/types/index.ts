@@ -7,11 +7,13 @@ export interface AuthUser {
   firstName?: string;
   lastName?: string;
   userPic?: string;
+  isActive: boolean;          // 🔸 مهم عشان auth.ts بيستخدم user.isActive
 }
 
 // Extend Express Request to include user
 export interface AuthRequest extends Request {
-  user?: AuthUser;
+  user?: AuthUser;            // 🔸 بدل any خليه AuthUser
+  projectMembership?: any;    // 🔸 auth.ts بيحطها بـ (req as any).projectMembership
 }
 
 // JWT Payload interface
