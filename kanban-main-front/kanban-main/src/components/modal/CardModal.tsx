@@ -548,7 +548,7 @@ export function CardModal(props: CardModalProps) {
                     {/* ================= CONTENT ================= */}
                     <div className="relative flex-1 overflow-y-auto px-6 py-6">
                       {/* subtle tinted background (Figma-like) */}
-                      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0)_0%,rgba(255,226,200,0.35)_100%)] dark:bg-[linear-gradient(180deg,rgba(27,35,45,0)_0%,rgba(255,226,200,0.10)_100%)]" />
+                      <div className="pointer-events-none absolute inset-0 " />
                       <div className="relative z-10">
                         {/* Title (thick border like Figma) */}
                         <input
@@ -965,9 +965,9 @@ export function CardModal(props: CardModalProps) {
                           type="button"
                           onClick={handleSave}
                           disabled={submit || uploadingImage}
-                          className="inline-flex items-center justify-center rounded-[12px] bg-[#FFAB00] px-5 py-2 text-[14px] font-semibold text-ink hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                          className="inline-flex items-center justify-center rounded-[12px] bg-[#1C252E] px-5 py-2 text-[14px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                          {submit ? "Saving..." : "Submit"}
+                          {submit ? "Saving..." : "Save"}
                         </button>
                       </div>
                     </div>
