@@ -59,7 +59,7 @@ export default function AddEditBoardModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
       {/* Modal container – same style as AddEditProjectModal */}
-      <div className="w-full max-w-xl rounded-[24px] bg-white shadow-[0_24px_80px_rgba(15,23,42,0.16)] dark:bg-[#1B232D] dark:shadow-none">
+      <div className="w-full max-w-xl rounded-[24px] bg-white shadow-[0_24px_80px_rgba(15,23,42,0.16)] dark:bg-[#1C252E] dark:shadow-none">
         <form onSubmit={onSubmit}>
           {/* Header */}
           <div className="px-8 py-6">
@@ -71,7 +71,7 @@ export default function AddEditBoardModal({
           {/* Body – single Title field with floating label */}
           <div className="px-8 pb-4">
             <div className="relative">
-              <label className="pointer-events-none absolute -top-2 left-3 inline-flex bg-white px-1 text-[13px] font-medium text-[#637381] dark:bg-[#1B232D] dark:text-slate500_80">
+              <label className="pointer-events-none absolute -top-2 left-3 inline-flex bg-white px-1 text-[13px] font-medium text-[#637381] dark:bg-[#1C252E] dark:text-slate500_80">
                 Add Title
                 <span className="ml-0.5 text-[#FF5630]">*</span>
               </label>
@@ -81,7 +81,7 @@ export default function AddEditBoardModal({
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="--"
                 maxLength={25}
-                className="h-[56px] w-full rounded-[12px] border border-slate500_12 bg-white px-3 pt-3 text-[14px] text-ink outline-none transition focus:border-[#1D7BF5] focus:ring-2 focus:ring-[#1D7BF5]/20 dark:border-slate500_20 dark:bg-[#141A21] dark:text-slate500_80"
+                className="h-[56px] w-full rounded-[12px] border border-slate500_12 bg-white px-3 pt-3 text-[14px] text-ink outline-none transition focus:border-[#1D7BF5] focus:ring-2 focus:ring-[#1D7BF5]/20 dark:border-slate500_20 dark:bg-[#1C252E] dark:text-slate500_80"
               />
             </div>
           </div>

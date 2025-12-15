@@ -1,5 +1,5 @@
 // src/components/kanban/KanbanBoard.tsx
-import { useContext, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { DragDropContext, Droppable } from "react-beautiful-dnd";
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import KanbanContext from "../../context/kanbanContext";
@@ -14,14 +14,28 @@ export function KanbanBoard(props: IKanbanBoardProps) {
 
   // ---------- DENSE + PAGINATION STATE ----------
   const [dense, setDense] = useState(false);
-  const [columnsPerPage, setColumnsPerPage] = useState(3); // how many columns visible
+
+  // ✅ default = 0 (means: not set yet) then we set it to total columns once we have data
+  const [columnsPerPage, setColumnsPerPage] = useState(0);
+
   const [page, setPage] = useState(0);
   const [rowsMenuOpen, setRowsMenuOpen] = useState(false);
 
   const total = kanbanState.length;
 
-  const startIndex = page * columnsPerPage;
-  const endIndex = Math.min(startIndex + columnsPerPage, total);
+  // ✅ set default columns-per-page to ALL columns (total) one time after data arrives
+  useEffect(() => {
+    if (columnsPerPage === 0 && total > 0) {
+      setColumnsPerPage(total);
+      setPage(0);
+    }
+  }, [columnsPerPage, total]);
+
+  // use "total" when columnsPerPage is still 0
+  const effectiveColumnsPerPage = columnsPerPage || total || 1;
+
+  const startIndex = page * effectiveColumnsPerPage;
+  const endIndex = Math.min(startIndex + effectiveColumnsPerPage, total);
 
   const visibleLists = kanbanState.slice(startIndex, endIndex);
 
@@ -108,9 +122,7 @@ export function KanbanBoard(props: IKanbanBoardProps) {
                 }`}
               />
             </span>
-            <span className="text-[#212B36] dark:text-slate500_80">
-              Dense
-            </span>
+            <span className="text-[#212B36] dark:text-slate500_80">Dense</span>
           </button>
 
           {/* Right side: columns per page + range + arrows */}
@@ -125,7 +137,7 @@ export function KanbanBoard(props: IKanbanBoardProps) {
                   onClick={() => setRowsMenuOpen((o) => !o)}
                   className="flex items-center gap-1 text-[13px] text-[#111827] dark:text-slate500_80"
                 >
-                  {columnsPerPage}
+                  {effectiveColumnsPerPage}
                   <ChevronDown className="h-4 w-4 text-slate500 dark:text-slate500_80" />
                 </button>
 
@@ -137,7 +149,7 @@ export function KanbanBoard(props: IKanbanBoardProps) {
                         type="button"
                         onClick={() => handleChangeColumnsPerPage(option)}
                         className={`hover:bg-slate500_08 flex w-full items-center justify-between px-3 py-1 text-left text-[13px] dark:hover:bg-slate500_20 ${
-                          columnsPerPage === option
+                          effectiveColumnsPerPage === option
                             ? "font-semibold text-[#111827] dark:text-white"
                             : "text-[#637381] dark:text-slate500_80"
                         }`}
@@ -152,9 +164,7 @@ export function KanbanBoard(props: IKanbanBoardProps) {
 
             {/* Range text */}
             <span className="text-[#212B36] dark:text-slate500_80">
-              {total === 0
-                ? "0-0 of 0"
-                : `${startIndex + 1}-${endIndex} of ${total}`}
+              {total === 0 ? "0-0 of 0" : `${startIndex + 1}-${endIndex} of ${total}`}
             </span>
 
             {/* Arrows */}

@@ -1,5 +1,6 @@
+// src/components/modal/RenameListModal.tsx
 import { Dialog, Transition } from "@headlessui/react";
-import { Fragment, useContext, useState } from "react";
+import { Fragment, useContext, useEffect, useState } from "react";
 import KanbanContext from "../../context/kanbanContext";
 import { EditListName } from "@/services/kanbanApi";
 import { toast } from "react-toastify";
@@ -13,100 +14,126 @@ export interface RenameListModalProps {
 }
 
 export default function RenameListModal(props: RenameListModalProps) {
-  const [title, setTitle] = useState<string>(props.title);
-
   const { modalState, handleCloseModal, handleRenameList } =
     useContext(KanbanContext);
 
-  const handleRename = async () => {
-    if (title === "") return;
-    //add new list in db
-    const customResponse = await EditListName(
-      title,
-      props.listid,
-      props.userInfo.username,
-      props.userInfo.fkboardid,
-      props.userInfo.fkpoid,
-    );
+  const [title, setTitle] = useState<string>(props.title ?? "");
+  const [submitting, setSubmitting] = useState(false);
 
-    if (customResponse?.status === 200) {
-      toast.success(` ${customResponse?.data}`, {
+  // ✅ keep input synced when modal opens or title changes
+  useEffect(() => {
+    if (modalState.isOpen) setTitle(props.title ?? "");
+  }, [modalState.isOpen, props.title]);
+
+  const handleRename = async () => {
+    const newTitle = title.trim();
+    if (!newTitle || submitting) return;
+
+    try {
+      setSubmitting(true);
+
+      const customResponse = await EditListName(
+        newTitle,
+        props.listid,
+        props.userInfo.username,
+        props.userInfo.fkboardid,
+        props.userInfo.fkpoid
+      );
+
+      if (customResponse?.status === 200) {
+        toast.success(`${customResponse?.data}`, {
+          position: toast.POSITION.TOP_CENTER,
+        });
+
+        // ✅ update local state
+        handleRenameList(props.listIndex, newTitle);
+        handleCloseModal();
+        return;
+      }
+
+      toast.error(
+        `Something went wrong. Could not edit the title, please try again later.`,
+        { position: toast.POSITION.TOP_CENTER }
+      );
+    } catch (e: any) {
+      toast.error(e?.message || "Rename failed.", {
         position: toast.POSITION.TOP_CENTER,
       });
-      //handle the satate to update the content
-      handleRenameList(props.listIndex, title);
+    } finally {
+      setSubmitting(false);
     }
-
-    if (customResponse?.status != 200 || customResponse?.data == null) {
-      toast.error(
-        `something went wrong could not edit the title, please try again later` +
-          customResponse,
-        {
-          position: toast.POSITION.TOP_CENTER,
-        }
-      );
-    }
-
-    handleCloseModal();
   };
 
   return (
-    <Transition appear show={modalState.isOpen}>
-      <Dialog as="div" className="relative z-40" onClose={handleCloseModal}>
+    <Transition appear show={modalState.isOpen} as={Fragment}>
+      <Dialog as="div" className="relative z-50" onClose={handleCloseModal}>
+        {/* overlay */}
         <Transition.Child
           as={Fragment}
-          enter="ease-out duration-300"
+          enter="ease-out duration-200"
           enterFrom="opacity-0"
           enterTo="opacity-100"
-          leave="ease-in duration-200"
+          leave="ease-in duration-150"
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-slate-500 bg-opacity-40"></div>
+          <div className="fixed inset-0 bg-black/40" />
         </Transition.Child>
 
+        {/* content */}
         <div className="fixed inset-0 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4 text-center">
+          <div className="flex min-h-full items-center justify-center px-4 py-8">
             <Transition.Child
               as={Fragment}
-              enter="ease-out duration-300"
-              enterFrom="opacity-0 scale-95"
-              enterTo="opacity-100 scale-100"
-              leave="ease-in duration-200"
-              leaveFrom="opacity-100 scale-100"
-              leaveTo="opacity-0 scale-95"
+              enter="ease-out duration-200"
+              enterFrom="opacity-0 translate-y-2 scale-[0.98]"
+              enterTo="opacity-100 translate-y-0 scale-100"
+              leave="ease-in duration-150"
+              leaveFrom="opacity-100 translate-y-0 scale-100"
+              leaveTo="opacity-0 translate-y-2 scale-[0.98]"
             >
-              <Dialog.Panel className="w-full max-w-sm transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all dark:bg-slate-900">
-                <Dialog.Title
-                  as="h3"
-                  className="text-lg font-medium leading-6 text-slate-900 dark:text-white"
-                >
-                  Edit list name
-                </Dialog.Title>
-                <div className="mt-3">
-                  <input
-                    type="text"
-                    className="w-full rounded-lg font-semibold placeholder:font-light dark:bg-slate-900 dark:text-white dark:placeholder:text-slate-400 dark:hover:border"
-                    placeholder="Tag name...."
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                  />
+              <Dialog.Panel className="w-full max-w-xl rounded-[24px] bg-white shadow-[0_24px_80px_rgba(15,23,42,0.16)] dark:bg-[#1C252E] dark:shadow-none">
+                {/* Header */}
+                <div className="px-8 py-6">
+                  <Dialog.Title className="text-[20px] font-semibold leading-[28px] text-ink dark:text-white">
+                    Edit List Name
+                  </Dialog.Title>
                 </div>
 
-                <div className="mt-4 flex justify-end gap-3">
+                {/* Body */}
+                <div className="space-y-4 px-8 pb-2">
+                  <div className="relative">
+                    <label className="pointer-events-none absolute -top-2 left-3 inline-flex bg-white px-1 text-[13px] font-medium text-[#637381] dark:bg-[#1C252E] dark:text-slate500_80">
+                      List Title
+                      <span className="ml-0.5 text-[#FF5630]">*</span>
+                    </label>
+
+                    <input
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      placeholder="--"
+                      className="h-[56px] w-full rounded-[12px] border border-slate500_12 bg-white px-3 pt-3 text-[14px] text-ink outline-none transition focus:border-[#1D7BF5] focus:ring-2 focus:ring-[#1D7BF5]/20 dark:border-slate500_20 dark:bg-[#1C252E] dark:text-slate500_80"
+                    />
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="flex items-center justify-end gap-3 px-8 py-5">
                   <button
                     type="button"
-                    className="inline-flex justify-center rounded-md border border-transparent bg-emerald-700 px-3 py-1 text-base font-medium text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 hover:bg-emerald-600"
-                    onClick={handleRename}
-                  >
-                    Rename
-                  </button>
-                  <button
                     onClick={handleCloseModal}
-                    type="button"
-                    className="inline-flex justify-center rounded-md border bg-transparent px-3 py-1 text-base font-medium transition-colors duration-150 focus:outline-none focus:ring-1 focus:ring-indigo-600 hover:border-indigo-600 hover:ring-1 hover:ring-indigo-600 dark:text-white"
+                    className="h-10 rounded-[10px] border border-slate500_20 px-4 text-[14px] font-semibold text-[#1C252E] hover:bg-slate500_08 dark:border-[#919EAB52] dark:text-white dark:hover:bg-[#232C36]"
                   >
                     Cancel
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleRename}
+                    disabled={submitting || !title.trim()}
+                    className="h-10 rounded-[10px] bg-[#1C252E] px-5 text-[14px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-70 dark:bg-white dark:text-[#1C252E]"
+                  >
+                    {submitting ? "Saving..." : "Save"}
                   </button>
                 </div>
               </Dialog.Panel>
