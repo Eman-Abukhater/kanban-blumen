@@ -176,27 +176,30 @@ export async function addProjectMember(
     return null;
   }
 }
-// Delete Board
+// Delete Board (admin)
 export async function DeleteBoard(
   boardid: number
 ): Promise<AddCustomResponse<any> | null> {
   try {
-    // pattern is same as DeleteTag / DeleteTask
-    const response = await apiClient.get(
-      `/ProjKanbanBoards/deleteboard?boardid=${boardid}`
-    );
+    // according to Postman: DELETE {{baseUrl}}/boards/{{boardid}}
+    const response = await apiClient.delete(`/boards/${boardid}`);
 
     const customResponse: AddCustomResponse<any> = {
       status: response.status,
       data: response.data,
     };
 
+    console.log("✅ DeleteBoard OK:", customResponse);
     return customResponse;
-  } catch (error) {
-    console.error("Error deleting board:", error);
+  } catch (error: any) {
+    console.error(
+      "Error deleting board:",
+      error?.response?.data ?? error?.message ?? error
+    );
     return null;
   }
 }
+
 
 
 // Define a custom response type

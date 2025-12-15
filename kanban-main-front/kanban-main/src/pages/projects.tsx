@@ -15,12 +15,6 @@ import {
 } from "../services/kanbanApi";
 
 import { ToastContainer, toast } from "react-toastify";
-import dynamic from "next/dynamic";
-
-const LottieClient = dynamic(() => import("@/components/LottieClient"), {
-  ssr: false,
-});
-import animation_space from "../../public/animationRocket.json";
 
 import KanbanContext from "../context/kanbanContext";
 import ProjectCardSkeleton from "@/components/layout/ProjectCardSkeleton";
@@ -41,6 +35,8 @@ import {
 } from "lucide-react";
 
 type SortField = "id" | "title" | "createdBy" | "members" | "artboard";
+
+const PROJECTS_CACHE_KEY = "blumen-projects-cache";
 
 export default function ProjectsList() {
   const { userInfo, handleSetUserInfo } = useContext(KanbanContext);
@@ -76,7 +72,7 @@ export default function ProjectsList() {
   const [sortField, setSortField] = useState<SortField>("id");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
-  // Track navigation to hide content immediately
+  // Track navigation (optional visual tweak)
   useEffect(() => {
     const start = () => setIsNavigating(true);
     const done = () => setIsNavigating(false);
@@ -91,44 +87,91 @@ export default function ProjectsList() {
     };
   }, [router]);
 
-  // Auth check + fetch projects
+  // 🌟 1) Hydrate from local cache (if any) to avoid empty page when data already exists
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const cached = window.sessionStorage.getItem(PROJECTS_CACHE_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed)) {
+          setProjects(parsed);
+          // we already have something to show → no need for skeleton while fresh data loads
+          setIsLoading(false);
+        }
+      }
+    } catch {
+      // ignore cache errors
+    }
+  }, []);
+
+  // 🌟 2) Ensure userInfo exists (auth check via sessionStorage)
   useEffect(() => {
     if (!router.isReady) return;
 
-    const run = async () => {
-      if (!userInfo) {
-        const stored = window.sessionStorage.getItem("userData");
-        if (!stored) {
-          router.push(`/unauthorized`);
-          return;
-        }
-        handleSetUserInfo(JSON.parse(stored));
+    if (!userInfo) {
+      const stored = window.sessionStorage.getItem("userData");
+      if (!stored) {
+        router.push(`/unauthorized`);
         return;
       }
+      const parsed = JSON.parse(stored);
+      handleSetUserInfo(parsed);
+    }
+  }, [router.isReady, userInfo, handleSetUserInfo, router]);
+
+  // 🌟 3) Fetch projects once userInfo is available
+  useEffect(() => {
+    if (!router.isReady || !userInfo) return;
+
+    let cancelled = false;
+
+    const loadProjects = async () => {
+      // only show skeleton if we don't already have cached projects
+      setIsLoading((prev) => prev || projects.length === 0);
 
       try {
-        setIsLoading(true);
         const res = await fetchUserProjects();
-        if (res?.status === 200 && res?.data?.success) {
+        if (!res || cancelled) return;
+
+        if (res.status === 200 && res.data?.success) {
+          const rawProjects = res.data.data || [];
           // filter out default project id = 1
-          const filtered = (res.data.data || []).filter((p: any) => p.id !== 1);
+          const filtered = rawProjects.filter((p: any) => p.id !== 1);
           setProjects(filtered);
-        } else {
+
+          // update cache
+          if (typeof window !== "undefined") {
+            window.sessionStorage.setItem(
+              PROJECTS_CACHE_KEY,
+              JSON.stringify(filtered)
+            );
+          }
+        } else if (!cancelled) {
           toast.error("Could not fetch projects.", {
             position: toast.POSITION.TOP_CENTER,
           });
         }
       } catch (e: any) {
-        toast.error(`Fetch error: ${e?.message ?? "unknown"}`, {
-          position: toast.POSITION.TOP_CENTER,
-        });
+        if (!cancelled) {
+          toast.error(`Fetch error: ${e?.message ?? "unknown"}`, {
+            position: toast.POSITION.TOP_CENTER,
+          });
+        }
       } finally {
-        setIsLoading(false);
+        if (!cancelled) {
+          setIsLoading(false);
+        }
       }
     };
 
-    run();
-  }, [router.isReady, userInfo, handleSetUserInfo, router]);
+    loadProjects();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router.isReady, userInfo]);
 
   // reset page when search or rowsPerPage change
   useEffect(() => {
@@ -136,7 +179,7 @@ export default function ProjectsList() {
   }, [search, rowsPerPage]);
 
   // Modal controls
-  const openEditModal = (project: any) => {
+  const openEditModal = (project: any | null) => {
     setSelectedProject(project);
     setIsModalOpen(true);
   };
@@ -192,7 +235,6 @@ export default function ProjectsList() {
       toast.error(`Error: ${e?.message ?? "Failed to create project"}`, {
         position: toast.POSITION.TOP_CENTER,
       });
-      setIsCreatingProject(false);
     } finally {
       setIsCreatingProject(false);
     }
@@ -237,6 +279,7 @@ export default function ProjectsList() {
     });
 
   const handleViewProject = (project: any) => {
+    if (!userInfo) return;
     handleSetUserInfo({
       ...userInfo,
       fkpoid: project.id,
@@ -291,6 +334,7 @@ export default function ProjectsList() {
 
   const handleChangeRowsPerPage = (value: number) => {
     setRowsPerPage(value);
+    setRowsMenuOpen(false);
   };
 
   const handlePrev = () => {
@@ -666,62 +710,85 @@ export default function ProjectsList() {
           </section>
 
           {/* 🔹 DENSE + PAGINATION FOOTER (shared for both views) */}
-          {/* 🔹 DENSE + PAGINATION FOOTER (shared for both views) */}
           {!isLoading && total > 0 && (
-            <div className="mx-auto flex max-w-[1120px] items-center justify-between pb-6 pt-4 text-[13px]">
-              {/* Dense toggle – already fixed colors above */}
-
+            <div className="mx-auto flex max-w-[1120px] items-center justify-between pb-6 pt-4 text-[13px] text-[#212B36] dark:text-slate500_80">
+              {/* Dense toggle – visual switch, follows theme */}
               <button
                 type="button"
                 onClick={() => setDense((d) => !d)}
-                className="flex items-center gap-2 text-ink dark:text-slate500_80"
+                className="flex items-center gap-2"
               >
+                {/* switch */}
                 <span
-                  className={`relative flex h-5 w-9 items-center rounded-full ${
-                    dense ? "bg-[#111827]" : "bg-slate500_20"
-                  } transition`}
+                  className={`
+                    relative inline-flex h-5 w-9 items-center rounded-full
+                    transition-colors
+                    ${
+                      dense
+                        ? "bg-ink dark:bg-ink"
+                        : "bg-slate500_20 dark:bg-[#919EAB7A]"
+                    }
+                  `}
                 >
                   <span
-                    className={`absolute h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
-                      dense ? "translate-x-[18px]" : "translate-x-[2px]"
-                    }`}
+                    className={`
+                      inline-block h-4 w-4 rounded-full bg-white shadow-soft
+                      transform transition-transform
+                      ${dense ? "translate-x-[18px]" : "translate-x-[2px]"}
+                    `}
                   />
                 </span>
-                <span className="text-[#212B36] dark:text-slate500_80">
+
+                {/* label */}
+                <span className="text-[#212B36] dark:text-[#E5EAF1]">
                   Dense
                 </span>
               </button>
 
               {/* Right side: rows per page + range + arrows */}
-              <div className="flex items-center gap-5 text-black dark:text-slate500_80">
+              <div className="flex items-center gap-5">
                 {/* Rows per page */}
                 <div className="flex items-center gap-2">
-                  <span>Rows per page:</span>
+                  <span className="text-[#637381] dark:text-slate500_80">
+                    Rows per page:
+                  </span>
 
                   <div className="relative">
-                    {/* looks like plain text + chevron (no box) */}
+                    {/* trigger – value + chevron */}
                     <button
                       type="button"
                       onClick={() => setRowsMenuOpen((o) => !o)}
-                      className="flex items-center gap-1 text-[13px] text-[#111827] dark:text-slate500_80"
+                      className="flex items-center gap-1 text-[13px] text-[#111827] dark:text-[#F9FAFB]"
                     >
                       {rowsPerPage}
                       <ChevronDown className="h-4 w-4 text-slate500 dark:text-slate500_80" />
                     </button>
 
-                    {/* dropdown menu (you can keep what you already have here) */}
+                    {/* dropdown menu */}
                     {rowsMenuOpen && (
-                      <div className="absolute right-0 mt-1 w-20 rounded-[10px] border border-slate500_20 bg-white py-1 shadow-lg dark:border-slate500_20 dark:bg-[#1B232D]">
+                      <div
+                        className="
+                          absolute right-0 mt-1 w-20 rounded-[12px]
+                          border border-slate500_20 bg-white/98
+                          shadow-[0_18px_45px_rgba(145,158,171,0.24)]
+                          dark:border-[#1F2937] dark:bg-[#050B14]
+                        "
+                      >
                         {[3, 5, 6, 9].map((option) => (
                           <button
                             key={option}
                             type="button"
                             onClick={() => handleChangeRowsPerPage(option)}
-                            className={`hover:bg-slate500_08 flex w-full items-center justify-between px-3 py-1 text-left text-[13px] dark:hover:bg-slate500_20 ${
-                              rowsPerPage === option
-                                ? "font-semibold text-[#111827] dark:text-white"
-                                : "text-[#637381] dark:text-slate500_80"
-                            }`}
+                            className={`
+                              flex w-full items-center justify-between px-3 py-1
+                              text-left text-[13px]
+                              hover:bg-slate500_08 dark:hover:bg-white/5
+                              ${
+                                rowsPerPage === option
+                                  ? "font-semibold text-[#111827] dark:text-white"
+                                  : "text-[#637381] dark:text-slate500_80"
+                              }
+                            `}
                           >
                             <span>{option}</span>
                           </button>
@@ -738,7 +805,7 @@ export default function ProjectsList() {
                     : `${startIndex + 1}-${endIndex} of ${total}`}
                 </span>
 
-                {/* Arrows – only icons, no box */}
+                {/* Arrows */}
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
@@ -746,8 +813,8 @@ export default function ProjectsList() {
                     disabled={!canPrev}
                     className={`flex h-5 w-5 items-center justify-center ${
                       !canPrev
-                        ? "text-slate300 cursor-default dark:text-slate600"
-                        : "hover:text-slate900 text-slate500 dark:text-slate500_80 dark:hover:text-white"
+                        ? "cursor-default text-slate300 dark:text-slate600"
+                        : "text-slate500 hover:text-slate900 dark:text-slate500_80 dark:hover:text-white"
                     }`}
                   >
                     <ChevronLeft className="h-4 w-4" />
@@ -759,8 +826,8 @@ export default function ProjectsList() {
                     disabled={!canNext}
                     className={`flex h-5 w-5 items-center justify-center ${
                       !canNext
-                        ? "text-slate300 cursor-default dark:text-slate600"
-                        : "hover:text-slate900 text-slate500 dark:text-slate500_80 dark:hover:text-white"
+                        ? "cursor-default text-slate300 dark:text-slate600"
+                        : "text-slate500 hover:text-slate900 dark:text-slate500_80 dark:hover:text-white"
                     }`}
                   >
                     <ChevronRight className="h-4 w-4" />

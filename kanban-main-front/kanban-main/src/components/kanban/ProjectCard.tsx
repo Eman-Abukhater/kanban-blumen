@@ -77,7 +77,14 @@ export default function ProjectCard({
                 <button
                   type="button"
                   onClick={handleEditClick}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-white/10"
+ className="
+    flex w-full items-center gap-2 px-4 py-2 text-left
+    rounded-2xl
+    border border-transparent
+    hover:bg-white/5
+    hover:border-white/20
+  "
+
                 >
                   <Pencil className="h-4 w-4" />
                   <span>Edit</span>
@@ -87,8 +94,15 @@ export default function ProjectCard({
                 <button
                   type="button"
                   onClick={handleDeleteClick}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-white/10"
-                >
+ className="
+    flex w-full items-center gap-2 px-4 py-2 text-left
+    rounded-2xl
+    border border-transparent
+    hover:bg-white/5
+    hover:border-white/20
+  "
+>
+                
                   <Trash2 className="h-4 w-4" />
                   <span>Delete</span>
                 </button>

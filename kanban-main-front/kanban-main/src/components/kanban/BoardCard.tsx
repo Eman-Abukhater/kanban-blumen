@@ -42,10 +42,10 @@ export default function BoardCard({
     <article
       className="
         flex h-full flex-col
-        rounded-[24px] border border-slate500_08 bg-white
+        rounded-[24px] bg-white
         shadow-[0_20px_60px_rgba(15,23,42,0.04)]
-        dark:border-[#1C252E] dark:bg-[#1C252E]
-        dark:shadow-[0_20px_60px_rgba(2,6,23,0.90)]
+         dark:bg-[#1C252E]
+    dark:shadow-[0_10px_24px_rgba(0,0,0,0.35)]
       "
     >
       {/* TOP AREA: adds the 'space' around the inner dark panel */}

@@ -143,59 +143,57 @@ export default function GetKanbanList() {
   //                   RENDER
   // ======================================================
   return (
-    <>
-      {/* Full-page skeleton while loading (matches light/dark bg) */}
-      {shouldShowLoading && (
-        <div className="fixed inset-0 z-40 bg-[#F4F6F8] dark:bg-[#141A21]">
+    <Shell>
+      <Topbar />
+
+      {/* ⭐ Header (breadcrumb etc.) – always visible like Projects page */}
+      <SectionHeader />
+
+      <section className="mx-auto max-w-[1120px] px-0 py-6">
+        {/* ⏳ Loading state – show Kanban skeleton INSIDE the page */}
+        {shouldShowLoading && (
           <KanbanBoardSkeleton />
-        </div>
-      )}
+        )}
 
-      {/* Error state */}
-      {!isNavigating && showContent && isError && (
-        <div className="flex h-screen items-center justify-center">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold text-red-600">
-              Error Loading Data
-            </h2>
-            <p className="mt-2 text-gray-600">{error?.message}</p>
-            <button
-              onClick={() => router.reload()}
-              className="mt-4 rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
-            >
-              Reload Page
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Main Kanban page */}
-      {!isNavigating && showContent && data && (
-        <Shell>
-          <Topbar />
-
-          {/* ⭐ Header = Kanban + breadcrumb (no search, no button) */}
-          <SectionHeader />
-
-          {/* Kanban board columns */}
-          <section className="mx-auto max-w-[1120px] px-0 py-6">
-            <div className="kanban-scroll overflow-x-auto pb-4">
-              <KanbanBoard />
+        {/* ❌ Error state – still inside the page, not full-screen */}
+        {!shouldShowLoading && isError && (
+          <div className="flex h-[300px] items-center justify-center">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-red-500">
+                Error loading board
+              </h2>
+              <p className="mt-2 text-slate600 dark:text-slate500_80">
+                {error?.message}
+              </p>
+              <button
+                onClick={() => router.reload()}
+                className="mt-4 rounded-[10px] bg-ink px-4 py-2 text-sm font-semibold text-white hover:opacity-90 dark:bg-white dark:text-ink"
+              >
+                Reload page
+              </button>
             </div>
-          </section>
+          </div>
+        )}
 
-          <ToastContainer
-            position="top-right"
-            autoClose={4000}
-            pauseOnHover
-            closeOnClick
-            draggable
-            toastClassName="blumen-toast"
-            bodyClassName="blumen-toast-body"
-            progressClassName="blumen-toast-progress"
-          />
-        </Shell>
-      )}
-    </>
+        {/* ✅ Real Kanban board – only when we have data & no error */}
+        {!shouldShowLoading && !isError && data && (
+          <div className="kanban-scroll overflow-x-auto pb-4">
+            <KanbanBoard />
+          </div>
+        )}
+      </section>
+
+      <ToastContainer
+        position="top-right"
+        autoClose={4000}
+        pauseOnHover
+        closeOnClick
+        draggable
+        toastClassName="blumen-toast"
+        bodyClassName="blumen-toast-body"
+        progressClassName="blumen-toast-progress"
+      />
+    </Shell>
   );
 }
+

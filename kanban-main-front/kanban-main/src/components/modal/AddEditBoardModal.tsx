@@ -46,11 +46,11 @@ export default function AddEditBoardModal({
     try {
       setSubmitting(true);
       if (isEditMode && board) {
+        // parent decides when to close on success
         await handleEditTitle(trimmed, board.boardId);
       } else {
         await handleAddBoardClick(trimmed);
       }
-      onClose();
     } finally {
       setSubmitting(false);
     }
@@ -99,7 +99,7 @@ export default function AddEditBoardModal({
             <button
               type="submit"
               disabled={submitting || !title.trim()}
-              className="h-10 rounded-[10px] bg-[#1C252E] px-5 text-[14px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-70 dark:bg:white dark:text-[#1C252E]"
+              className="h-10 rounded-[10px] bg-[#1C252E] px-5 text-[14px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-70 dark:bg-white dark:text-[#1C252E]"
             >
               {submitting
                 ? isEditMode

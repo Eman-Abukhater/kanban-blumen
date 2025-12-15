@@ -5,7 +5,7 @@ import { useRouter } from "next/router";
 
 type ItemProps = {
   href: string;
-  icon: string; // e.g. "dashboard", "kanban"
+  icon: string;
   label: string;
   active: boolean;
 };
@@ -22,7 +22,6 @@ const Item = ({ href, icon, label, active }: ItemProps) => (
       }
     `}
   >
-    {/* ICON */}
     <Image
       src={`/icons/${icon}.svg`}
       alt={label}
@@ -39,7 +38,6 @@ const Item = ({ href, icon, label, active }: ItemProps) => (
       }}
     />
 
-    {/* LABEL */}
     <span
       className={`
         font-medium text-[14px] transition
@@ -59,14 +57,21 @@ export default function Sidebar() {
   const { pathname } = useRouter();
 
   return (
-    <aside className="hidden shrink-0 border-r border-slate500_12 bg-white dark:border-slate500_20 dark:bg-[#141A21] md:flex md:w-64">
-      <div className="w-full p-4 text-ink dark:text-slate500_80">
+    <aside
+      className="
+        hidden md:flex md:w-64 flex-col
+        border-r border-slate500_12
+        bg-white dark:border-slate500_20 dark:bg-[#141A21]
+        min-h-screen          /* 👈 make the sidebar at least full viewport height */
+      "
+    >
+      <div className="flex-1 w-full p-4 text-ink dark:text-slate500_80">
         {/* Logo */}
         <div className="mb-6 flex items-center gap-3 px-2">
           <Image src="/Logo.png" alt="Blumen Cafe" width={170} height={70} />
         </div>
 
-        {/* SECTION: OVERVIEW */}
+        {/* OVER VIEW */}
         <div className="mb-2 px-2 text-[11px] font-semibold text-[#919EAB] dark:text-slate500_80">
           OVER VIEW
         </div>
@@ -80,30 +85,15 @@ export default function Sidebar() {
           />
         </div>
 
-        {/* SECTION: MANAGEMENT */}
+        {/* MANAGEMENT */}
         <div className="mb-2 px-2 text-[11px] font-semibold text-[#919EAB] dark:text-slate500_80">
           MANAGEMENT
         </div>
 
         <div className="space-y-1">
-          <Item
-            href="/user"
-            icon="user"
-            label="User"
-            active={pathname === "/user"}
-          />
-          <Item
-            href="/role"
-            icon="lock"
-            label="Role"
-            active={pathname === "/product"}
-          />
-          <Item
-            href="/approval"
-            icon="label"
-            label="Approval"
-            active={pathname === "/label"}
-          />
+          <Item href="/user" icon="user" label="User" active={pathname === "/user"} />
+          <Item href="/role" icon="lock" label="Role" active={pathname === "/product"} />
+          <Item href="/approval" icon="label" label="Approval" active={pathname === "/label"} />
           <Item
             href="/projects"
             icon="kanban"
