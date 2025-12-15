@@ -399,6 +399,11 @@ export default function BoardListPage() {
         }
       }
 
+      if (newBoardId == null) {
+  toast.error("Failed to create board: missing boardId");
+  return;
+}
+
       // ✅ update local state immediately
       setBoards((prev) => [...prev, { boardId: newBoardId, title: newTitle }]);
 
