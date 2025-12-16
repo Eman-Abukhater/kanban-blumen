@@ -15,8 +15,9 @@ export interface IAddFormProps {
     seqNo: number,
     fkKanbanListId: number
   ) => void;
-    userInfo: any;
+  userInfo: any;
   fkKanbanListId: number;
+  onCreated?: () => void; // 👈 جديد
 }
 
 export function AddCardForm(props: IAddFormProps) {
@@ -29,7 +30,6 @@ export function AddCardForm(props: IAddFormProps) {
 
     setIsCreating(true);
 
-    // add new card in db (same logic as before)
     const customResponse = await AddCard(
       trimmed,
       props.fkKanbanListId,
@@ -53,6 +53,7 @@ export function AddCardForm(props: IAddFormProps) {
         { position: toast.POSITION.TOP_CENTER }
       );
       setName("");
+      props.onCreated?.(); // 👈 بعد ما ينجح، خبّي الفورم
     } else {
       toast.error(
         "Something went wrong, could not add the card. Please try again later.",
@@ -76,7 +77,6 @@ export function AddCardForm(props: IAddFormProps) {
   return (
     <form onSubmit={handleSubmit}>
       <div className="mb-3">
-        {/* White card: Task name input (Figma) */}
         <div className="w-full rounded-[16px] border border-[#E5EAF1] bg-white px-4 py-3 shadow-[0_18px_45px_rgba(15,23,42,0.06)] dark:border-slate500_20 dark:bg-[#1B232D]">
           {isCreating ? (
             <div className="animate-pulse space-y-2">
@@ -84,18 +84,20 @@ export function AddCardForm(props: IAddFormProps) {
               <div className="h-3 w-1/2 rounded-full bg-slate500_08 dark:bg-slate500_20" />
             </div>
           ) : (
-            <input
-              className="w-full border-none bg-transparent text-[14px] text-ink placeholder:text-slate500 outline-none dark:text-white dark:placeholder:text-slate500_80"
-              placeholder={props.placeholder || "Task name"}
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              onKeyDown={handleKeyDown}
-            />
+           <input
+  className="w-full border-none bg-transparent text-[14px] text-ink placeholder:text-slate500 
+             outline-none focus:outline-none focus-visible:outline-none focus:ring-0
+             dark:text-white dark:placeholder:text-slate500_80"
+  placeholder={props.placeholder || 'Task name'}
+  type="text"
+  value={name}
+  onChange={(e) => setName(e.target.value)}
+  onKeyDown={handleKeyDown}
+/>
+
           )}
         </div>
 
-        {/* Helper text under input */}
         <p className="mt-1 px-1 text-[12px] text-slate500 dark:text-slate500_80">
           Press Enter to create the task.
         </p>

@@ -1,4 +1,4 @@
-import { useContext } from "react";
+import { useContext, useState } from "react"; // 👈 تأكدي useState موجودة
 import { Draggable, Droppable } from "react-beautiful-dnd";
 import { KanbanList } from "./KanbanTypes";
 import { AddCardForm } from "./AddCardForm";
@@ -19,13 +19,15 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
 
   const cardCount = props.list.kanbanCards?.length ?? 0;
 
+  // 👇 هل نظهر input إضافة الكارد؟
+  const [showAddCard, setShowAddCard] = useState(false);
+
   return (
     <Draggable draggableId={props.list.id} index={props.listIndex}>
       {(provided) => (
         <div
           className={classNames(
             props.listIndex > 0 ? "ml-0" : "",
-            // column container like Figma
             "flex w-[340px] flex-col rounded-[24px] border border-[#E5EAF1] bg-[#F4F6F8] shadow-soft dark:border-slate500_20 dark:bg-[#1B232D]"
           )}
           {...provided.draggableProps}
@@ -38,38 +40,40 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
               className="flex items-center justify-between rounded-t-[24px] px-5 pt-4 pb-3 focus:outline-none dark:text-white"
             >
               <div className="flex items-center gap-3">
-                {/* count bubble */}
                 <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#E5EAF1] text-[13px] font-semibold text-slate600 dark:bg-[#232C36] dark:text-slate500_80">
                   {cardCount}
                 </span>
 
-                {/* list title */}
                 <div className="text-[16px] font-semibold text-ink dark:text-white">
                   {props.list.title}
                 </div>
               </div>
 
-              {/* right icons: + and list menu */}
               <div className="flex items-center gap-2">
-                {/* plus = focus the Task name input at the top */}
+                {/* زر + يفتح input إضافة الكارد */}
                 <button
                   type="button"
                   className="flex h-8 w-8 items-center justify-center rounded-full bg-black text-white shadow-soft dark:bg-white dark:text-black"
                   onClick={() => {
-                    const el = document.getElementById(
-                      `add-card-${props.list.kanbanListId}`
-                    );
-                    if (el) {
-                      el.scrollIntoView({ behavior: "smooth", block: "start" });
-                      const input = el.querySelector("input");
-                      if (input) (input as HTMLInputElement).focus();
-                    }
+                    setShowAddCard(true);
+                    setTimeout(() => {
+                      const el = document.getElementById(
+                        `add-card-${props.list.kanbanListId}`
+                      );
+                      if (el) {
+                        el.scrollIntoView({
+                          behavior: "smooth",
+                          block: "start",
+                        });
+                        const input = el.querySelector("input");
+                        if (input) (input as HTMLInputElement).focus();
+                      }
+                    }, 0);
                   }}
                 >
                   <Plus className="h-4 w-4" />
                 </button>
 
-                {/* menu (three dots) */}
                 <ListMenu
                   listid={props.list.kanbanListId}
                   listIndex={props.listIndex}
@@ -79,7 +83,7 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
               </div>
             </div>
 
-            {/* BODY: Task name block + cards */}
+            {/* BODY */}
             <Droppable droppableId={props.list.id}>
               {(provided) => (
                 <div
@@ -88,28 +92,31 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
                   ref={provided.innerRef}
                 >
                   <div className="space-y-3 px-4 pb-4 pt-3">
-                    {/* 🔼 Task name block at the TOP (Figma) */}
+                    {/* input Add card يظهر فقط عند showAddCard */}
                     <div id={`add-card-${props.list.kanbanListId}`}>
-                      <AddCardForm
-                        text="Add card"
-                        placeholder="Task name"
-                        onSubmit={(
-                          title,
-                          kanbanCardId,
-                          seqNo,
-                          fkKanbanListId
-                        ) =>
-                          handleCreateCard(
-                            props.listIndex,
+                      {showAddCard && (
+                        <AddCardForm
+                          text="Add card"
+                          placeholder="Task name"
+                          onSubmit={(
                             title,
                             kanbanCardId,
                             seqNo,
                             fkKanbanListId
-                          )
-                        }
-                        userInfo={userInfo}
-                        fkKanbanListId={props.list.kanbanListId}
-                      />
+                          ) =>
+                            handleCreateCard(
+                              props.listIndex,
+                              title,
+                              kanbanCardId,
+                              seqNo,
+                              fkKanbanListId
+                            )
+                          }
+                          userInfo={userInfo}
+                          fkKanbanListId={props.list.kanbanListId}
+                          onCreated={() => setShowAddCard(false)} // 👈 أخفيه بعد الإنشاء
+                        />
+                      )}
                     </div>
 
                     {/* Cards */}

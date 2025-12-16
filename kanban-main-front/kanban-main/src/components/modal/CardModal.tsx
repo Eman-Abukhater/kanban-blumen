@@ -23,6 +23,8 @@ import {
 } from "@/services/kanbanApi";
 import { toast } from "react-toastify";
 import { GetCardImagePath } from "@/utility/baseUrl";
+import dayjs from "dayjs";
+import { DueDateModal } from "../kanban/DueDateModal";
 
 export interface CardModalProps {
   listIndex: number;
@@ -46,6 +48,19 @@ export function CardModal(props: CardModalProps) {
   const [activeTab, setActiveTab] = useState<"overview" | "subtasks">(
     "overview"
   );
+  const [isDueDateModalOpen, setIsDueDateModalOpen] = useState(false);
+
+  // simple local priority (UI only; can be sent to API if needed)
+  const [priority, setPriority] = useState<"low" | "medium" | "high">(
+    ((props.card as any).priority as "low" | "medium" | "high") || "low"
+  );
+
+
+const assigneeAvatars = [
+  "/icons/Avatar_1.png",
+  "/icons/Avatar_2.png",
+  "/icons/Avatar_3.png",
+];
 
   const isCloudinaryUrl = (url: string) =>
     url && (url.startsWith("http://") || url.startsWith("https://"));
@@ -139,6 +154,7 @@ export function CardModal(props: CardModalProps) {
             date,
             startDate: date?.startDate as Date,
             endDate: date?.endDate as Date,
+            // priority is UI-only unless backend supports it
           });
           handleCloseModal();
           setSubmit(false);
@@ -193,6 +209,7 @@ export function CardModal(props: CardModalProps) {
       endDate: date?.endDate ? date.endDate.toString() : undefined,
       fkboardid: userInfo.fkboardid,
       fkpoid: userInfo.fkpoid,
+      priority, // safe to send even if backend ignores it
     };
 
     mutation.mutate(cardData);
@@ -450,9 +467,17 @@ export function CardModal(props: CardModalProps) {
   const handleToggleTaskCompleted = () => {
     setTaskCompleted((prev) => !prev);
   };
+   const formatDateRange = (d: DateValueType | null) => {
+    if (!d?.startDate || !d?.endDate) return "DD MMM YYYY ~ DD MMM YYYY";
+
+    const start = dayjs(d.startDate).format("DD MMM YYYY");
+    const end = dayjs(d.endDate).format("DD MMM YYYY");
+    return `${start} ~ ${end}`;
+  };
 
   // ================= RENDER =================
   return (
+    <> 
     <Transition appear show={modalState.isOpen} as={Fragment}>
       <Dialog as="div" className="relative z-[60]" onClose={handleCloseModal}>
         {/* Overlay */}
@@ -480,7 +505,7 @@ export function CardModal(props: CardModalProps) {
                 leaveFrom="translate-x-0"
                 leaveTo="translate-x-full"
               >
-                <Dialog.Panel className="pointer-events-auto w-screen max-w-[640px]">
+                <Dialog.Panel className="pointer-events-auto w-screen max-w-[450px]">
                   <div className="flex h-full flex-col bg-white shadow-xl dark:bg-[#1B232D]">
                     {/* ================= TOP BAR ================= */}
                     <div className="flex items-center justify-between border-b border-slate500_12 px-6 py-4 dark:border-slate500_20">
@@ -547,10 +572,9 @@ export function CardModal(props: CardModalProps) {
 
                     {/* ================= CONTENT ================= */}
                     <div className="relative flex-1 overflow-y-auto px-6 py-6">
-                      {/* subtle tinted background (Figma-like) */}
                       <div className="pointer-events-none absolute inset-0 " />
                       <div className="relative z-10">
-                        {/* Title (thick border like Figma) */}
+                        {/* Title input */}
                         <input
                           className="w-full rounded-[12px] border-2 border-ink bg-white/60 px-4 py-3 text-[18px] font-semibold text-ink outline-none dark:border-white dark:bg-white/5 dark:text-white"
                           type="text"
@@ -561,24 +585,62 @@ export function CardModal(props: CardModalProps) {
 
                         {/* ============= OVERVIEW TAB ============= */}
                         {activeTab === "overview" && (
-                          <div className="mt-6 grid grid-cols-[120px,1fr] items-start gap-x-6 gap-y-6">
-                            {/* Tag row */}
+                          <div className="mt-6 grid grid-cols-[120px,1fr] items-start gap-x-8 gap-y-6">
+                            {/* Reporter */}
                             <div className="pt-2 text-[14px] font-medium text-slate500 dark:text-slate500_80">
-                              Tag
+                              Reporter
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate500_12 text-[14px] font-semibold text-slate600 dark:bg-slate500_20 dark:text-white">
+                                {(userInfo?.username?.[0] || "R").toUpperCase()}
+                              </div>
+                              <span className="text-[14px] font-medium text-ink dark:text-white">
+                                {userInfo?.username || "Reporter name"}
+                              </span>
                             </div>
 
+                            {/* Assignee */}
+                            <div className="pt-2 text-[14px] font-medium text-slate500 dark:text-slate500_80">
+                              Assignee
+                            </div>
+                      <div className="flex flex-wrap items-center gap-2">
+  {assigneeAvatars.map((src, index) => (
+    <div
+      key={index}
+      className="h-9 w-9 overflow-hidden rounded-full ring-2 ring-white dark:ring-[#141A21]"
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt={`Assignee ${index + 1}`}
+        className="h-full w-full object-cover"
+      />
+    </div>
+  ))}
+
+  {/* plus button stays as it is */}
+  <button
+    type="button"
+    className="flex h-9 w-9 items-center justify-center rounded-full border border-dashed border-slate500_20 text-slate500 hover:bg-slate500_08 dark:border-slate500_48 dark:text-slate500_80"
+  >
+    <PlusIcon className="h-4 w-4" />
+  </button>
+</div>
+
+
+                            {/* Labels (Tags) */}
+                            <div className="pt-2 text-[14px] font-medium text-slate500 dark:text-slate500_80">
+                              Labels
+                            </div>
                             <div className="flex flex-wrap items-center gap-2">
                               {kanbanTags.map((tag, index) => (
                                 <div
                                   key={tag.kanbanTagId ?? index}
-                                  className={classNames(
-                                    "flex items-center gap-2 rounded-full px-3 py-1 text-[13px] font-semibold",
-                                    // prefer Figma look, but keep your tag.color if provided
-                                    tag.color || "bg-[#D0F2FF] text-[#006C9C]",
-                                    isDeletingTag === tag.kanbanTagId
-                                      ? "opacity-50"
-                                      : ""
-                                  )}
+                                  className="flex items-center gap-2 rounded-full px-3 py-1 text-[13px] font-semibold"
+                                  style={{
+                                    backgroundColor:
+                                      tag.color || "#D0F2FF",
+                                  }}
                                 >
                                   <span>{tag.title}</span>
 
@@ -586,14 +648,17 @@ export function CardModal(props: CardModalProps) {
                                     <button
                                       type="button"
                                       onClick={() =>
-                                        handleDeleteTag(index, tag.kanbanTagId)
+                                        handleDeleteTag(
+                                          index,
+                                          tag.kanbanTagId
+                                        )
                                       }
                                       disabled={
                                         isDeletingTag === tag.kanbanTagId
                                       }
-                                      className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/60 hover:bg-white"
+                                      className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/70 hover:bg-white"
                                     >
-                                      <XMarkIcon className="h-4 w-4" />
+                                      <XMarkIcon className="h-4 w-4 text-slate500" />
                                     </button>
                                   )}
                                 </div>
@@ -608,9 +673,10 @@ export function CardModal(props: CardModalProps) {
                                   type="button"
                                   onClick={() => setOpenTagModal(true)}
                                   disabled={isCreatingTag}
-                                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-dashed border-slate500_20 text-slate500 hover:bg-slate500_08 dark:text-slate500_80"
+                                  className="inline-flex h-8 items-center justify-center rounded-full border border-dashed border-slate500_20 px-3 text-[13px] font-medium text-slate500 hover:bg-slate500_08 dark:border-slate500_48 dark:text-slate500_80"
                                 >
-                                  <PlusIcon className="h-5 w-5" />
+                                  <PlusIcon className="mr-1 h-4 w-4" />
+                                  Add label
                                 </button>
                               )}
 
@@ -621,40 +687,82 @@ export function CardModal(props: CardModalProps) {
                               />
                             </div>
 
-                            {/* Due date row */}
+{/* Due date */}
+<div className="pt-2 text-[14px] font-medium text-slate500 dark:text-slate500_80">
+  Due date
+</div>
+<div className="w-full">
+  <button
+    type="button"
+    onClick={() => setIsDueDateModalOpen(true)}
+    className="flex w-full items-center justify-between rounded-[12px] border border-slate500_20 bg-white/60 px-4 py-3 text-left text-[14px] text-ink transition hover:bg-slate500_08 dark:border-slate500_20 dark:bg-white/5 dark:text-white"
+  >
+    <span>{formatDateRange(date)}</span>
+  </button>
+</div>
+
+
+
+
+                            {/* Priority */}
                             <div className="pt-2 text-[14px] font-medium text-slate500 dark:text-slate500_80">
-                              Due date
+                              Priority
+                            </div>
+                            <div className="flex flex-wrap items-center gap-3">
+                              {(["low", "medium", "high"] as const).map(
+                                (level) => {
+                                  const isActive = priority === level;
+
+                                  const activeStyles =
+                                    level === "low"
+                                      ? "border-[#00A76F] bg-[#E5F8F0] text-[#007867]"
+                                      : level === "medium"
+                                      ? "border-[#FFAB00] bg-[#FFF3CD] text-[#B76E00]"
+                                      : "border-[#FF5630] bg-[#FFE2DD] text-[#B71D18]";
+
+                                  return (
+                                    <button
+                                      key={level}
+                                      type="button"
+                                      onClick={() => setPriority(level)}
+                                      className={`inline-flex items-center gap-2 rounded-[12px] border px-4 py-2 text-[13px] font-semibold capitalize transition ${
+                                        isActive
+                                          ? activeStyles
+                                          : "border-slate500_12 bg-white text-slate600 hover:bg-slate500_08 dark:border-slate500_20 dark:bg-transparent dark:text-slate500_80"
+                                      }`}
+                                    >
+                                      <span>
+                                        {level === "low"
+                                          ? "Low"
+                                          : level === "medium"
+                                          ? "Medium"
+                                          : "High"}
+                                      </span>
+                                    </button>
+                                  );
+                                }
+                              )}
                             </div>
 
-                            <div className="w-full">
-                              <Datepicker
-                                value={date}
-                                onChange={setDate}
-                                inputClassName="w-full rounded-[12px] border border-slate500_20 bg-white/60 px-4 py-3 text-[14px] text-ink outline-none dark:border-slate500_20 dark:bg-white/5 dark:text-white"
-                              />
-                            </div>
-
-                            {/* Description row */}
+                            {/* Description */}
                             <div className="pt-2 text-[14px] font-medium text-slate500 dark:text-slate500_80">
                               Description
                             </div>
-
                             <textarea
                               ref={descTextAreaRef}
-                              className="min-h-[120px] w-full resize-none rounded-[12px] border border-slate500_20 bg-white/60 px-4 py-3 text-[16px] text-ink outline-none dark:border-slate500_20 dark:bg-white/5 dark:text-white"
-                              placeholder="Description..."
+                              className="min-h-[120px] w-full resize-none rounded-[12px] border border-slate500_20 bg-white px-4 py-3 text-[15px] text-ink outline-none dark:border-slate500_20 dark:bg-white/5 dark:text-white"
+                              placeholder="Add a short description..."
                               value={desc}
                               onChange={(e) => setDesc(e.target.value)}
                               minLength={3}
                             />
 
-                            {/* Image row */}
+                            {/* Attachments / Image */}
                             <div className="pt-2 text-[14px] font-medium text-slate500 dark:text-slate500_80">
-                              Image
+                              Attachments
                             </div>
-
                             <div className="flex flex-col gap-3">
-                              <label className="flex h-20 w-20 cursor-pointer items-center justify-center rounded-[14px] border border-dashed border-slate500_20 bg-white/40 hover:bg-white/60 dark:bg-white/5">
+                              <label className="flex h-[96px] w-[96px] cursor-pointer items-center justify-center rounded-[16px] border border-dashed border-slate500_20 bg-white hover:bg-slate500_08/60 dark:border-slate500_48 dark:bg-white/5">
                                 <input
                                   className="hidden"
                                   type="file"
@@ -950,7 +1058,7 @@ export function CardModal(props: CardModalProps) {
                       </div>
                     </div>
 
-                    {/* ================= STICKY BOTTOM ACTIONS (Figma) ================= */}
+                    {/* ================= STICKY BOTTOM ACTIONS ================= */}
                     <div className="sticky bottom-0 border-t border-slate500_12 bg-white/70 px-6 py-4 backdrop-blur dark:border-slate500_20 dark:bg-[#1B232D]/70">
                       <div className="flex items-center justify-end gap-3">
                         <button
@@ -979,5 +1087,13 @@ export function CardModal(props: CardModalProps) {
         </div>
       </Dialog>
     </Transition>
+  <DueDateModal
+      open={isDueDateModalOpen}
+      value={date}
+      onChange={(newValue) => setDate(newValue)}
+      onClose={() => setIsDueDateModalOpen(false)}
+      onApply={() => setIsDueDateModalOpen(false)}
+    />
+    </>
   );
 }
