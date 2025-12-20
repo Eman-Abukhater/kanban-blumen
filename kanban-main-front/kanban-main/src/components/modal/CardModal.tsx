@@ -6,7 +6,6 @@ import { ChevronUpIcon } from "@heroicons/react/20/solid";
 import KanbanContext from "../../context/kanbanContext";
 import useAutosizeTextArea from "../../hooks/useAutosizeTextarea";
 import { KanbanCard } from "../kanban/KanbanTypes";
-import Datepicker from "react-tailwindcss-datepicker";
 import { DateValueType } from "react-tailwindcss-datepicker/dist/types";
 import { CreateTagModal, tagColors } from "./CreateTagModal";
 import { AddTaskForm } from "../kanban/AddTaskForm";
@@ -48,19 +47,19 @@ export function CardModal(props: CardModalProps) {
   const [activeTab, setActiveTab] = useState<"overview" | "subtasks">(
     "overview"
   );
+
   const [isDueDateModalOpen, setIsDueDateModalOpen] = useState(false);
 
-  // simple local priority (UI only; can be sent to API if needed)
+  // local priority (still saved; UI removed from overview to match your screenshots)
   const [priority, setPriority] = useState<"low" | "medium" | "high">(
     ((props.card as any).priority as "low" | "medium" | "high") || "low"
   );
 
-
-const assigneeAvatars = [
-  "/icons/Avatar_1.png",
-  "/icons/Avatar_2.png",
-  "/icons/Avatar_3.png",
-];
+  const assigneeAvatars = [
+    "/icons/Avatar_1.png",
+    "/icons/Avatar_2.png",
+    "/icons/Avatar_3.png",
+  ];
 
   const isCloudinaryUrl = (url: string) =>
     url && (url.startsWith("http://") || url.startsWith("https://"));
@@ -104,12 +103,32 @@ const assigneeAvatars = [
   // keep autosize for description
   useAutosizeTextArea(descTextAreaRef, desc);
 
-  const {
-    handleUpdateCard,
-    handleCloseModal,
-    modalState,
-    userInfo,
-  } = useContext(KanbanContext);
+  const { handleUpdateCard, handleCloseModal, modalState, userInfo } =
+    useContext(KanbanContext);
+
+  // ================= DATE LABEL (matches screenshot style) =================
+  const formatDateRange = (d: DateValueType | null) => {
+    if (!d?.startDate || !d?.endDate) return "DD - DD MMM";
+
+    const s = dayjs(d.startDate);
+    const e = dayjs(d.endDate);
+
+    const sameYear = s.year() === e.year();
+    const sameMonth = s.month() === e.month();
+
+    if (sameYear && sameMonth) {
+      // 22 - 23 Jun
+      return `${s.format("DD")} - ${e.format("DD")} ${s.format("MMM")}`;
+    }
+
+    if (sameYear && !sameMonth) {
+      // 28 Jun - 02 Jul
+      return `${s.format("DD MMM")} - ${e.format("DD MMM")}`;
+    }
+
+    // 22 Jun 2025 - 23 Jun 2026
+    return `${s.format("DD MMM YYYY")} - ${e.format("DD MMM YYYY")}`;
+  };
 
   // ================= IMAGE UPLOAD =================
   const handleImageUpload = async (f: File) => {
@@ -154,7 +173,6 @@ const assigneeAvatars = [
             date,
             startDate: date?.startDate as Date,
             endDate: date?.endDate as Date,
-            // priority is UI-only unless backend supports it
           });
           handleCloseModal();
           setSubmit(false);
@@ -209,7 +227,7 @@ const assigneeAvatars = [
       endDate: date?.endDate ? date.endDate.toString() : undefined,
       fkboardid: userInfo.fkboardid,
       fkpoid: userInfo.fkpoid,
-      priority, // safe to send even if backend ignores it
+      priority,
     };
 
     mutation.mutate(cardData);
@@ -467,633 +485,624 @@ const assigneeAvatars = [
   const handleToggleTaskCompleted = () => {
     setTaskCompleted((prev) => !prev);
   };
-   const formatDateRange = (d: DateValueType | null) => {
-    if (!d?.startDate || !d?.endDate) return "DD MMM YYYY ~ DD MMM YYYY";
-
-    const start = dayjs(d.startDate).format("DD MMM YYYY");
-    const end = dayjs(d.endDate).format("DD MMM YYYY");
-    return `${start} ~ ${end}`;
-  };
 
   // ================= RENDER =================
   return (
-    <> 
-    <Transition appear show={modalState.isOpen} as={Fragment}>
-      <Dialog as="div" className="relative z-[60]" onClose={handleCloseModal}>
-        {/* Overlay */}
-        <Transition.Child
-          as={Fragment}
-          enter="ease-in-out duration-250"
-          enterFrom="opacity-0"
-          enterTo="opacity-100"
-          leave="ease-in-out duration-250"
-          leaveFrom="opacity-100"
-          leaveTo="opacity-0"
-        >
-          <div className="fixed inset-0 bg-black/40 transition-opacity" />
-        </Transition.Child>
+    <>
+      <Transition appear show={modalState.isOpen} as={Fragment}>
+        <Dialog as="div" className="relative z-[60]" onClose={handleCloseModal}>
+          {/* Overlay */}
+          <Transition.Child
+            as={Fragment}
+            enter="ease-in-out duration-250"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in-out duration-250"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            <div className="fixed inset-0 bg-black/40 transition-opacity" />
+          </Transition.Child>
 
-        <div className="fixed inset-0 overflow-hidden">
-          <div className="absolute inset-0 overflow-hidden">
-            <div className="pointer-events-none fixed inset-y-0 right-0 flex max-w-full">
-              <Transition.Child
-                as={Fragment}
-                enter="transform transition ease-in-out duration-250 sm:duration-700"
-                enterFrom="translate-x-full"
-                enterTo="translate-x-0"
-                leave="transform transition ease-in-out duration-250 sm:duration-700"
-                leaveFrom="translate-x-0"
-                leaveTo="translate-x-full"
-              >
-                <Dialog.Panel className="pointer-events-auto w-screen max-w-[450px]">
-                  <div className="flex h-full flex-col bg-white shadow-xl dark:bg-[#1B232D]">
-                    {/* ================= TOP BAR ================= */}
-                    <div className="flex items-center justify-between border-b border-slate500_12 px-6 py-4 dark:border-slate500_20">
-                      {/* Status pill */}
-                      <button
-                        type="button"
-                        onClick={() => setCompleted((prev) => !prev)}
-                        className="inline-flex items-center gap-2 rounded-full border border-slate500_20 bg-[#F4F6F8] px-4 py-2 text-[14px] font-semibold text-ink dark:bg-[#232C36] dark:text-white"
-                      >
-                        {completed ? "Done" : "In progress"}
-                        <ChevronUpIcon className="h-4 w-4 rotate-180 opacity-70" />
-                      </button>
-
-                      {/* Icons */}
-                      <div className="flex items-center gap-2">
+          <div className="fixed inset-0 overflow-hidden">
+            <div className="absolute inset-0 overflow-hidden">
+              <div className="pointer-events-none fixed inset-y-0 right-0 flex max-w-full">
+                <Transition.Child
+                  as={Fragment}
+                  enter="transform transition ease-in-out duration-250 sm:duration-700"
+                  enterFrom="translate-x-full"
+                  enterTo="translate-x-0"
+                  leave="transform transition ease-in-out duration-250 sm:duration-700"
+                  leaveFrom="translate-x-0"
+                  leaveTo="translate-x-full"
+                >
+                  <Dialog.Panel className="pointer-events-auto w-screen max-w-[450px]">
+                    <div className="flex h-full flex-col bg-white shadow-xl dark:bg-[#1B232D]">
+                      {/* ================= TOP BAR ================= */}
+                      <div className="flex items-center justify-between border-b border-slate500_12 px-6 py-4 dark:border-slate500_20">
+                        {/* Status pill */}
                         <button
-                          onClick={deleteCard}
                           type="button"
-                          className="inline-flex items-center justify-center rounded-full p-2 hover:bg-slate500_12 dark:hover:bg-slate500_12"
+                          onClick={() => setCompleted((prev) => !prev)}
+                          className="inline-flex items-center gap-2 rounded-full border border-slate500_20 bg-[#F4F6F8] px-4 py-2 text-[14px] font-semibold text-ink dark:bg-[#232C36] dark:text-white"
                         >
-                          <TrashIcon className="h-5 w-5 text-slate500 dark:text-slate500_80" />
+                          {completed ? "Done" : "In progress"}
+                          <ChevronUpIcon className="h-4 w-4 rotate-180 opacity-70" />
                         </button>
 
-                        <button
-                          onClick={handleCloseModal}
-                          type="button"
-                          className="inline-flex items-center justify-center rounded-full p-2 hover:bg-slate500_12 dark:hover:bg-slate500_12"
-                        >
-                          <XMarkIcon className="h-5 w-5 text-slate500 dark:text-slate500_80" />
-                        </button>
+                        {/* Icons */}
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={deleteCard}
+                            type="button"
+                            className="inline-flex items-center justify-center rounded-full p-2 hover:bg-slate500_12 dark:hover:bg-slate500_12"
+                          >
+                            <TrashIcon className="h-5 w-5 text-slate500 dark:text-slate500_80" />
+                          </button>
+
+                          <button
+                            onClick={handleCloseModal}
+                            type="button"
+                            className="inline-flex items-center justify-center rounded-full p-2 hover:bg-slate500_12 dark:hover:bg-slate500_12"
+                          >
+                            <XMarkIcon className="h-5 w-5 text-slate500 dark:text-slate500_80" />
+                          </button>
+                        </div>
                       </div>
-                    </div>
 
-                    {/* ================= TABS ================= */}
-                    <div className="border-b border-slate500_12 px-6 py-4 dark:border-slate500_20">
-                      <div className="grid w-full grid-cols-2 rounded-[14px] bg-[#F4F6F8] p-1 dark:bg-[#232C36]">
-                        <button
-                          type="button"
-                          onClick={() => setActiveTab("overview")}
-                          className={classNames(
-                            "w-full rounded-[12px] px-4 py-3 text-[14px] font-semibold transition",
-                            activeTab === "overview"
-                              ? "bg-white text-ink shadow-sm dark:bg-[#1B232D] dark:text-white"
-                              : "text-slate500 dark:text-slate500_80"
-                          )}
-                        >
-                          Overview
-                        </button>
+                      {/* ================= TABS ================= */}
+                      <div className="border-b border-slate500_12 px-6 py-4 dark:border-slate500_20">
+                        <div className="grid w-full grid-cols-2 rounded-[14px] bg-[#F4F6F8] p-1 dark:bg-[#232C36]">
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab("overview")}
+                            className={classNames(
+                              "w-full rounded-[12px] px-4 py-3 text-[14px] font-semibold transition",
+                              activeTab === "overview"
+                                ? "bg-white text-ink shadow-sm dark:bg-[#1B232D] dark:text-white"
+                                : "text-slate500 dark:text-slate500_80"
+                            )}
+                          >
+                            Overview
+                          </button>
 
-                        <button
-                          type="button"
-                          onClick={() => setActiveTab("subtasks")}
-                          className={classNames(
-                            "w-full rounded-[12px] px-4 py-3 text-[14px] font-semibold transition",
-                            activeTab === "subtasks"
-                              ? "bg-white text-ink shadow-sm dark:bg-[#1B232D] dark:text-white"
-                              : "text-slate500 dark:text-slate500_80"
-                          )}
-                        >
-                          Subtasks
-                        </button>
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab("subtasks")}
+                            className={classNames(
+                              "w-full rounded-[12px] px-4 py-3 text-[14px] font-semibold transition",
+                              activeTab === "subtasks"
+                                ? "bg-white text-ink shadow-sm dark:bg-[#1B232D] dark:text-white"
+                                : "text-slate500 dark:text-slate500_80"
+                            )}
+                          >
+                            Subtasks
+                          </button>
+                        </div>
                       </div>
-                    </div>
 
-                    {/* ================= CONTENT ================= */}
-                    <div className="relative flex-1 overflow-y-auto px-6 py-6">
-                      <div className="pointer-events-none absolute inset-0 " />
-                      <div className="relative z-10">
-                        {/* Title input */}
-                        <input
-                          className="w-full rounded-[12px] border-2 border-ink bg-white/60 px-4 py-3 text-[18px] font-semibold text-ink outline-none dark:border-white dark:bg-white/5 dark:text-white"
-                          type="text"
-                          value={title}
-                          onChange={(e) => setTitle(e.target.value)}
-                          minLength={3}
-                        />
+                      {/* ================= CONTENT ================= */}
+                      <div className="relative flex-1 overflow-y-auto px-6 py-6 ">
+                        <div className="pointer-events-none absolute inset-0 " />
+                        <div className="relative z-10">
+                          {/* Title input */}
+                          <input
+                            className="w-full rounded-[12px] border-2 border-ink bg-white/60 px-4 py-3 text-[18px] font-semibold text-ink outline-none dark:border-white dark:bg-white/5 dark:text-white"
+                            type="text"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            minLength={3}
+                          />
 
-                        {/* ============= OVERVIEW TAB ============= */}
-                        {activeTab === "overview" && (
-                          <div className="mt-6 grid grid-cols-[120px,1fr] items-start gap-x-8 gap-y-6">
-                            {/* Reporter */}
-                            <div className="pt-2 text-[14px] font-medium text-slate500 dark:text-slate500_80">
-                              Reporter
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate500_12 text-[14px] font-semibold text-slate600 dark:bg-slate500_20 dark:text-white">
-                                {(userInfo?.username?.[0] || "R").toUpperCase()}
+                          {/* ============= OVERVIEW TAB (MATCH SCREEN 1) ============= */}
+                          {activeTab === "overview" && (
+                            <div className="mt-6 grid grid-cols-[110px,1fr] items-start gap-x-8 gap-y-6">
+                              {/* Tag */}
+                              <div className="pt-2 text-[13px] font-medium text-slate600 dark:text-slate500_80">
+                                Tag
                               </div>
-                              <span className="text-[14px] font-medium text-ink dark:text-white">
-                                {userInfo?.username || "Reporter name"}
-                              </span>
-                            </div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                {kanbanTags.map((tag, index) => (
+                                  <div
+                                    key={tag.kanbanTagId ?? index}
+                                    className="flex items-center gap-2 rounded-full bg-[#D0F2FF] px-3 py-1 text-[13px] font-semibold text-[#006C9C]"
+                                  >
+                                    <span>{tag.title}</span>
 
-                            {/* Assignee */}
-                            <div className="pt-2 text-[14px] font-medium text-slate500 dark:text-slate500_80">
-                              Assignee
-                            </div>
-                      <div className="flex flex-wrap items-center gap-2">
-  {assigneeAvatars.map((src, index) => (
-    <div
-      key={index}
-      className="h-9 w-9 overflow-hidden rounded-full ring-2 ring-white dark:ring-[#141A21]"
-    >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={src}
-        alt={`Assignee ${index + 1}`}
-        className="h-full w-full object-cover"
-      />
-    </div>
-  ))}
+                                    {tag.addedBy === userInfo.username && (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          handleDeleteTag(index, tag.kanbanTagId)
+                                        }
+                                        disabled={isDeletingTag === tag.kanbanTagId}
+                                        className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/70 hover:bg-white"
+                                      >
+                                        <XMarkIcon className="h-4 w-4 text-slate500" />
+                                      </button>
+                                    )}
+                                  </div>
+                                ))}
 
-  {/* plus button stays as it is */}
-  <button
-    type="button"
-    className="flex h-9 w-9 items-center justify-center rounded-full border border-dashed border-slate500_20 text-slate500 hover:bg-slate500_08 dark:border-slate500_48 dark:text-slate500_80"
-  >
-    <PlusIcon className="h-4 w-4" />
-  </button>
-</div>
+                                {isCreatingTag && (
+                                  <div className="h-7 w-20 animate-pulse rounded-full bg-slate500_12 dark:bg-slate500_20" />
+                                )}
 
+                                {kanbanTags.length < 6 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setOpenTagModal(true)}
+                                    disabled={isCreatingTag}
+                                    className="inline-flex h-8 items-center justify-center rounded-full border border-dashed border-slate500_20 px-3 text-[13px] font-medium text-slate500 hover:bg-slate500_08 dark:border-slate500_48 dark:text-slate500_80"
+                                  >
+                                    <PlusIcon className="mr-1 h-4 w-4" />
+                                    Add tag
+                                  </button>
+                                )}
 
-                            {/* Labels (Tags) */}
-                            <div className="pt-2 text-[14px] font-medium text-slate500 dark:text-slate500_80">
-                              Labels
-                            </div>
-                            <div className="flex flex-wrap items-center gap-2">
-                              {kanbanTags.map((tag, index) => (
-                                <div
-                                  key={tag.kanbanTagId ?? index}
-                                  className="flex items-center gap-2 rounded-full px-3 py-1 text-[13px] font-semibold"
-                                  style={{
-                                    backgroundColor:
-                                      tag.color || "#D0F2FF",
-                                  }}
-                                >
-                                  <span>{tag.title}</span>
+                                <CreateTagModal
+                                  show={openTagModal}
+                                  handleClose={setOpenTagModal}
+                                  handleSubmit={handleCreateTag}
+                                />
+                              </div>
 
-                                  {tag.addedBy === userInfo.username && (
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        handleDeleteTag(
-                                          index,
-                                          tag.kanbanTagId
-                                        )
-                                      }
-                                      disabled={
-                                        isDeletingTag === tag.kanbanTagId
-                                      }
-                                      className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/70 hover:bg-white"
-                                    >
-                                      <XMarkIcon className="h-4 w-4 text-slate500" />
-                                    </button>
-                                  )}
-                                </div>
-                              ))}
-
-                              {isCreatingTag && (
-                                <div className="h-7 w-20 animate-pulse rounded-full bg-slate500_12 dark:bg-slate500_20" />
-                              )}
-
-                              {kanbanTags.length < 6 && (
+                              {/* Due date */}
+                              <div className="pt-2 text-[13px] font-medium text-slate600 dark:text-slate500_80">
+                                Due date
+                              </div>
+                              <div className="flex items-center">
                                 <button
                                   type="button"
-                                  onClick={() => setOpenTagModal(true)}
-                                  disabled={isCreatingTag}
-                                  className="inline-flex h-8 items-center justify-center rounded-full border border-dashed border-slate500_20 px-3 text-[13px] font-medium text-slate500 hover:bg-slate500_08 dark:border-slate500_48 dark:text-slate500_80"
+                                  onClick={() => setIsDueDateModalOpen(true)}
+                                  className="text-[15px] font-semibold text-ink hover:opacity-80 dark:text-white"
                                 >
-                                  <PlusIcon className="mr-1 h-4 w-4" />
-                                  Add label
+                                  {date?.startDate && date?.endDate
+                                    ? formatDateRange(date)
+                                    : "—"}
                                 </button>
-                              )}
+                              </div>
 
-                              <CreateTagModal
-                                show={openTagModal}
-                                handleClose={setOpenTagModal}
-                                handleSubmit={handleCreateTag}
+                              {/* Description */}
+                              <div className="pt-2 text-[13px] font-medium text-slate600 dark:text-slate500_80">
+                                Description
+                              </div>
+                              <textarea
+                                ref={descTextAreaRef}
+                                className="min-h-[96px] w-full resize-none rounded-[12px] border border-slate500_12 bg-white/60 px-4 py-3 text-[15px] text-ink outline-none dark:border-slate500_20 dark:bg-white/5 dark:text-white"
+                                placeholder="Add a short description..."
+                                value={desc}
+                                onChange={(e) => setDesc(e.target.value)}
+                                minLength={3}
                               />
-                            </div>
 
-{/* Due date */}
-<div className="pt-2 text-[14px] font-medium text-slate500 dark:text-slate500_80">
-  Due date
-</div>
-<div className="w-full">
-  <button
-    type="button"
-    onClick={() => setIsDueDateModalOpen(true)}
-    className="flex w-full items-center justify-between rounded-[12px] border border-slate500_20 bg-white/60 px-4 py-3 text-left text-[14px] text-ink transition hover:bg-slate500_08 dark:border-slate500_20 dark:bg-white/5 dark:text-white"
-  >
-    <span>{formatDateRange(date)}</span>
-  </button>
-</div>
+                              {/* Image */}
+                              <div className="pt-2 text-[13px] font-medium text-slate600 dark:text-slate500_80">
+                                Image
+                              </div>
+                              <div className="flex items-start gap-4">
+                                <label className="flex h-[64px] w-[64px] cursor-pointer items-center justify-center rounded-[16px] border border-dashed border-slate500_20 bg-white hover:bg-slate500_08/60 dark:border-slate500_48 dark:bg-white/5">
+                                  <input
+                                    className="hidden"
+                                    type="file"
+                                    accept="image/*"
+                                    disabled={uploadingImage}
+                                    onChange={(e) => {
+                                      const selectedFile = e.target.files?.[0];
 
+                                      if (selectedFile) {
+                                        if (selectedFile.size > maxFileSize) {
+                                          setFileSizeExceeded(true);
+                                          toast.error("File size must be less than 5MB", {
+                                            position: toast.POSITION.TOP_CENTER,
+                                          });
+                                          return;
+                                        }
 
+                                        setFileSizeExceeded(false);
+                                        setFile(selectedFile);
 
-
-                            {/* Priority */}
-                            <div className="pt-2 text-[14px] font-medium text-slate500 dark:text-slate500_80">
-                              Priority
-                            </div>
-                            <div className="flex flex-wrap items-center gap-3">
-                              {(["low", "medium", "high"] as const).map(
-                                (level) => {
-                                  const isActive = priority === level;
-
-                                  const activeStyles =
-                                    level === "low"
-                                      ? "border-[#00A76F] bg-[#E5F8F0] text-[#007867]"
-                                      : level === "medium"
-                                      ? "border-[#FFAB00] bg-[#FFF3CD] text-[#B76E00]"
-                                      : "border-[#FF5630] bg-[#FFE2DD] text-[#B71D18]";
-
-                                  return (
-                                    <button
-                                      key={level}
-                                      type="button"
-                                      onClick={() => setPriority(level)}
-                                      className={`inline-flex items-center gap-2 rounded-[12px] border px-4 py-2 text-[13px] font-semibold capitalize transition ${
-                                        isActive
-                                          ? activeStyles
-                                          : "border-slate500_12 bg-white text-slate600 hover:bg-slate500_08 dark:border-slate500_20 dark:bg-transparent dark:text-slate500_80"
-                                      }`}
-                                    >
-                                      <span>
-                                        {level === "low"
-                                          ? "Low"
-                                          : level === "medium"
-                                          ? "Medium"
-                                          : "High"}
-                                      </span>
-                                    </button>
-                                  );
-                                }
-                              )}
-                            </div>
-
-                            {/* Description */}
-                            <div className="pt-2 text-[14px] font-medium text-slate500 dark:text-slate500_80">
-                              Description
-                            </div>
-                            <textarea
-                              ref={descTextAreaRef}
-                              className="min-h-[120px] w-full resize-none rounded-[12px] border border-slate500_20 bg-white px-4 py-3 text-[15px] text-ink outline-none dark:border-slate500_20 dark:bg-white/5 dark:text-white"
-                              placeholder="Add a short description..."
-                              value={desc}
-                              onChange={(e) => setDesc(e.target.value)}
-                              minLength={3}
-                            />
-
-                            {/* Attachments / Image */}
-                            <div className="pt-2 text-[14px] font-medium text-slate500 dark:text-slate500_80">
-                              Attachments
-                            </div>
-                            <div className="flex flex-col gap-3">
-                              <label className="flex h-[96px] w-[96px] cursor-pointer items-center justify-center rounded-[16px] border border-dashed border-slate500_20 bg-white hover:bg-slate500_08/60 dark:border-slate500_48 dark:bg-white/5">
-                                <input
-                                  className="hidden"
-                                  type="file"
-                                  accept="image/*"
-                                  disabled={uploadingImage}
-                                  onChange={(e) => {
-                                    const selectedFile = e.target.files?.[0];
-
-                                    if (selectedFile) {
-                                      if (selectedFile.size > maxFileSize) {
-                                        setFileSizeExceeded(true);
-                                        toast.error(
-                                          "File size must be less than 5MB",
-                                          {
-                                            position:
-                                              toast.POSITION.TOP_CENTER,
-                                          }
-                                        );
-                                        return;
+                                        handleImageUpload(selectedFile);
+                                        const imageURL = URL.createObjectURL(selectedFile);
+                                        setImageUrl(imageURL);
+                                      } else {
+                                        setFile(null);
+                                        setImageUrl("");
+                                        setFileSizeExceeded(false);
                                       }
+                                    }}
+                                  />
 
-                                      setFileSizeExceeded(false);
-                                      setFile(selectedFile);
+                                  <img
+                                    src="/icons/ic-eva_cloud-upload-fill.svg"
+                                    alt="upload"
+                                    className="h-6 w-6 opacity-70"
+                                  />
+                                </label>
 
-                                      // upload + preview
-                                      handleImageUpload(selectedFile);
-                                      const imageURL =
-                                        URL.createObjectURL(selectedFile);
-                                      setImageUrl(imageURL);
-                                    } else {
-                                      setFile(null);
-                                      setImageUrl("");
-                                      setFileSizeExceeded(false);
-                                    }
-                                  }}
-                                />
-
-                                <img
-                                  src="/icons/ic-eva_cloud-upload-fill.svg"
-                                  alt="upload"
-                                  className="h-7 w-7 opacity-70"
-                                />
-                              </label>
-
-                              {uploadingImage && (
-                                <span className="text-[13px] text-slate500 dark:text-slate500_80">
-                                  Uploading...
-                                </span>
-                              )}
-
-                              {(displayImage || cloudinaryUrl) && (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
-                                  src={cloudinaryUrl || displayImage}
-                                  alt="Card image"
-                                  className="h-40 w-full max-w-sm rounded-[16px] border border-slate500_12 object-cover dark:border-slate500_20"
-                                />
-                              )}
+                                {(displayImage || cloudinaryUrl) && (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img
+                                    src={cloudinaryUrl || displayImage}
+                                    alt="Card image"
+                                    className="h-[64px] w-[64px] rounded-[16px] border border-slate500_12 object-cover dark:border-slate500_20"
+                                  />
+                                )}
+                              </div>
 
                               {fileSizeExceeded && (
-                                <p className="text-[13px] font-semibold text-red-600">
+                                <p className="col-span-2 text-[13px] font-semibold text-red-600">
                                   File size exceeded the limit of 5MB
                                 </p>
                               )}
                             </div>
-                          </div>
-                        )}
+                          )}
 
-                        {/* ============= SUBTASKS TAB ============= */}
-                        {activeTab === "subtasks" && (
-                          <div className="mt-6">
-                            <div className="mb-3 text-[14px] font-medium text-slate500 dark:text-slate500_80">
-                              Tasks
-                            </div>
+                          {/* ============= SUBTASKS TAB (MATCH SCREEN 2) ============= */}
+                          {activeTab === "subtasks" && (
+                            <div className="mt-6">
+                              <div className="grid grid-cols-[110px,1fr] items-start gap-x-8 gap-y-6">
+                                {/* Due date */}
+                                <div className="pt-2 text-[13px] font-medium text-slate600 dark:text-slate500_80">
+                                  Due date
+                                </div>
+                                <div className="flex items-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => setIsDueDateModalOpen(true)}
+                                    className="text-[15px] font-semibold text-ink hover:opacity-80 dark:text-white"
+                                  >
+                                    {date?.startDate && date?.endDate
+                                      ? formatDateRange(date)
+                                      : "—"}
+                                  </button>
+                                </div>
 
-                            <div className="w-full">
-                              {kanbanTasks.map((_t, index) => (
-                                <Disclosure key={_t.kanbanTaskId ?? index}>
-                                  {({ open }) => (
-                                    <>
-                                      <div className="mb-2 flex items-center justify-between rounded-[14px] border border-slate500_12 bg-white/60 px-4 py-3 dark:border-slate500_20 dark:bg-white/5 dark:text-white">
-                                        <div className="flex items-center gap-2">
-                                          <span className="text-[14px] font-semibold">
-                                            {_t.title}
-                                          </span>
-                                        </div>
+                                {/* Assignee */}
+                                <div className="pt-2 text-[13px] font-medium text-slate600 dark:text-slate500_80">
+                                  Assignee
+                                </div>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  {assigneeAvatars.map((src, index) => (
+                                    <div
+                                      key={index}
+                                      className="h-9 w-9 overflow-hidden rounded-full ring-2 ring-white dark:ring-[#141A21]"
+                                    >
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img
+                                        src={src}
+                                        alt={`Assignee ${index + 1}`}
+                                        className="h-full w-full object-cover"
+                                      />
+                                    </div>
+                                  ))}
 
-                                        <div className="flex items-center gap-2">
-                                          <Disclosure.Button className="rounded-full p-2 hover:bg-slate500_08 dark:hover:bg-slate500_12">
-                                            <ChevronUpIcon
-                                              className={classNames(
-                                                "h-4 w-4 text-slate500 transition-transform",
-                                                open ? "rotate-0" : "rotate-180"
-                                              )}
-                                            />
-                                          </Disclosure.Button>
+                                  <button
+                                    type="button"
+                                    className="flex h-9 w-9 items-center justify-center rounded-full border border-dashed border-slate500_20 text-slate500 hover:bg-slate500_08 dark:border-slate500_48 dark:text-slate500_80"
+                                  >
+                                    <PlusIcon className="h-4 w-4" />
+                                  </button>
+                                </div>
 
-                                          {_t.addedBy === userInfo.username &&
-                                            _t.completed === false && (
-                                              <button
-                                                type="button"
-                                                onClick={() =>
-                                                  handleDeleteTask(
-                                                    index,
-                                                    _t.kanbanTaskId
-                                                  )
-                                                }
-                                                disabled={
-                                                  isDeletingTask ===
-                                                  _t.kanbanTaskId
-                                                }
-                                                className="rounded-full p-2 hover:bg-slate500_08 dark:hover:bg-slate500_12"
-                                              >
-                                                {isDeletingTask ===
-                                                _t.kanbanTaskId ? (
-                                                  <svg
-                                                    className="h-5 w-5 animate-spin text-slate500"
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    fill="none"
-                                                    viewBox="0 0 24 24"
+                                {/* Completed */}
+                                <div className="pt-2 text-[13px] font-medium text-slate600 dark:text-slate500_80">
+                                  Completed
+                                </div>
+                                <div className="flex items-center">
+                                  <input
+                                    type="checkbox"
+                                    className="h-5 w-5 rounded-md"
+                                    checked={completed}
+                                    onChange={() => setCompleted((p) => !p)}
+                                  />
+                                </div>
+
+                                {/* Description */}
+                                <div className="pt-2 text-[13px] font-medium text-slate600 dark:text-slate500_80">
+                                  Description
+                                </div>
+                                <textarea
+                                  ref={descTextAreaRef}
+                                  className="min-h-[96px] w-full resize-none rounded-[12px] border border-slate500_12 bg-white/60 px-4 py-3 text-[15px] text-ink outline-none dark:border-slate500_20 dark:bg-white/5 dark:text-white"
+                                  placeholder="Add a short description..."
+                                  value={desc}
+                                  onChange={(e) => setDesc(e.target.value)}
+                                  minLength={3}
+                                />
+
+                                {/* Image */}
+                                <div className="pt-2 text-[13px] font-medium text-slate600 dark:text-slate500_80">
+                                  Image
+                                </div>
+                                <div className="flex items-start gap-4">
+                                  <label className="flex h-[64px] w-[64px] cursor-pointer items-center justify-center rounded-[16px] border border-dashed border-slate500_20 bg-white hover:bg-slate500_08/60 dark:border-slate500_48 dark:bg-white/5">
+                                    <input
+                                      className="hidden"
+                                      type="file"
+                                      accept="image/*"
+                                      disabled={uploadingImage}
+                                      onChange={(e) => {
+                                        const selectedFile = e.target.files?.[0];
+
+                                        if (selectedFile) {
+                                          if (selectedFile.size > maxFileSize) {
+                                            setFileSizeExceeded(true);
+                                            toast.error(
+                                              "File size must be less than 5MB",
+                                              { position: toast.POSITION.TOP_CENTER }
+                                            );
+                                            return;
+                                          }
+
+                                          setFileSizeExceeded(false);
+                                          setFile(selectedFile);
+
+                                          handleImageUpload(selectedFile);
+                                          const imageURL = URL.createObjectURL(selectedFile);
+                                          setImageUrl(imageURL);
+                                        } else {
+                                          setFile(null);
+                                          setImageUrl("");
+                                          setFileSizeExceeded(false);
+                                        }
+                                      }}
+                                    />
+
+                                    <img
+                                      src="/icons/ic-eva_cloud-upload-fill.svg"
+                                      alt="upload"
+                                      className="h-6 w-6 opacity-70"
+                                    />
+                                  </label>
+
+                                  {(displayImage || cloudinaryUrl) && (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img
+                                      src={cloudinaryUrl || displayImage}
+                                      alt="Card image"
+                                      className="h-[64px] w-[64px] rounded-[16px] border border-slate500_12 object-cover dark:border-slate500_20"
+                                    />
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* ===== keep your existing Tasks UI under the fields ===== */}
+                              <div className="mt-8">
+                                <div className="mb-3 text-[14px] font-medium text-slate500 dark:text-slate500_80">
+                                  Tasks
+                                </div>
+
+                                <div className="w-full">
+                                  {kanbanTasks.map((_t, index) => (
+                                    <Disclosure key={_t.kanbanTaskId ?? index}>
+                                      {({ open }) => (
+                                        <>
+                                          <div className="mb-2 flex items-center justify-between rounded-[14px] border border-slate500_12 bg-white/60 px-4 py-3 dark:border-slate500_20 dark:bg-white/5 dark:text-white">
+                                            <div className="flex items-center gap-2">
+                                              <span className="text-[14px] font-semibold">
+                                                {_t.title}
+                                              </span>
+                                            </div>
+
+                                            <div className="flex items-center gap-2">
+                                              <Disclosure.Button className="rounded-full p-2 hover:bg-slate500_08 dark:hover:bg-slate500_12">
+                                                <ChevronUpIcon
+                                                  className={classNames(
+                                                    "h-4 w-4 text-slate500 transition-transform",
+                                                    open ? "rotate-0" : "rotate-180"
+                                                  )}
+                                                />
+                                              </Disclosure.Button>
+
+                                              {_t.addedBy === userInfo.username &&
+                                                _t.completed === false && (
+                                                  <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                      handleDeleteTask(index, _t.kanbanTaskId)
+                                                    }
+                                                    disabled={
+                                                      isDeletingTask === _t.kanbanTaskId
+                                                    }
+                                                    className="rounded-full p-2 hover:bg-slate500_08 dark:hover:bg-slate500_12"
                                                   >
-                                                    <circle
-                                                      className="opacity-25"
-                                                      cx="12"
-                                                      cy="12"
-                                                      r="10"
-                                                      stroke="currentColor"
-                                                      strokeWidth="4"
-                                                    ></circle>
-                                                    <path
-                                                      className="opacity-75"
-                                                      fill="currentColor"
-                                                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                                    ></path>
-                                                  </svg>
-                                                ) : (
-                                                  <TrashIcon className="h-5 w-5 text-slate500" />
+                                                    {isDeletingTask === _t.kanbanTaskId ? (
+                                                      <svg
+                                                        className="h-5 w-5 animate-spin text-slate500"
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        fill="none"
+                                                        viewBox="0 0 24 24"
+                                                      >
+                                                        <circle
+                                                          className="opacity-25"
+                                                          cx="12"
+                                                          cy="12"
+                                                          r="10"
+                                                          stroke="currentColor"
+                                                          strokeWidth="4"
+                                                        ></circle>
+                                                        <path
+                                                          className="opacity-75"
+                                                          fill="currentColor"
+                                                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                                        ></path>
+                                                      </svg>
+                                                    ) : (
+                                                      <TrashIcon className="h-5 w-5 text-slate500" />
+                                                    )}
+                                                  </button>
                                                 )}
-                                              </button>
-                                            )}
-                                        </div>
-                                      </div>
-
-                                      <Disclosure.Panel className="mb-4 rounded-[14px] border border-slate500_12 bg-white/50 px-4 py-4 text-[14px] text-ink dark:border-slate500_20 dark:bg-white/5 dark:text-white">
-                                        {_t.completed ? (
-                                          <div className="space-y-3">
-                                            <div className="flex items-center gap-2">
-                                              <span className="text-slate500 dark:text-slate500_80">
-                                                Completed:
-                                              </span>
-                                              <span className="font-semibold">
-                                                Yes
-                                              </span>
-                                            </div>
-
-                                            <div className="flex items-center gap-2">
-                                              <span className="text-slate500 dark:text-slate500_80">
-                                                Uploaded File:
-                                              </span>
-                                              {_t.imageUrl ? (
-                                                <a
-                                                  href={`${_t.imageUrl}`}
-                                                  target="_blank"
-                                                  rel="noopener noreferrer"
-                                                  className="font-semibold underline"
-                                                >
-                                                  Open
-                                                </a>
-                                              ) : (
-                                                <span className="font-semibold">
-                                                  —
-                                                </span>
-                                              )}
-                                            </div>
-
-                                            <div className="flex items-center gap-2">
-                                              <span className="text-slate500 dark:text-slate500_80">
-                                                Submit By:
-                                              </span>
-                                              <span className="font-semibold">
-                                                {_t.updatedBy}
-                                              </span>
                                             </div>
                                           </div>
-                                        ) : (
-                                          <form
-                                            onSubmit={(e) => {
-                                              e.preventDefault();
-                                              handleSubmitTask(
-                                                _t.kanbanTaskId,
-                                                index
-                                              );
-                                            }}
-                                            className="space-y-4"
-                                          >
-                                            <div className="flex items-center gap-3">
-                                              <span className="text-slate500 dark:text-slate500_80">
-                                                Completed
-                                              </span>
-                                              <input
-                                                type="checkbox"
-                                                className="h-5 w-5 rounded-md"
-                                                value={
-                                                  taskCompleted ? "on" : "off"
-                                                }
-                                                checked={taskCompleted}
-                                                onChange={() =>
-                                                  handleToggleTaskCompleted()
-                                                }
-                                                required
-                                              />
-                                            </div>
 
-                                            <div className="flex flex-col gap-2">
-                                              <span className="text-slate500 dark:text-slate500_80">
-                                                Upload File
-                                              </span>
-                                              <input
-                                                onChange={(e) => {
-                                                  const selectedFile =
-                                                    e.target.files?.[0];
+                                          <Disclosure.Panel className="mb-4 rounded-[14px] border border-slate500_12 bg-white/50 px-4 py-4 text-[14px] text-ink dark:border-slate500_20 dark:bg-white/5 dark:text-white">
+                                            {_t.completed ? (
+                                              <div className="space-y-3">
+                                                <div className="flex items-center gap-2">
+                                                  <span className="text-slate500 dark:text-slate500_80">
+                                                    Completed:
+                                                  </span>
+                                                  <span className="font-semibold">Yes</span>
+                                                </div>
 
-                                                  if (selectedFile) {
-                                                    if (
-                                                      selectedFile.size >
-                                                      maxFileSize
-                                                    ) {
-                                                      setTaskFileSizeExceeded(
-                                                        true
-                                                      );
-                                                      return;
-                                                    }
-                                                    setTaskFile(selectedFile);
-                                                    setTaskFileSizeExceeded(
-                                                      false
-                                                    );
-                                                  } else {
-                                                    setTaskFile(null);
-                                                    setTaskFileSizeExceeded(
-                                                      false
-                                                    );
-                                                  }
+                                                <div className="flex items-center gap-2">
+                                                  <span className="text-slate500 dark:text-slate500_80">
+                                                    Uploaded File:
+                                                  </span>
+                                                  {_t.imageUrl ? (
+                                                    <a
+                                                      href={`${_t.imageUrl}`}
+                                                      target="_blank"
+                                                      rel="noopener noreferrer"
+                                                      className="font-semibold underline"
+                                                    >
+                                                      Open
+                                                    </a>
+                                                  ) : (
+                                                    <span className="font-semibold">—</span>
+                                                  )}
+                                                </div>
+
+                                                <div className="flex items-center gap-2">
+                                                  <span className="text-slate500 dark:text-slate500_80">
+                                                    Submit By:
+                                                  </span>
+                                                  <span className="font-semibold">
+                                                    {_t.updatedBy}
+                                                  </span>
+                                                </div>
+                                              </div>
+                                            ) : (
+                                              <form
+                                                onSubmit={(e) => {
+                                                  e.preventDefault();
+                                                  handleSubmitTask(_t.kanbanTaskId, index);
                                                 }}
-                                                className="block w-full cursor-pointer rounded-[12px] border border-slate500_20 bg-white px-3 py-2 text-[13px] text-ink dark:bg-transparent dark:text-white"
-                                                type="file"
-                                                accept=".xlsx,.xls,image/*,.doc, .docx,.ppt, .pptx,.txt,.pdf"
-                                              />
-
-                                              {taskFileSizeExceeded && (
-                                                <p className="text-[13px] font-semibold text-red-600">
-                                                  File size exceeded the limit
-                                                  of 5MB
-                                                </p>
-                                              )}
-                                            </div>
-
-                                            <div className="flex justify-end">
-                                              <button
-                                                disabled={submitTask}
-                                                type="submit"
-                                                className="inline-flex items-center justify-center rounded-[12px] bg-[#FFAB00] px-5 py-2 text-[14px] font-semibold text-ink transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                                                className="space-y-4"
                                               >
-                                                {submitTask
-                                                  ? "Submitting..."
-                                                  : "Submit"}
-                                              </button>
-                                            </div>
-                                          </form>
-                                        )}
-                                      </Disclosure.Panel>
-                                    </>
+                                                <div className="flex items-center gap-3">
+                                                  <span className="text-slate500 dark:text-slate500_80">
+                                                    Completed
+                                                  </span>
+                                                  <input
+                                                    type="checkbox"
+                                                    className="h-5 w-5 rounded-md"
+                                                    value={taskCompleted ? "on" : "off"}
+                                                    checked={taskCompleted}
+                                                    onChange={() => handleToggleTaskCompleted()}
+                                                    required
+                                                  />
+                                                </div>
+
+                                                <div className="flex flex-col gap-2">
+                                                  <span className="text-slate500 dark:text-slate500_80">
+                                                    Upload File
+                                                  </span>
+                                                  <input
+                                                    onChange={(e) => {
+                                                      const selectedFile =
+                                                        e.target.files?.[0];
+
+                                                      if (selectedFile) {
+                                                        if (selectedFile.size > maxFileSize) {
+                                                          setTaskFileSizeExceeded(true);
+                                                          return;
+                                                        }
+                                                        setTaskFile(selectedFile);
+                                                        setTaskFileSizeExceeded(false);
+                                                      } else {
+                                                        setTaskFile(null);
+                                                        setTaskFileSizeExceeded(false);
+                                                      }
+                                                    }}
+                                                    className="block w-full cursor-pointer rounded-[12px] border border-slate500_20 bg-white px-3 py-2 text-[13px] text-ink dark:bg-transparent dark:text-white"
+                                                    type="file"
+                                                    accept=".xlsx,.xls,image/*,.doc, .docx,.ppt, .pptx,.txt,.pdf"
+                                                  />
+
+                                                  {taskFileSizeExceeded && (
+                                                    <p className="text-[13px] font-semibold text-red-600">
+                                                      File size exceeded the limit of 5MB
+                                                    </p>
+                                                  )}
+                                                </div>
+
+                                                <div className="flex justify-end">
+                                                  <button
+                                                    disabled={submitTask}
+                                                    type="submit"
+                                                    className="inline-flex items-center justify-center rounded-[12px] bg-[#FFAB00] px-5 py-2 text-[14px] font-semibold text-ink transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                                                  >
+                                                    {submitTask ? "Submitting..." : "Submit"}
+                                                  </button>
+                                                </div>
+                                              </form>
+                                            )}
+                                          </Disclosure.Panel>
+                                        </>
+                                      )}
+                                    </Disclosure>
+                                  ))}
+
+                                  {isCreatingTask && (
+                                    <div className="mb-2 animate-pulse rounded-[14px] bg-slate500_08 px-4 py-3 dark:bg-slate500_12">
+                                      <div className="h-5 w-3/4 rounded bg-slate500_12 dark:bg-slate500_20"></div>
+                                    </div>
                                   )}
-                                </Disclosure>
-                              ))}
 
-                              {isCreatingTask && (
-                                <div className="mb-2 animate-pulse rounded-[14px] bg-slate500_08 px-4 py-3 dark:bg-slate500_12">
-                                  <div className="h-5 w-3/4 rounded bg-slate500_12 dark:bg-slate500_20"></div>
+                                  {kanbanTasks.length < 21 && (
+                                    <AddTaskForm
+                                      text="Add task"
+                                      placeholder="Task name..."
+                                      onSubmit={handleCreateTask}
+                                      userInfo={userInfo}
+                                    />
+                                  )}
                                 </div>
-                              )}
-
-                              {kanbanTasks.length < 21 && (
-                                <AddTaskForm
-                                  text="Add task"
-                                  placeholder="Task name..."
-                                  onSubmit={handleCreateTask}
-                                  userInfo={userInfo}
-                                />
-                              )}
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          )}
+                        </div>
+                      </div>
+
+                      {/* ================= STICKY BOTTOM ACTIONS ================= */}
+                      <div className="sticky bottom-0 border-t border-slate500_12 bg-white/70 px-6 py-4 backdrop-blur dark:border-slate500_20 dark:bg-[#1B232D]/70">
+                        <div className="flex items-center justify-end gap-3">
+                          <button
+                            type="button"
+                            onClick={handleCloseModal}
+                            className="inline-flex items-center justify-center rounded-[12px] border border-slate500_20 bg-white px-4 py-2 text-[14px] font-semibold text-ink hover:bg-slate500_08 dark:bg-transparent dark:text-white"
+                          >
+                            Cancel
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={handleSave}
+                            disabled={submit || uploadingImage}
+                            className="inline-flex items-center justify-center rounded-[12px] bg-[#1C252E] px-5 py-2 text-[14px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {submit ? "Saving..." : "Save"}
+                          </button>
+                        </div>
                       </div>
                     </div>
-
-                    {/* ================= STICKY BOTTOM ACTIONS ================= */}
-                    <div className="sticky bottom-0 border-t border-slate500_12 bg-white/70 px-6 py-4 backdrop-blur dark:border-slate500_20 dark:bg-[#1B232D]/70">
-                      <div className="flex items-center justify-end gap-3">
-                        <button
-                          type="button"
-                          onClick={handleCloseModal}
-                          className="inline-flex items-center justify-center rounded-[12px] border border-slate500_20 bg-white px-4 py-2 text-[14px] font-semibold text-ink hover:bg-slate500_08 dark:bg-transparent dark:text-white"
-                        >
-                          Cancel
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={handleSave}
-                          disabled={submit || uploadingImage}
-                          className="inline-flex items-center justify-center rounded-[12px] bg-[#1C252E] px-5 py-2 text-[14px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          {submit ? "Saving..." : "Save"}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </Dialog.Panel>
-              </Transition.Child>
+                  </Dialog.Panel>
+                </Transition.Child>
+              </div>
             </div>
           </div>
-        </div>
-      </Dialog>
-    </Transition>
-  <DueDateModal
-      open={isDueDateModalOpen}
-      value={date}
-      onChange={(newValue) => setDate(newValue)}
-      onClose={() => setIsDueDateModalOpen(false)}
-      onApply={() => setIsDueDateModalOpen(false)}
-    />
+        </Dialog>
+      </Transition>
+
+      <DueDateModal
+        open={isDueDateModalOpen}
+        value={date}
+        onChange={(newValue) => setDate(newValue)}
+        onClose={() => setIsDueDateModalOpen(false)}
+        onApply={() => setIsDueDateModalOpen(false)}
+      />
     </>
   );
 }
