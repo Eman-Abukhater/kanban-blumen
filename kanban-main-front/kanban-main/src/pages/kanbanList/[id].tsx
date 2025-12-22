@@ -1,5 +1,4 @@
 // src/pages/kanbanList/[id].tsx
-export const getServerSideProps = async () => ({ props: {} });
 
 import { useEffect, useMemo, useState, useContext } from "react";
 import { useRouter } from "next/router";

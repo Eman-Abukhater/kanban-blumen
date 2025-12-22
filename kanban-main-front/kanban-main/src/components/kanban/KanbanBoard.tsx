@@ -90,7 +90,7 @@ export function KanbanBoard(props: IKanbanBoardProps) {
                   <div className="w-[340px]">
                     <AddForm
                       text="Add column"
-                      placeholder="New column name..."
+                      placeholder="Untitled"
                       onSubmit={handleCreateList}
                       userInfo={userInfo}
                     />
@@ -197,6 +197,8 @@ export function KanbanBoard(props: IKanbanBoardProps) {
             </div>
           </div>
         </div>
+
+
       )}
     </>
   );

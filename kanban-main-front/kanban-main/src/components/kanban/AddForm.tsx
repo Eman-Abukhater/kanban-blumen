@@ -1,5 +1,5 @@
 import { AddKanbanList } from "@/services/kanbanApi";
-import { CheckIcon, PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { PlusIcon } from "@heroicons/react/24/outline";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
 
@@ -17,135 +17,163 @@ export interface IAddFormProps {
 
 export function AddForm(props: IAddFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
   const [name, setName] = useState<string>("");
   const [showForm, setShowForm] = useState<boolean>(false);
   const [isCreating, setIsCreating] = useState<boolean>(false);
 
+  const closeForm = () => {
+    setShowForm(false);
+    setName("");
+  };
+
+  // ESC to close
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setShowForm(false);
-        setName("");
+        closeForm();
       }
     };
-    formRef.current?.addEventListener("keydown", handleKeyDown);
+
+    const node = formRef.current;
+    node?.addEventListener("keydown", handleKeyDown);
+
     return () => {
-      formRef.current?.removeEventListener("keydown", handleKeyDown);
+      node?.removeEventListener("keydown", handleKeyDown);
     };
-  });
+  }, []);
 
-  const handleSubmit = async (event: FormEvent) => {
-    event.preventDefault();
-    if (name) {
+  // focus input when opened
+  useEffect(() => {
+    if (showForm) {
+      setTimeout(() => inputRef.current?.focus(), 0);
+    }
+  }, [showForm]);
+
+  const handleSubmit = async (event?: FormEvent) => {
+    event?.preventDefault();
+
+    const trimmed = name.trim();
+    if (!trimmed) return;
+
+    try {
       setIsCreating(true);
-      setShowForm(false);
 
-      //add new list in db
       const customResponse = await AddKanbanList(
-        name,
+        trimmed,
         props.userInfo.fkboardid,
         props.userInfo.username,
         props.userInfo.id,
         props.userInfo.fkpoid
       );
 
-      setIsCreating(false);
-
-      if (customResponse?.status === 200) {
+      if (customResponse?.status === 200 && customResponse?.data) {
         props.onSubmit(
-          name,
+          trimmed,
           customResponse.data.kanbanListId,
           customResponse.data.seqNo,
           props.userInfo.fkboardid
         );
+
         toast.success(
-          `List ID: ${customResponse.data?.kanbanListId} Created Successfully`,
-          {
-            position: toast.POSITION.TOP_CENTER,
-          }
+          `List "${trimmed}" created successfully`,
+          { position: toast.POSITION.TOP_CENTER }
         );
+
+        closeForm();
+        return;
       }
 
-      if (customResponse?.status != 200 || customResponse?.data == null) {
-        toast.error(
-          `something went wrong could not add the list, please try again later` +
-            customResponse,
-          {
-            position: toast.POSITION.TOP_CENTER,
-          }
-        );
-      }
-      console.log(
-        "🚀 ~ file: AddForm.tsx:49 ~ handleSubmit ~ customResponse:",
-        customResponse
+      toast.error(
+        `Something went wrong. Could not add the list, please try again later.`,
+        { position: toast.POSITION.TOP_CENTER }
       );
-      setName("");
-    } else return;
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to create list.", {
+        position: toast.POSITION.TOP_CENTER,
+      });
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   return (
-    <>
-      <div>
-        {isCreating ? (
-          // Show skeleton while creating
-          <div className="min-w-[256px] animate-pulse rounded-lg border border-slate-300 bg-slate-100 p-4">
-            <div className="mb-3 h-6 w-32 rounded bg-slate-300"></div>
-            <div className="space-y-2">
-              <div className="h-20 w-full rounded-lg bg-slate-200"></div>
-              <div className="h-20 w-full rounded-lg bg-slate-200"></div>
-            </div>
+    <div>
+      {isCreating ? (
+        // Skeleton while creating
+        <div className="min-w-[256px] animate-pulse rounded-[16px] border border-slate500_12 bg-white p-4 dark:border-slate500_20 dark:bg-[#1B232D]">
+          <div className="mb-3 h-6 w-32 rounded bg-slate500_12 dark:bg-slate500_20"></div>
+          <div className="space-y-2">
+            <div className="h-12 w-full rounded-[12px] bg-slate500_12 dark:bg-slate500_20"></div>
+            <div className="h-4 w-52 rounded bg-slate500_12 dark:bg-slate500_20"></div>
           </div>
-        ) : showForm ? (
-          <form
-            ref={formRef}
-            autoComplete="off"
-            onSubmit={handleSubmit}
-            onBlur={() => {
-              if (name) return;
-              setShowForm(false);
-            }}
-          >
-            <div className="w-64 appearance-none rounded-lg border border-slate-300 bg-slate-200 p-3   dark:border-slate-700 dark:bg-slate-900">
-              <input
-                className="w-full rounded-lg dark:bg-slate-700 dark:text-white dark:placeholder:text-slate-400"
-                placeholder={props.placeholder}
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                autoFocus
-                maxLength={15}
-                minLength={5}
-              />
-              <div className="mt-4 flex items-center justify-between">
-                <button
-                  type="submit"
-                  className="flex items-center gap-1 rounded-md bg-emerald-600 px-3 py-1 text-sm text-white transition-colors duration-150 ease-in-out hover:bg-emerald-500"
-                >
-                  <CheckIcon className="h-5 w-5" />
-                  Add
-                </button>
-                <button
-                  onClick={() => {
-                    setName("");
-                    setShowForm(false);
-                  }}
-                  className="rounded-md p-2 text-red-600"
-                >
-                  <XMarkIcon className="h-6 w-6" />
-                </button>
-              </div>
-            </div>
-          </form>
-        ) : (
-          <button
-            onClick={() => setShowForm((prev) => !prev)}
-            className="flex min-w-[256px] items-center justify-center gap-1 rounded-lg border border-slate-300 bg-slate-200 px-3 py-2 text-sm font-semibold transition-colors duration-200 focus:border-none focus:border-indigo-600 focus:outline-none focus:ring focus:ring-indigo-600 hover:border-indigo-600 hover:bg-indigo-100/50 dark:border-slate-500 dark:bg-slate-600 dark:text-white dark:hover:border-indigo-600 dark:hover:bg-indigo-900/20"
-          >
-            <PlusIcon className="h-4 w-5" />
-            {props.text}
-          </button>
-        )}
-      </div>
-    </>
+        </div>
+      ) : showForm ? (
+        <form
+          ref={formRef}
+          autoComplete="off"
+          onSubmit={handleSubmit}
+          onBlur={() => {
+            if (!name.trim()) closeForm();
+          }}
+        >
+          <div className="min-w-[256px] rounded-[16px] border border-slate500_12 bg-white p-4 dark:border-slate500_20 dark:bg-[#1B232D]">
+            <input
+              ref={inputRef}
+className="
+  h-12 w-full rounded-[12px]
+  border-2 border-slate500_20 bg-white px-4
+  text-[16px] font-medium text-ink
+  placeholder:text-slate500
+
+  outline-none
+  focus:outline-none
+  focus:ring-0 focus:ring-offset-0
+  focus:border-ink
+
+  dark:border-slate500_20 dark:bg-[#141A21]
+  dark:text-white dark:placeholder:text-slate500_80
+  dark:focus:border-white
+  dark:focus:ring-0 dark:focus:ring-offset-0
+"
+
+
+              placeholder={props.placeholder}  
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              maxLength={30}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  // Enter creates
+                  e.preventDefault();
+                  handleSubmit();
+                }
+              }}
+            />
+
+            <p className="mt-2 text-[13px] text-slate600 dark:text-slate500_80">
+              Press Enter to create the column.
+            </p>
+          </div>
+        </form>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setShowForm(true)}
+          className="
+            flex min-w-[256px] items-center justify-center gap-2
+            rounded-[16px] border border-slate500_12 bg-white px-4 py-3
+            text-[14px] font-semibold text-ink
+            hover:bg-slate500_08
+            dark:border-slate500_20 dark:bg-[#1B232D] dark:text-white dark:hover:bg-slate500_20
+          "
+        >
+          <PlusIcon className="h-4 w-4 text-slate500 dark:text-slate500_80" />
+          {props.text}
+        </button>
+      )}
+    </div>
   );
 }
