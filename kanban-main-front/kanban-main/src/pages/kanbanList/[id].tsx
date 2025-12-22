@@ -1,7 +1,7 @@
 // src/pages/kanbanList/[id].tsx
 export const getServerSideProps = async () => ({ props: {} });
 
-import { useEffect, useState, useContext } from "react";
+import { useEffect, useMemo, useState, useContext } from "react";
 import { useRouter } from "next/router";
 import { useQuery } from "@tanstack/react-query";
 import { ToastContainer, toast } from "react-toastify";
@@ -18,34 +18,23 @@ export default function GetKanbanList() {
   const { setKanbanListState, userInfo, handleSetUserInfo, signalRConnection } =
     useContext(KanbanContext);
 
-  const [showContent, setShowContent] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
+  const [showSkeleton, setShowSkeleton] = useState(false);
 
   const router = useRouter();
   const { id } = router.query as { id: string };
 
-  let fkboardid: number | null = null;
-  if (id !== null) {
-    const parsedId = parseInt(id, 10);
-    if (!isNaN(parsedId)) {
-      fkboardid = parsedId;
-    }
-  }
+  const fkboardid = useMemo(() => {
+    if (!id) return null;
+    const parsed = parseInt(id, 10);
+    return Number.isNaN(parsed) ? null : parsed;
+  }, [id]);
 
   // -------- route change loading state --------
   useEffect(() => {
-    const handleRouteChangeStart = () => {
-      setIsNavigating(true);
-      setShowContent(false);
-    };
-
-    const handleRouteChangeComplete = () => {
-      setIsNavigating(false);
-    };
-
-    const handleRouteChangeError = () => {
-      setIsNavigating(false);
-    };
+    const handleRouteChangeStart = () => setIsNavigating(true);
+    const handleRouteChangeComplete = () => setIsNavigating(false);
+    const handleRouteChangeError = () => setIsNavigating(false);
 
     router.events.on("routeChangeStart", handleRouteChangeStart);
     router.events.on("routeChangeComplete", handleRouteChangeComplete);
@@ -56,50 +45,45 @@ export default function GetKanbanList() {
       router.events.off("routeChangeComplete", handleRouteChangeComplete);
       router.events.off("routeChangeError", handleRouteChangeError);
     };
-  }, [router]);
+  }, [router.events]);
 
   // -------- fetch kanban lists (React Query) --------
-  const { data, isLoading, isError, error, refetch, isFetched } = useQuery<
-    any,
-    Error | null
-  >({
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+    refetch,
+    isFetched,
+  } = useQuery<any, Error | null>({
     queryKey: ["kanbanlist", fkboardid],
     queryFn: () => fetchKanbanList(fkboardid),
     enabled: router.isReady && !!fkboardid,
-    staleTime: 30000,
+    staleTime: 60_000, // keep cached longer so refresh feels instant
     refetchOnMount: false,
     refetchOnWindowFocus: false,
+    retry: 1, // avoid “stuck” feeling due to multiple retries
   });
 
   // -------- auth check + restore user from sessionStorage --------
   useEffect(() => {
-    if (!router.isReady) return;
+    if (!router.isReady || !fkboardid) return;
 
-    const checkUserExist = async () => {
-      if (!userInfo) {
-        const storeddata = window.sessionStorage.getItem("userData");
-        if (!storeddata) {
-          router.push(`/unauthorized`);
-          return;
-        }
-        const storedUserInfo = JSON.parse(storeddata);
+    // If userInfo already exists, just ensure fkboardid is attached
+    if (userInfo) {
+      handleSetUserInfo({ ...userInfo, fkboardid });
+      return;
+    }
 
-        const updatedUserData = {
-          ...storedUserInfo,
-          fkboardid,
-        };
-        handleSetUserInfo(updatedUserData);
-        return;
-      }
+    // Restore from session storage
+    const stored = window.sessionStorage.getItem("userData");
+    if (!stored) {
+      router.push(`/unauthorized`);
+      return;
+    }
 
-      const updatedUserData = {
-        ...userInfo,
-        fkboardid,
-      };
-      handleSetUserInfo(updatedUserData);
-    };
-
-    checkUserExist();
+    const storedUserInfo = JSON.parse(stored);
+    handleSetUserInfo({ ...storedUserInfo, fkboardid });
   }, [router.isReady, fkboardid, userInfo, handleSetUserInfo, router]);
 
   // -------- SignalR messages (refresh on updates) --------
@@ -122,22 +106,23 @@ export default function GetKanbanList() {
 
   // -------- when data arrives, push into context state --------
   useEffect(() => {
-    if (isFetched && !isError && data) {
+    if (isFetched && !isError) {
       setKanbanListState(Array.isArray(data) ? data : []);
     }
   }, [isFetched, isError, data, setKanbanListState]);
 
-  // -------- decide when to reveal the real UI --------
+  // ✅ loader should depend ONLY on real loading/navigation (NOT on userInfo/showContent gates)
+  const shouldShowLoading =
+    isNavigating || (router.isReady && !!fkboardid && isLoading);
+
+  // ✅ show skeleton only if loading lasts >150ms (so it feels instant)
   useEffect(() => {
-    const shouldShowContent =
-      router.isReady && userInfo && (isFetched || isError);
-
-    if (shouldShowContent) {
-      setShowContent(true);
+    if (shouldShowLoading) {
+      const t = setTimeout(() => setShowSkeleton(true), 150);
+      return () => clearTimeout(t);
     }
-  }, [router.isReady, userInfo, isFetched, isError]);
-
-  const shouldShowLoading = isNavigating || !showContent || isLoading;
+    setShowSkeleton(false);
+  }, [shouldShowLoading]);
 
   // ======================================================
   //                   RENDER
@@ -146,16 +131,14 @@ export default function GetKanbanList() {
     <Shell>
       <Topbar />
 
-      {/* ⭐ Header (breadcrumb etc.) – always visible like Projects page */}
+      {/* Header always visible */}
       <SectionHeader />
 
       <section className="mx-auto max-w-[1120px] px-0 py-6">
-        {/* ⏳ Loading state – show Kanban skeleton INSIDE the page */}
-        {shouldShowLoading && (
-          <KanbanBoardSkeleton />
-        )}
+        {/* ⏳ Skeleton only after 150ms */}
+        {showSkeleton && <KanbanBoardSkeleton />}
 
-        {/* ❌ Error state – still inside the page, not full-screen */}
+        {/* ❌ Error state */}
         {!shouldShowLoading && isError && (
           <div className="flex h-[300px] items-center justify-center">
             <div className="text-center">
@@ -166,17 +149,17 @@ export default function GetKanbanList() {
                 {error?.message}
               </p>
               <button
-                onClick={() => router.reload()}
+                onClick={() => refetch()}
                 className="mt-4 rounded-[10px] bg-ink px-4 py-2 text-sm font-semibold text-white hover:opacity-90 dark:bg-white dark:text-ink"
               >
-                Reload page
+                Retry
               </button>
             </div>
           </div>
         )}
 
-        {/* ✅ Real Kanban board – only when we have data & no error */}
-        {!shouldShowLoading && !isError && data && (
+        {/* ✅ Always render board shell when not loading & not error */}
+        {!shouldShowLoading && !isError && (
           <div className="kanban-scroll overflow-x-auto pb-4">
             <KanbanBoard />
           </div>
@@ -196,4 +179,3 @@ export default function GetKanbanList() {
     </Shell>
   );
 }
-

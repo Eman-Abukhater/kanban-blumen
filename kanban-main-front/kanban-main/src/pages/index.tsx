@@ -1,42 +1,64 @@
-import { useEffect } from "react";
+// src/pages/index.tsx
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/router";
-import { useContext } from "react";
-import KanbanContext from "../context/kanbanContext";
 import LoadingPage2 from "@/components/layout/LoadingPage2";
 import { verifyTokenFast } from "@/services/auth";
 
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error("timeout")), ms);
+    promise
+      .then((v) => {
+        clearTimeout(t);
+        resolve(v);
+      })
+      .catch((e) => {
+        clearTimeout(t);
+        reject(e);
+      });
+  });
+}
+
 export default function Home() {
-  const r = useRouter();
-  const { userInfo } = useContext(KanbanContext);
+  const router = useRouter();
+
+  // ✅ prevents double effect run in dev (Strict Mode)
+  const ranRef = useRef(false);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      // Check if user is already authenticated
-      const stored = window.sessionStorage.getItem("userData");
-      const token = localStorage.getItem("token");
+    if (!router.isReady) return;
+    if (ranRef.current) return;
+    ranRef.current = true;
 
-      if (stored && token) {
-        // Quick token verification without DB lookup
-        const verification = await verifyTokenFast(token);
+    const stored = window.sessionStorage.getItem("userData");
+    const token = localStorage.getItem("token");
 
-        if (verification.success) {
-          // Token is valid, go directly to projects
-          r.replace("/projects");
-          return;
+    // ✅ If no auth at all → go to auth immediately
+    if (!stored || !token) {
+      router.replace("/auth/1/1");
+      return;
+    }
+
+    // ✅ UX-first: go to projects immediately (no waiting)
+    router.replace("/projects");
+
+    // ✅ Verify in the background (don’t block UI)
+    (async () => {
+      try {
+        // only wait a tiny bit; if backend is slow/cold, don't keep loader
+        const verification: any = await withTimeout(verifyTokenFast(token), 350);
+
+        if (!verification?.success) {
+          window.sessionStorage.removeItem("userData");
+          localStorage.removeItem("token");
+          router.replace("/auth/1/1");
         }
-
-        // Token is invalid, clear storage and re-authenticate
-        window.sessionStorage.removeItem("userData");
-        localStorage.removeItem("token");
+      } catch {
+        // timeout / network / backend cold start:
+        // don't block the user here. If token is invalid, API 401 will handle it later.
       }
-
-      // Not authenticated, go to auth page
-      // You can change these default values (fkpoid: 1, userid: 1) as needed
-      r.replace("/auth/1/1");
-    };
-
-    checkAuth();
-  }, [r]);
+    })();
+  }, [router.isReady, router]);
 
   return <LoadingPage2 />;
 }

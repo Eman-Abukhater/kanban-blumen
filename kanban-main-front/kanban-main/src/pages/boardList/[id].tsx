@@ -1,12 +1,7 @@
 // src/pages/boardList/[id].tsx
 export const getServerSideProps = async () => ({ props: {} });
-import {
-  useState,
-  useEffect,
-  useMemo,
-  useContext,
-  useCallback,
-} from "react";
+
+import { useState, useEffect, useMemo, useContext, useCallback } from "react";
 import { useRouter } from "next/router";
 import { ToastContainer, toast } from "react-toastify";
 import { HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
@@ -20,7 +15,6 @@ import {
   ChevronRight,
   Search,
 } from "lucide-react";
-
 import Image from "next/image";
 
 import Shell from "@/components/layout/Shell";
@@ -68,7 +62,11 @@ export default function BoardListPage() {
   }, [router.isReady, router.query.id]);
 
   const [boards, setBoards] = useState<ApiBoard[]>([]);
+
+  // loading states
   const [isLoading, setIsLoading] = useState(true);
+  const [showSkeleton, setShowSkeleton] = useState(false);
+
   const [isCreatingBoard, setIsCreatingBoard] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
   const [search, setSearch] = useState("");
@@ -85,8 +83,8 @@ export default function BoardListPage() {
 
   // 🔹 footer state (dense + pagination)
   const [dense, setDense] = useState(false);
-  const [rowsPerPage, setRowsPerPage] = useState(6); // default 6 boards
-  const [page, setPage] = useState(0); // 0-based
+  const [rowsPerPage, setRowsPerPage] = useState(6);
+  const [page, setPage] = useState(0);
   const [rowsMenuOpen, setRowsMenuOpen] = useState(false);
 
   // 🔹 did we hydrate from cache?
@@ -195,6 +193,15 @@ export default function BoardListPage() {
     fetchData({ showLoader: !hasCachedBoards });
   }, [router.isReady, fkpoid, userInfo, fetchData, hasCachedBoards]);
 
+  // ✅ show skeleton only if loading lasts >150ms (better UX)
+  useEffect(() => {
+    if (isLoading) {
+      const t = setTimeout(() => setShowSkeleton(true), 150);
+      return () => clearTimeout(t);
+    }
+    setShowSkeleton(false);
+  }, [isLoading]);
+
   // ───────────────────────
   // SignalR connection setup (once)
   // ───────────────────────
@@ -220,9 +227,7 @@ export default function BoardListPage() {
           .start()
           .then(() => {
             connection.on("UserInOutMsg", (message) => {
-              toast.dark(`${message}`, {
-                position: toast.POSITION.TOP_CENTER,
-              });
+              toast.dark(`${message}`, { position: toast.POSITION.TOP_CENTER });
             });
 
             connection.on("UsersInBoard", (users) => {
@@ -306,15 +311,14 @@ export default function BoardListPage() {
 
   const handleEditTitle = async (newTitle: string, boardId: number) => {
     if (!userInfo) return;
+
     const res = await EditBoard(newTitle, boardId, userInfo.username);
 
     if (!res || res.status !== 200) {
       const msg =
         (res && (res as any).data && (res as any).data.message) ||
         "Failed to edit board.";
-      toast.error(msg, {
-        position: toast.POSITION.TOP_CENTER,
-      });
+      toast.error(msg, { position: toast.POSITION.TOP_CENTER });
       return;
     }
 
@@ -349,9 +353,7 @@ export default function BoardListPage() {
         const msg =
           (res && (res as any).data && (res as any).data.message) ||
           "Failed to add board.";
-        toast.error(msg, {
-          position: toast.POSITION.TOP_CENTER,
-        });
+        toast.error(msg, { position: toast.POSITION.TOP_CENTER });
         return;
       }
 
@@ -372,41 +374,41 @@ export default function BoardListPage() {
           null;
       }
 
-     if (newBoardId == null || !Number.isFinite(newBoardId)) {
-  toast.error("Board created but ID was not returned correctly.", {
-    position: toast.POSITION.TOP_CENTER,
-  });
-  return;
-}
+      if (newBoardId == null || !Number.isFinite(newBoardId)) {
+        toast.error("Board created but ID was not returned correctly.", {
+          position: toast.POSITION.TOP_CENTER,
+        });
+        return;
+      }
 
-const boardId: number = newBoardId; // ✅ now TS knows it's number
-
+      const boardId: number = newBoardId;
 
       // create default lists
       const defaultListTitles = ["To do", "In progress", "In review", "Done"];
       for (let i = 0; i < defaultListTitles.length; i++) {
         const title = defaultListTitles[i];
         try {
-       await AddKanbanList(title, boardId, userInfo.username, userInfo.id, fkpoid);
-
+          await AddKanbanList(
+            title,
+            boardId,
+            userInfo.username,
+            userInfo.id,
+            fkpoid
+          );
         } catch (error) {
           console.error(`Error creating default list "${title}":`, error);
         }
       }
 
-     
-
       // ✅ update local state immediately
-setBoards((prev) => [...prev, { boardId, title: newTitle }]);
+      setBoards((prev) => [...prev, { boardId, title: newTitle }]);
 
       const msg =
         typeof res.data === "string"
           ? res.data
           : payload.message || `Board "${newTitle}" created with default lists!`;
 
-      toast.success(msg, {
-        position: toast.POSITION.TOP_CENTER,
-      });
+      toast.success(msg, { position: toast.POSITION.TOP_CENTER });
 
       closeModal();
     } finally {
@@ -424,7 +426,6 @@ setBoards((prev) => [...prev, { boardId, title: newTitle }]);
 
     try {
       const res = await DeleteBoard(boardId);
-      console.log("🔍 DeleteBoard response:", res);
 
       if (!res || res.status !== 200) {
         const backendMessage =
@@ -433,11 +434,9 @@ setBoards((prev) => [...prev, { boardId, title: newTitle }]);
           (res as any)?.data ||
           "Failed to delete board.";
 
-        toast.error(backendMessage, {
-          position: toast.POSITION.TOP_CENTER,
-        });
+        toast.error(backendMessage, { position: toast.POSITION.TOP_CENTER });
 
-        // لو 404 والباك إند بحكي مش موجود، نشيله من الواجهة
+        // if 404 not found → remove from UI
         if (
           res &&
           res.status === 404 &&
@@ -450,7 +449,6 @@ setBoards((prev) => [...prev, { boardId, title: newTitle }]);
         return;
       }
 
-      // ✅ لو نجحت العملية
       setBoards((prev) => prev.filter((b) => b.boardId !== boardId));
 
       const successMsg =
@@ -458,11 +456,8 @@ setBoards((prev) => [...prev, { boardId, title: newTitle }]);
           ? res.data
           : (res.data as any)?.message || "Board deleted successfully";
 
-      toast.success(successMsg, {
-        position: toast.POSITION.TOP_CENTER,
-      });
+      toast.success(successMsg, { position: toast.POSITION.TOP_CENTER });
     } catch (e: any) {
-      console.error("❌ DeleteBoard error:", e);
       toast.error(e?.message || "Failed to delete board.", {
         position: toast.POSITION.TOP_CENTER,
       });
@@ -473,7 +468,7 @@ setBoards((prev) => [...prev, { boardId, title: newTitle }]);
   const filteredBoards = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return boards;
-    return boards.filter((b) => b.title.toLowerCase().includes(q));
+    return boards.filter((b) => (b.title ?? "").toLowerCase().includes(q));
   }, [boards, search]);
 
   // ↕️ sort
@@ -484,9 +479,8 @@ setBoards((prev) => [...prev, { boardId, title: newTitle }]);
       if (sortField === "id") {
         cmp = a.boardId - b.boardId;
       } else if (sortField === "title") {
-        cmp = a.title.localeCompare(b.title);
+        cmp = (a.title ?? "").localeCompare(b.title ?? "");
       } else {
-        // "task" – fake using id for now
         cmp = a.boardId - b.boardId;
       }
       return sortDirection === "asc" ? cmp : -cmp;
@@ -548,458 +542,425 @@ setBoards((prev) => [...prev, { boardId, title: newTitle }]);
     router.push(`/kanbanList/${board.boardId}`);
   };
 
-  const handleMoreClick = (board: ApiBoard) => {
-    openEditModal(board);
-  };
-
   return (
     <>
-      {!isNavigating && userInfo && (
-        <Shell>
-          <Topbar />
+      <Shell>
+        <Topbar />
 
-          <SectionHeader
-            search={search}
-            setSearch={setSearch}
-            onCreate={handleCreateBoard}
-            createLabel="Create Board"
-            isTableView={isTableView}
-            onChangeViewMode={(mode) => {
-              setIsTableView(mode === "table");
-            }}
-          />
+        <SectionHeader
+          search={search}
+          setSearch={setSearch}
+          onCreate={handleCreateBoard}
+          createLabel="Create Board"
+          isTableView={isTableView}
+          onChangeViewMode={(mode) => setIsTableView(mode === "table")}
+        />
 
-          <section className="mx-auto max-w-[1120px] px-0 py-6">
-            {/* ======================= CARD VIEW (default) ======================= */}
-            {!isTableView && (
-              <>
-                {isLoading ? (
-                  <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                    <BoardCardSkeleton count={4} />
-                  </div>
-                ) : total === 0 ? (
-                  <div className="rounded-[16px] border border-slate500_12 bg-white p-10 text-center dark:border-slate500_20 dark:bg-[#1B232D]">
-                    <h3 className="text-[18px] font-semibold text-ink dark:text-white">
-                      No Boards yet
-                    </h3>
-                    <p className="mt-1 text-[14px] text-[#637381] dark:text-slate500_80">
-                      Try creating a new board for this project.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={handleCreateBoard}
-                      className="mt-4 inline-flex h-9 items-center justify-center rounded-[10px] bg-ink px-5 text-[14px] font-semibold text-white shadow-[0_10px_25px_rgba(15,23,42,0.18)] hover:opacity-95 dark:bg-white dark:text-[#1C252E] dark:shadow-none"
+        <section className="mx-auto max-w-[1120px] px-0 py-6">
+          {/* If userInfo or route params not ready, show skeleton (no blank screen) */}
+          {!userInfo || fkpoid == null || isNavigating ? (
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              <BoardCardSkeleton count={4} />
+            </div>
+          ) : (
+            <>
+              {/* ======================= CARD VIEW (default) ======================= */}
+              {!isTableView && (
+                <>
+                  {showSkeleton ? (
+                    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                      <BoardCardSkeleton count={4} />
+                    </div>
+                  ) : total === 0 ? (
+                    <div className="rounded-[16px] border border-slate500_12 bg-white p-10 text-center dark:border-slate500_20 dark:bg-[#1B232D]">
+                      <h3 className="text-[18px] font-semibold text-ink dark:text-white">
+                        No Boards yet
+                      </h3>
+                      <p className="mt-1 text-[14px] text-[#637381] dark:text-slate500_80">
+                        Try creating a new board for this project.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleCreateBoard}
+                        className="mt-4 inline-flex h-9 items-center justify-center rounded-[10px] bg-ink px-5 text-[14px] font-semibold text-white shadow-[0_10px_25px_rgba(15,23,42,0.18)] hover:opacity-95 dark:bg-white dark:text-[#1C252E] dark:shadow-none"
+                      >
+                        Create Board
+                      </button>
+                    </div>
+                  ) : (
+                    <div
+                      className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 ${
+                        dense ? "gap-4" : "gap-5"
+                      }`}
                     >
-                      Create Board
-                    </button>
-                  </div>
-                ) : (
-                  <div
-                    className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 ${
-                      dense ? "gap-4" : "gap-5"
-                    }`}
-                  >
-                    {isCreatingBoard && <BoardCardSkeleton count={1} />}
-                    {paginatedBoards.map((board) => (
-                      <BoardCard
-                        key={board.boardId}
-                        idLabel={String(board.boardId).padStart(3, "0")}
-                        title={board.title}
-                        taskCount={"20+"}
-                        tags={[
-                          { label: "New Project" },
-                          { label: "Urgent" },
-                          { label: "2+" },
-                        ]}
-                        onAdd={() => handleAddClick(board)} // enter list
-                        onEdit={() => openEditModal(board)} // open edit modal
-                        onDelete={() => handleDeleteBoard(board.boardId)} // delete board
-                      />
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
+                      {isCreatingBoard && <BoardCardSkeleton count={1} />}
+                      {paginatedBoards.map((board) => (
+                        <BoardCard
+                          key={board.boardId}
+                          idLabel={String(board.boardId).padStart(3, "0")}
+                          title={board.title}
+                          taskCount={"20+"}
+                          tags={[
+                            { label: "New Project" },
+                            { label: "Urgent" },
+                            { label: "2+" },
+                          ]}
+                          onAdd={() => handleAddClick(board)}
+                          onEdit={() => openEditModal(board)}
+                          onDelete={() => handleDeleteBoard(board.boardId)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
 
-            {/* ======================= TABLE / ROW VIEW ========================= */}
-            {isTableView && (
-              <div className="overflow-hidden rounded-[24px] border border-slate500_12 bg-white dark:border-slate500_20 dark:bg-[#1B232D]">
-                {/* Search + icons INSIDE card (top bar) */}
-                <div className="flex items-center justify-between border-b border-slate500_12 px-6 py-4 dark:border-slate500_20">
-                  {/* search */}
-                  <div className="w-[320px]">
-                    <div className="relative">
-                      <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate500 dark:text-slate500_80" />
-                      <input
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Search..."
-                        className="h-10 w-full rounded-[12px] border border-slate500_20 bg-white pl-9 pr-3 text-[14px] text-ink placeholder-slate500 outline-none focus:ring-2 focus:ring-brand/40 dark:border-slate500_20 dark:bg-[#1B232D] dark:text-slate500_80 dark:placeholder-slate500_80"
-                      />
+              {/* ======================= TABLE / ROW VIEW ========================= */}
+              {isTableView && (
+                <div className="overflow-hidden rounded-[24px] border border-slate500_12 bg-white dark:border-slate500_20 dark:bg-[#1B232D]">
+                  {/* Search + icons INSIDE card (top bar) */}
+                  <div className="flex items-center justify-between border-b border-slate500_12 px-6 py-4 dark:border-slate500_20">
+                    {/* search */}
+                    <div className="w-[320px]">
+                      <div className="relative">
+                        <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate500 dark:text-slate500_80" />
+                        <input
+                          value={search}
+                          onChange={(e) => setSearch(e.target.value)}
+                          placeholder="Search..."
+                          className="h-10 w-full rounded-[12px] border border-slate500_20 bg-white pl-9 pr-3 text-[14px] text-ink placeholder-slate500 outline-none focus:ring-2 focus:ring-brand/40 dark:border-slate500_20 dark:bg-[#1B232D] dark:text-slate500_80 dark:placeholder-slate500_80"
+                        />
+                      </div>
+                    </div>
+
+                    {/* icons right */}
+                    <div className="flex items-center gap-3">
+                      <button className="rounded-[10px] p-2 hover:bg-slate500_12 dark:hover:bg-slate500_20">
+                        <Image
+                          src="/icons/filter-icon.svg"
+                          alt="filter"
+                          width={20}
+                          height={20}
+                          className="opacity-80"
+                        />
+                      </button>
+
+                      <button
+                        className="rounded-[10px] p-2 hover:bg-slate500_12 dark:hover:bg-slate500_20"
+                        onClick={() => setIsTableView(false)}
+                      >
+                        <Image
+                          src="/icons/column.svg"
+                          alt="column"
+                          width={20}
+                          height={20}
+                          className="opacity-80"
+                        />
+                      </button>
+
+                      <button className="rounded-[10px] bg-slate500_12 p-2 dark:bg-slate500_20">
+                        <Image
+                          src="/icons/grid-icon.svg"
+                          alt="grid"
+                          width={20}
+                          height={20}
+                          className="opacity-80"
+                        />
+                      </button>
                     </div>
                   </div>
 
-                  {/* icons right */}
-                  <div className="flex items-center gap-3">
-                    {/* Filter (visual only for now) */}
-                    <button className="rounded-[10px] p-2 hover:bg-slate500_12 dark:hover:bg-slate500_20">
-                      <Image
-                        src="/icons/filter-icon.svg"
-                        alt="filter"
-                        width={20}
-                        height={20}
-                        className="opacity-80"
+                  {/* Header row */}
+                  <div className="flex items-center border-b border-slate500_12 bg-[#F9FAFB] px-6 py-4 text-[13px] font-medium text-slate600 dark:border-slate500_20 dark:bg-[#141A21] dark:text-slate500_80">
+                    <div className="w-10">
+                      <input
+                        type="checkbox"
+                        className="border-1 h-4 w-4 rounded-[6px] border-[#1C252E] text-brand focus:ring-0 dark:border-slate500_20"
                       />
-                    </button>
+                    </div>
 
-                    {/* Column (cards) */}
-                    <button
-                      className="rounded-[10px] p-2 hover:bg-slate500_12 dark:hover:bg-slate500_20"
-                      onClick={() => setIsTableView(false)}
-                    >
-                      <Image
-                        src="/icons/column.svg"
-                        alt="column"
-                        width={20}
-                        height={20}
-                        className="opacity-80"
-                      />
-                    </button>
-
-                    {/* Grid (table) – active */}
-                    <button className="rounded-[10px] bg-slate500_12 p-2 dark:bg-slate500_20">
-                      <Image
-                        src="/icons/grid-icon.svg"
-                        alt="grid"
-                        width={20}
-                        height={20}
-                        className="opacity-80"
-                      />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Header row */}
-                <div className="flex items-center border-b border-slate500_12 bg-[#F9FAFB] px-6 py-4 text-[13px] font-medium text-slate600 dark:border-slate500_20 dark:bg-[#141A21] dark:text-slate500_80">
-                  {/* checkbox col */}
-                  <div className="w-10">
-                    <input
-                      type="checkbox"
-                      className="border-1 h-4 w-4 rounded-[6px] border-[#1C252E] text-brand focus:ring-0 dark:border-slate500_20"
-                    />
-                  </div>
-
-                  {/* ID sortable */}
-                  <button
-                    type="button"
-                    onClick={() => handleSortClick("id")}
-                    className="flex w-16 items-center gap-1 text-left"
-                  >
-                    <span>ID</span>
-                    {renderSortIcon("id")}
-                  </button>
-
-                  {/* Board name sortable */}
-                  <button
-                    type="button"
-                    onClick={() => handleSortClick("title")}
-                    className="flex flex-1 items-center gap-1 text-left"
-                  >
-                    <span>Board Name</span>
-                    {renderSortIcon("title")}
-                  </button>
-
-                  {/* Task sortable */}
-                  <button
-                    type="button"
-                    onClick={() => handleSortClick("task")}
-                    className="flex w-24 items-center gap-1 text-left"
-                  >
-                    <span>Task</span>
-                    {renderSortIcon("task")}
-                  </button>
-
-                  {/* actions header */}
-                  <div className="w-24" />
-                </div>
-
-                {/* Body */}
-                {isLoading ? (
-                  <>
-                    {Array.from({ length: 4 }).map((_, i) => (
-                      <div
-                        key={i}
-                        className="flex animate-pulse items-center border-b border-dashed border-slate500_12 px-6 py-4 text-sm dark:border-slate500_20"
-                      >
-                        <div className="w-10">
-                          <div className="h-4 w-4 rounded-[6px] bg-slate500_12 dark:bg-slate500_20" />
-                        </div>
-                        <div className="w-16">
-                          <div className="h-4 w-10 rounded bg-slate500_12 dark:bg-slate500_20" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="h-4 w-2/3 rounded bg-slate500_12 dark:bg-slate500_20" />
-                        </div>
-                        <div className="w-24">
-                          <div className="h-4 w-12 rounded bg-slate500_12 dark:bg-slate500_20" />
-                        </div>
-                        <div className="flex w-24 items-center justify-end gap-3">
-                          <div className="h-4 w-4 rounded-full bg-slate500_12 dark:bg-slate500_20" />
-                          <div className="h-4 w-4 rounded-full bg-slate500_12 dark:bg-slate500_20" />
-                        </div>
-                      </div>
-                    ))}
-                  </>
-                ) : total === 0 ? (
-                  <div className="p-10 text-center">
-                    <h3 className="text-[18px] font-semibold text-ink dark:text-white">
-                      No Boards yet
-                    </h3>
-                    <p className="mt-1 text-[14px] text-[#637381] dark:text-slate500_80">
-                      Try creating a new board for this project.
-                    </p>
                     <button
                       type="button"
-                      onClick={handleCreateBoard}
-                      className="mt-4 inline-flex h-9 items-center justify-center rounded-[10px] bg-ink px-5 text-[14px] font-semibold text-white shadow-[0_10px_25px_rgba(15,23,42,0.18)] hover:opacity-95 dark:bg-white dark:text-[#1C252E] dark:shadow-none"
+                      onClick={() => handleSortClick("id")}
+                      className="flex w-16 items-center gap-1 text-left"
                     >
-                      Create Board
+                      <span>ID</span>
+                      {renderSortIcon("id")}
                     </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleSortClick("title")}
+                      className="flex flex-1 items-center gap-1 text-left"
+                    >
+                      <span>Board Name</span>
+                      {renderSortIcon("title")}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleSortClick("task")}
+                      className="flex w-24 items-center gap-1 text-left"
+                    >
+                      <span>Task</span>
+                      {renderSortIcon("task")}
+                    </button>
+
+                    <div className="w-24" />
                   </div>
-                ) : (
-                  <>
-                    {isCreatingBoard && (
-                      <div className="flex animate-pulse items-center border-b border-dashed border-slate500_12 px-6 py-4 text-sm dark:border-slate500_20">
-                        <div className="w-10">
-                          <div className="h-4 w-4 rounded-[6px] bg-slate500_12 dark:bg-slate500_20" />
-                        </div>
-                        <div className="w-16">
-                          <div className="h-4 w-10 rounded bg-slate500_12 dark:bg-slate500_20" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="h-4 w-2/3 rounded bg-slate500_12 dark:bg-slate500_20" />
-                        </div>
-                        <div className="w-24">
-                          <div className="h-4 w-12 rounded bg-slate500_12 dark:bg-slate500_20" />
-                        </div>
-                        <div className="flex w-24 items-center justify-end gap-3">
-                          <div className="h-4 w-4 rounded-full bg-slate500_12 dark:bg-slate500_20" />
-                          <div className="h-4 w-4 rounded-full bg-slate500_12 dark:bg-slate500_20" />
-                        </div>
-                      </div>
-                    )}
 
-                    {paginatedBoards.map((board) => (
-                      <div
-                        key={board.boardId}
-                        className="flex items-center border-b border-dashed border-slate500_12 px-6 py-4 text-[14px] text-ink last:border-b-0 dark:border-slate500_20 dark:text-slate500_80"
+                  {/* Body */}
+                  {showSkeleton ? (
+                    <>
+                      {Array.from({ length: 4 }).map((_, i) => (
+                        <div
+                          key={i}
+                          className="flex animate-pulse items-center border-b border-dashed border-slate500_12 px-6 py-4 text-sm dark:border-slate500_20"
+                        >
+                          <div className="w-10">
+                            <div className="h-4 w-4 rounded-[6px] bg-slate500_12 dark:bg-slate500_20" />
+                          </div>
+                          <div className="w-16">
+                            <div className="h-4 w-10 rounded bg-slate500_12 dark:bg-slate500_20" />
+                          </div>
+                          <div className="flex-1">
+                            <div className="h-4 w-2/3 rounded bg-slate500_12 dark:bg-slate500_20" />
+                          </div>
+                          <div className="w-24">
+                            <div className="h-4 w-12 rounded bg-slate500_12 dark:bg-slate500_20" />
+                          </div>
+                          <div className="flex w-24 items-center justify-end gap-3">
+                            <div className="h-4 w-4 rounded-full bg-slate500_12 dark:bg-slate500_20" />
+                            <div className="h-4 w-4 rounded-full bg-slate500_12 dark:bg-slate500_20" />
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  ) : total === 0 ? (
+                    <div className="p-10 text-center">
+                      <h3 className="text-[18px] font-semibold text-ink dark:text-white">
+                        No Boards yet
+                      </h3>
+                      <p className="mt-1 text-[14px] text-[#637381] dark:text-slate500_80">
+                        Try creating a new board for this project.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleCreateBoard}
+                        className="mt-4 inline-flex h-9 items-center justify-center rounded-[10px] bg-ink px-5 text-[14px] font-semibold text-white shadow-[0_10px_25px_rgba(15,23,42,0.18)] hover:opacity-95 dark:bg-white dark:text-[#1C252E] dark:shadow-none"
                       >
-                        {/* checkbox */}
-                        <div className="w-10">
-                          <input
-                            type="checkbox"
-                            className="border-1 h-4 w-4 rounded-[6px] border-[#1C252E] text-brand focus:ring-0 dark:border-slate500_20"
-                          />
+                        Create Board
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      {isCreatingBoard && (
+                        <div className="flex animate-pulse items-center border-b border-dashed border-slate500_12 px-6 py-4 text-sm dark:border-slate500_20">
+                          <div className="w-10">
+                            <div className="h-4 w-4 rounded-[6px] bg-slate500_12 dark:bg-slate500_20" />
+                          </div>
+                          <div className="w-16">
+                            <div className="h-4 w-10 rounded bg-slate500_12 dark:bg-slate500_20" />
+                          </div>
+                          <div className="flex-1">
+                            <div className="h-4 w-2/3 rounded bg-slate500_12 dark:bg-slate500_20" />
+                          </div>
+                          <div className="w-24">
+                            <div className="h-4 w-12 rounded bg-slate500_12 dark:bg-slate500_20" />
+                          </div>
+                          <div className="flex w-24 items-center justify-end gap-3">
+                            <div className="h-4 w-4 rounded-full bg-slate500_12 dark:bg-slate500_20" />
+                            <div className="h-4 w-4 rounded-full bg-slate500_12 dark:bg-slate500_20" />
+                          </div>
                         </div>
+                      )}
 
-                        {/* ID */}
-                        <div className="w-16 text-slate600 dark:text-slate500_80">
-                          {String(board.boardId).padStart(3, "0")}
+                      {paginatedBoards.map((board) => (
+                        <div
+                          key={board.boardId}
+                          className="flex items-center border-b border-dashed border-slate500_12 px-6 py-4 text-[14px] text-ink last:border-b-0 dark:border-slate500_20 dark:text-slate500_80"
+                        >
+                          <div className="w-10">
+                            <input
+                              type="checkbox"
+                              className="border-1 h-4 w-4 rounded-[6px] border-[#1C252E] text-brand focus:ring-0 dark:border-slate500_20"
+                            />
+                          </div>
+
+                          <div className="w-16 text-slate600 dark:text-slate500_80">
+                            {String(board.boardId).padStart(3, "0")}
+                          </div>
+
+                          <div className="flex-1">{board.title || "Board title"}</div>
+
+                          <div className="w-24 text-slate600 dark:text-slate500_80">
+                            20+
+                          </div>
+
+                          <div className="flex w-24 items-center justify-end gap-3">
+                            <button
+                              type="button"
+                              title="Open board"
+                              onClick={() => handleAddClick(board)}
+                              className="rounded-full p-1.5 hover:bg-slate500_08 dark:hover:bg-slate500_20"
+                            >
+                              <Eye className="h-4 w-4 text-slate600 dark:text-slate500_80" />
+                            </button>
+
+                            <button
+                              type="button"
+                              title="Edit board"
+                              onClick={() => openEditModal(board)}
+                              className="rounded-full p-1.5 hover:bg-slate500_08 dark:hover:bg-slate500_20"
+                            >
+                              <Edit2 className="h-4 w-4 text-slate600 dark:text-slate500_80" />
+                            </button>
+
+                            <button
+                              type="button"
+                              title="More"
+                              onClick={() => openEditModal(board)}
+                              className="rounded-full p-1.5 hover:bg-slate500_08 dark:hover:bg-slate500_20"
+                            >
+                              <MoreVertical className="h-4 w-4 text-slate600 dark:text-slate500_80" />
+                            </button>
+                          </div>
                         </div>
+                      ))}
+                    </>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </section>
 
-                        {/* Board name */}
-                        <div className="flex-1 ">
-                          {board.title || "Board title"}
-                        </div>
-
-                        {/* Task (static 20+ for now) */}
-                        <div className="w-24 text-slate600 dark:text-slate500_80">
-                          20+
-                        </div>
-
-                        {/* actions: Quick View / Edit / More */}
-                        <div className="flex w-24 items-center justify-end gap-3">
-                          <button
-                            type="button"
-                            title="Quick View"
-                            onClick={() => handleAddClick(board)}
-                            className="hover:bg-slate500_08 rounded-full p-1.5 dark:hover:bg-slate500_20"
-                          >
-                            <Eye className="h-4 w-4 text-slate600 dark:text-slate500_80" />
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => handleMoreClick(board)}
-                            className="hover:bg-slate500_08 rounded-full p-1.5 dark:hover:bg-slate500_20"
-                          >
-                            <Edit2 className="h-4 w-4 text-slate600 dark:text-slate500_80" />
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => handleMoreClick(board)}
-                            className="hover:bg-slate500_08 rounded-full p-1.5 dark:hover:bg-slate500_20"
-                          >
-                            <MoreVertical className="h-4 w-4 text-slate600 dark:text-slate500_80" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </>
-                )}
-              </div>
-            )}
-          </section>
-
-          {/* 🔹 DENSE + PAGINATION FOOTER (shared for both views) */}
-          {!isLoading && total > 0 && (
-            <div className="mx-auto flex max-w-[1120px] items-center justify-between pb-6 pt-4 text-[13px] text-[#212B36] dark:text-slate500_80">
-              {/* Dense toggle – visual switch, follows theme */}
-              <button
-                type="button"
-                onClick={() => setDense((d) => !d)}
-                className="flex items-center gap-2"
+        {/* Footer */}
+        {!isLoading && total > 0 && (
+          <div className="mx-auto flex max-w-[1120px] items-center justify-between pb-6 pt-4 text-[13px] text-[#212B36] dark:text-slate500_80">
+            <button
+              type="button"
+              onClick={() => setDense((d) => !d)}
+              className="flex items-center gap-2"
+            >
+              <span
+                className={`
+                  relative inline-flex h-5 w-9 items-center rounded-full transition-colors
+                  ${
+                    dense
+                      ? "bg-ink dark:bg-ink"
+                      : "bg-slate500_20 dark:bg-[#919EAB7A]"
+                  }
+                `}
               >
-                {/* switch */}
                 <span
                   className={`
-                    relative inline-flex h-5 w-9 items-center rounded-full
-                    transition-colors
-                    ${
-                      dense
-                        ? "bg-ink dark:bg-ink"
-                        : "bg-slate500_20 dark:bg-[#919EAB7A]"
-                    }
+                    inline-block h-4 w-4 rounded-full bg-white shadow-soft transform transition-transform
+                    ${dense ? "translate-x-[18px]" : "translate-x-[2px]"}
                   `}
-                >
-                  <span
-                    className={`
-                      inline-block h-4 w-4 rounded-full bg-white shadow-soft
-                      transform transition-transform
-                      ${dense ? "translate-x-[18px]" : "translate-x-[2px]"}
-                    `}
-                  />
+                />
+              </span>
+
+              <span className="text-[#212B36] dark:text-[#E5EAF1]">Dense</span>
+            </button>
+
+            <div className="flex items-center gap-5">
+              <div className="flex items-center gap-2">
+                <span className="text-[#637381] dark:text-slate500_80">
+                  Rows per page:
                 </span>
 
-                {/* label */}
-                <span className="text-[#212B36] dark:text-[#E5EAF1]">
-                  Dense
-                </span>
-              </button>
-
-              {/* Right side: rows per page + range + arrows */}
-              <div className="flex items-center gap-5">
-                {/* Rows per page */}
-                <div className="flex items-center gap-2">
-                  <span className="text-[#637381] dark:text-slate500_80">
-                    Rows per page:
-                  </span>
-
-                  <div className="relative">
-                    {/* trigger – value + chevron */}
-                    <button
-                      type="button"
-                      onClick={() => setRowsMenuOpen((o) => !o)}
-                      className="flex items-center gap-1 text-[13px] text-[#111827] dark:text-[#F9FAFB]"
-                    >
-                      {rowsPerPage}
-                      <ChevronDown className="h-4 w-4 text-slate500 dark:text-slate500_80" />
-                    </button>
-
-                    {/* dropdown menu */}
-                    {rowsMenuOpen && (
-                      <div
-                        className="
-                          absolute right-0 mt-1 w-20 rounded-[12px]
-                          border border-slate500_20 bg-white/98
-                          shadow-[0_18px_45px_rgba(145,158,171,0.24)]
-                          dark:border-[#1F2937] dark:bg-[#050B14]
-                        "
-                      >
-                        {[3, 5, 6, 9].map((option) => (
-                          <button
-                            key={option}
-                            type="button"
-                            onClick={() => handleChangeRowsPerPage(option)}
-                            className={`
-                              flex w-full items-center justify-between px-3 py-1
-                              text-left text-[13px]
-                              hover:bg-slate500_08 dark:hover:bg-white/5
-                              ${
-                                rowsPerPage === option
-                                  ? "font-semibold text-[#111827] dark:text-white"
-                                  : "text-[#637381] dark:text-slate500_80"
-                              }
-                            `}
-                          >
-                            <span>{option}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Range text */}
-                <span className="text-[#212B36] dark:text-slate500_80">
-                  {total === 0
-                    ? "0-0 of 0"
-                    : `${startIndex + 1}-${endIndex} of ${total}`}
-                </span>
-
-                {/* Arrows */}
-                <div className="flex items-center gap-2">
+                <div className="relative">
                   <button
                     type="button"
-                    onClick={handlePrev}
-                    disabled={!canPrev}
-                    className={`flex h-5 w-5 items-center justify-center ${
-                      !canPrev
-                        ? "cursor-default text-slate300 dark:text-slate600"
-                        : "text-slate500 hover:text-slate900 dark:text-slate500_80 dark:hover:text-white"
-                    }`}
+                    onClick={() => setRowsMenuOpen((o) => !o)}
+                    className="flex items-center gap-1 text-[13px] text-[#111827] dark:text-[#F9FAFB]"
                   >
-                    <ChevronLeft className="h-4 w-4" />
+                    {rowsPerPage}
+                    <ChevronDown className="h-4 w-4 text-slate500 dark:text-slate500_80" />
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={handleNext}
-                    disabled={!canNext}
-                    className={`flex h-5 w-5 items-center justify-center ${
-                      !canNext
-                        ? "cursor-default text-slate300 dark:text-slate600"
-                        : "text-slate500 hover:text-slate900 dark:text-slate500_80 dark:hover:text-white"
-                    }`}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
+                  {rowsMenuOpen && (
+                    <div className="absolute right-0 mt-1 w-20 rounded-[12px] border border-slate500_20 bg-white/98 shadow-[0_18px_45px_rgba(145,158,171,0.24)] dark:border-[#1F2937] dark:bg-[#050B14]">
+                      {[3, 5, 6, 9].map((option) => (
+                        <button
+                          key={option}
+                          type="button"
+                          onClick={() => handleChangeRowsPerPage(option)}
+                          className={`
+                            flex w-full items-center justify-between px-3 py-1 text-left text-[13px]
+                            hover:bg-slate500_08 dark:hover:bg-white/5
+                            ${
+                              rowsPerPage === option
+                                ? "font-semibold text-[#111827] dark:text-white"
+                                : "text-[#637381] dark:text-slate500_80"
+                            }
+                          `}
+                        >
+                          <span>{option}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
+
+              <span className="text-[#212B36] dark:text-slate500_80">
+                {total === 0
+                  ? "0-0 of 0"
+                  : `${startIndex + 1}-${endIndex} of ${total}`}
+              </span>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handlePrev}
+                  disabled={!canPrev}
+                  className={`flex h-5 w-5 items-center justify-center ${
+                    !canPrev
+                      ? "cursor-default text-slate300 dark:text-slate600"
+                      : "text-slate500 hover:text-slate900 dark:text-slate500_80 dark:hover:text-white"
+                  }`}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleNext}
+                  disabled={!canNext}
+                  className={`flex h-5 w-5 items-center justify-center ${
+                    !canNext
+                      ? "cursor-default text-slate300 dark:text-slate600"
+                      : "text-slate500 hover:text-slate900 dark:text-slate500_80 dark:hover:text-white"
+                  }`}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
             </div>
-          )}
+          </div>
+        )}
 
-          <AddEditBoardModal
-            isOpen={isModalOpen}
-            onClose={closeModal}
-            handleEditTitle={handleEditTitle}
-            handleAddBoardClick={handleAddBoardClick}
-            board={selectedBoard}
-          />
+        <AddEditBoardModal
+          isOpen={isModalOpen}
+          onClose={closeModal}
+          handleEditTitle={handleEditTitle}
+          handleAddBoardClick={handleAddBoardClick}
+          board={selectedBoard}
+        />
 
-          <ToastContainer
-            position="top-center"
-            autoClose={4000}
-            pauseOnHover
-            closeOnClick
-            draggable
-            toastClassName="blumen-toast"
-            bodyClassName="blumen-toast-body"
-            progressClassName="blumen-toast-progress"
-          />
-        </Shell>
-      )}
+        <ToastContainer
+          position="top-center"
+          autoClose={4000}
+          pauseOnHover
+          closeOnClick
+          draggable
+          toastClassName="blumen-toast"
+          bodyClassName="blumen-toast-body"
+          progressClassName="blumen-toast-progress"
+        />
+      </Shell>
     </>
   );
 }

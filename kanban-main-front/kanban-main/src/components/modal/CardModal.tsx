@@ -582,7 +582,8 @@ export function CardModal(props: CardModalProps) {
                       </div>
 
                       {/* ================= CONTENT ================= */}
-                      <div className="relative flex-1 overflow-y-auto px-6 py-6 ">
+                      <div className="relative flex-1 overflow-y-auto px-6 py-6 
+                      ">
                         <div className="pointer-events-none absolute inset-0 " />
                         <div className="relative z-10">
                           {/* Title input */}
