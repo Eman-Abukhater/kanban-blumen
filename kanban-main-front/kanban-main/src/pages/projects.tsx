@@ -14,7 +14,7 @@ import {
   deleteProject,
 } from "../services/kanbanApi";
 
-import { ToastContainer, toast } from "react-toastify";
+import { toast } from "react-toastify";
 
 import KanbanContext from "../context/kanbanContext";
 import ProjectCardSkeleton from "@/components/layout/ProjectCardSkeleton";
@@ -841,17 +841,7 @@ export default function ProjectsList() {
           </div>
         )}
 
-        <ToastContainer
-          position="top-center"
-          autoClose={4000}
-          pauseOnHover
-          closeOnClick
-          draggable
-          toastClassName="blumen-toast"
-          bodyClassName="blumen-toast-body"
-          progressClassName="blumen-toast-progress"
-        />
-
+      
         <div className="h-10" />
       </Shell>
     </>

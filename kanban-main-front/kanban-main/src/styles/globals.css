@@ -77,7 +77,7 @@ body {
     @apply relative flex min-h-[48px] items-center rounded-[16px]
       border border-slate500_12 bg-white px-4 py-3 text-[14px] text-ink
       shadow-[0_18px_45px_rgba(15,23,42,0.06)]
-      dark:border-slate500_20 dark:bg-[#1B232D] dark:text-white dark:shadow-none;
+      dark:border-slate500_20 dark:bg-[#1C252E] dark:text-white dark:shadow-none;
   }
 
   /* Text inside toast body */
@@ -85,8 +85,6 @@ body {
     @apply flex-1;
   }
 
-  /* Progress bar color */
-  .blumen-toast-progress {
-    @apply bg-brand dark:bg-brand;
-  }
+
+
 }

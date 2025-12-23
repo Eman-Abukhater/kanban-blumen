@@ -3,7 +3,7 @@ export const getServerSideProps = async () => ({ props: {} });
 
 import { useState, useEffect, useMemo, useContext, useCallback } from "react";
 import { useRouter } from "next/router";
-import { ToastContainer, toast } from "react-toastify";
+import { toast } from "react-toastify";
 import { HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
 import {
   Eye,
@@ -950,16 +950,7 @@ export default function BoardListPage() {
           board={selectedBoard}
         />
 
-        <ToastContainer
-          position="top-center"
-          autoClose={4000}
-          pauseOnHover
-          closeOnClick
-          draggable
-          toastClassName="blumen-toast"
-          bodyClassName="blumen-toast-body"
-          progressClassName="blumen-toast-progress"
-        />
+       
       </Shell>
     </>
   );

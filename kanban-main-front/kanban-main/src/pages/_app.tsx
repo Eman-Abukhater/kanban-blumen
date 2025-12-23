@@ -5,8 +5,10 @@ import { KanbanContextComponent } from "../context/KanbanContextComponent";
 import { Hydrate, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import OnlineUsersButton from "@/components/layout/OnlineUsersButton";
 
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
 export default function App({ Component, pageProps }: AppProps) {
-  // ✅ create QueryClient once
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -22,6 +24,18 @@ export default function App({ Component, pageProps }: AppProps) {
         <KanbanContextComponent>
           <Component {...pageProps} />
           <OnlineUsersButton />
+
+          {/* ✅ ONE global toast container */}
+          <ToastContainer
+            position="top-center"
+            autoClose={2000}
+            pauseOnHover
+            closeOnClick
+            draggable
+            hideProgressBar
+            toastClassName="blumen-toast"
+            bodyClassName="blumen-toast-body"
+          />
         </KanbanContextComponent>
       </Hydrate>
     </QueryClientProvider>

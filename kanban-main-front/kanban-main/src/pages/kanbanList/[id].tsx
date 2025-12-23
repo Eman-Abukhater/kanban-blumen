@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useContext } from "react";
 import { useRouter } from "next/router";
 import { useQuery } from "@tanstack/react-query";
-import { ToastContainer, toast } from "react-toastify";
+import {toast } from "react-toastify";
 
 import Shell from "@/components/layout/Shell";
 import Topbar from "@/components/layout/Topbar";
@@ -165,16 +165,7 @@ export default function GetKanbanList() {
         )}
       </section>
 
-      <ToastContainer
-        position="top-center"
-        autoClose={4000}
-        pauseOnHover
-        closeOnClick
-        draggable
-        toastClassName="blumen-toast"
-        bodyClassName="blumen-toast-body"
-        progressClassName="blumen-toast-progress"
-      />
+    
     </Shell>
   );
 }

@@ -12,7 +12,8 @@ export interface IListMenuProps {
 }
 
 export function ListMenu(props: IListMenuProps) {
-  const { handleOpenModal } = useContext(KanbanContext);
+  const { handleOpenModal, handleClearList } = useContext(KanbanContext);
+
 
   return (
     <Menu as="div" className="relative">
@@ -79,17 +80,8 @@ export function ListMenu(props: IListMenuProps) {
                     ${active ? "bg-slate500_08 dark:bg-white/5" : ""}
                     text-ink dark:text-white
                   `}
-                  onClick={() =>
-                    handleOpenModal({
-                      type: "CLEAR_LIST", // adjust to your real modal type
-                      modalProps: {
-                        listIndex: props.listIndex,
-                        listid: props.listid,
-                        title: props.title,
-                        userInfo: props.userInfo,
-                      },
-                    })
-                  }
+onClick={() => handleClearList(props.listid)}
+
                 >
                   <Eraser className="h-5 w-5" />
                   <span>Clear</span>

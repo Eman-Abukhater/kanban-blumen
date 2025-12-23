@@ -52,7 +52,7 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
                 {/* 1) Add */}
                 <button
                   type="button"
-                  className="flex h-4 w-4 items-center justify-center rounded-full bg-[#1C252E] text-white text-bold shadow-soft hover:opacity-90 dark:bg-white dark:text-ink"
+                  className="flex h-5 w-5 items-center justify-center rounded-full bg-[#1C252E] text-white text-bold shadow-soft hover:opacity-90 dark:bg-white dark:text-ink"
                   onClick={() => {
                     setShowAddCard(true);
                     setTimeout(() => {
@@ -68,7 +68,7 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
                   }}
                   title="Add"
                 >
-                  <Plus className="h-2 w-2 text-white text-bold" />
+                  <Plus className="h-3 w-3 font-extrabold" />
                 </button>
 
                 {/* 2) Three dots menu */}

@@ -55,6 +55,7 @@ export type KanbanContext = {
   handleDragEnd: (dropResult: DropResult) => void;
   handleOpenModal: (props: hanbleOpenModalProps) => void;
   handleCloseModal: () => void;
+handleClearList: (listid: number, userInfo: any) => void;
   setKanbanListState: (KanbanList: KanbanBoardState) => void;
   handleSetUserInfo: (user: any) => void;
   setSignalRConnection: (signalRConnection: HubConnection | undefined) => void;

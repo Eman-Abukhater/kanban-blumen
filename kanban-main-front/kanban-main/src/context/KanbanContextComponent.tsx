@@ -464,6 +464,24 @@ export function KanbanContextComponent(props: IAppProps) {
       }
     }
   };
+const handleClearList = (listid: number) => {
+  const idx = kanbanState.findIndex((l) => l.kanbanListId === listid);
+
+  if (idx === -1) {
+    toast.error("List not found");
+    return;
+  }
+
+  const copy = [...kanbanState];
+  copy[idx] = { ...copy[idx], kanbanCards: [] }; // ✅ clear cards
+
+  setKanbanState(copy); // ✅ important: NOT functional update
+
+  toast.success("List cleared", { position: toast.POSITION.TOP_CENTER });
+};
+
+
+
 
   const renderModal = (state: ModalContextState) => {
     if (state.modalProps !== null) {
@@ -509,6 +527,7 @@ export function KanbanContextComponent(props: IAppProps) {
         handleSetUserInfo,
         setSignalRConnection,
         setUsersOnline,
+        handleClearList,
       }}
     >
       {renderModal(modalState)}
