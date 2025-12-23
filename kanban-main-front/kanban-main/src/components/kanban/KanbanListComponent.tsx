@@ -1,4 +1,4 @@
-import { useContext, useState } from "react"; // 👈 تأكدي useState موجودة
+import { useContext, useState } from "react";
 import { Draggable, Droppable } from "react-beautiful-dnd";
 import { KanbanList } from "./KanbanTypes";
 import { AddCardForm } from "./AddCardForm";
@@ -7,6 +7,7 @@ import { classNames } from "../../utility/css";
 import { ListMenu } from "./ListMenu";
 import KanbanCardComponent from "./KanbanCardComponent";
 import { Plus } from "lucide-react";
+import Image from "next/image";
 
 export interface IKanbanListComponentProps {
   listIndex: number;
@@ -18,8 +19,6 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
   const { handleCreateCard, userInfo } = useContext(KanbanContext);
 
   const cardCount = props.list.kanbanCards?.length ?? 0;
-
-  // 👇 هل نظهر input إضافة الكارد؟
   const [showAddCard, setShowAddCard] = useState(false);
 
   return (
@@ -27,33 +26,33 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
       {(provided) => (
         <div
           className={classNames(
-            props.listIndex > 0 ? "ml-0" : "",
-            "flex w-[340px] flex-col rounded-[24px] border border-[#E5EAF1] bg-[#F4F6F8] shadow-soft dark:border-slate500_20 dark:bg-[#1B232D]"
+            "flex w-[340px] flex-col rounded-[24px] border border-[#E5EAF1] bg-[#F4F6F8] shadow-soft",
+            "dark:border-slate500_20 dark:bg-[#1B232D]"
           )}
           {...provided.draggableProps}
           ref={provided.innerRef}
         >
-          <div className="flex cursor-grab touch-manipulation flex-col">
+          <div className="flex touch-manipulation flex-col">
             {/* HEADER */}
-            <div
-              {...provided.dragHandleProps}
-              className="flex items-center justify-between rounded-t-[24px] px-5 pt-4 pb-3 focus:outline-none dark:text-white"
-            >
+            <div className="flex items-center justify-between rounded-t-[24px] px-5 py-4">
+              {/* left: count + title */}
               <div className="flex items-center gap-3">
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#E5EAF1] text-[13px] font-semibold text-slate600 dark:bg-[#232C36] dark:text-slate500_80">
+                {/* smaller badge like figma */}
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#DFE3E8] text-[11px] font-bold">
                   {cardCount}
                 </span>
 
-                <div className="text-[16px] font-semibold text-ink dark:text-white">
+                <div className="text-[17px] font-semibold text-ink dark:text-white">
                   {props.list.title}
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                {/* زر + يفتح input إضافة الكارد */}
+              {/* right: add + menu + drag */}
+              <div className="flex items-center gap-1">
+                {/* 1) Add */}
                 <button
                   type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-full bg-black text-white shadow-soft dark:bg-white dark:text-black"
+                  className="flex h-4 w-4 items-center justify-center rounded-full bg-[#1C252E] text-white text-bold shadow-soft hover:opacity-90 dark:bg-white dark:text-ink"
                   onClick={() => {
                     setShowAddCard(true);
                     setTimeout(() => {
@@ -61,49 +60,58 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
                         `add-card-${props.list.kanbanListId}`
                       );
                       if (el) {
-                        el.scrollIntoView({
-                          behavior: "smooth",
-                          block: "start",
-                        });
+                        el.scrollIntoView({ behavior: "smooth", block: "start" });
                         const input = el.querySelector("input");
                         if (input) (input as HTMLInputElement).focus();
                       }
                     }, 0);
                   }}
+                  title="Add"
                 >
-                  <Plus className="h-4 w-4" />
+                  <Plus className="h-2 w-2 text-white text-bold" />
                 </button>
 
+                {/* 2) Three dots menu */}
                 <ListMenu
                   listid={props.list.kanbanListId}
                   listIndex={props.listIndex}
                   title={props.list.title}
                   userInfo={userInfo}
                 />
+
+                {/* 3) Drag icon handle ONLY */}
+                <div
+                  className="cursor-grab active:cursor-grabbing"
+                  {...provided.dragHandleProps}
+                  title="Drag"
+                >
+                  <Image
+                    src="/icons/drag_icon.png"
+                    alt="drag"
+                    width={18}
+                    height={18}
+                    className="opacity-80"
+                  />
+                </div>
               </div>
             </div>
 
             {/* BODY */}
             <Droppable droppableId={props.list.id}>
-              {(provided) => (
+              {(dropProvided) => (
                 <div
                   className="flex min-h-[50px] flex-col"
-                  {...provided.droppableProps}
-                  ref={provided.innerRef}
+                  {...dropProvided.droppableProps}
+                  ref={dropProvided.innerRef}
                 >
                   <div className="space-y-3 px-4 pb-4 pt-3">
-                    {/* input Add card يظهر فقط عند showAddCard */}
+                    {/* Add card input */}
                     <div id={`add-card-${props.list.kanbanListId}`}>
                       {showAddCard && (
                         <AddCardForm
                           text="Add card"
                           placeholder="Task name"
-                          onSubmit={(
-                            title,
-                            kanbanCardId,
-                            seqNo,
-                            fkKanbanListId
-                          ) =>
+                          onSubmit={(title, kanbanCardId, seqNo, fkKanbanListId) =>
                             handleCreateCard(
                               props.listIndex,
                               title,
@@ -114,7 +122,7 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
                           }
                           userInfo={userInfo}
                           fkKanbanListId={props.list.kanbanListId}
-                          onCreated={() => setShowAddCard(false)} // 👈 أخفيه بعد الإنشاء
+                          onCreated={() => setShowAddCard(false)}
                         />
                       )}
                     </div>
@@ -129,7 +137,7 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
                       />
                     ))}
 
-                    {provided.placeholder}
+                    {dropProvided.placeholder}
                   </div>
                 </div>
               )}
