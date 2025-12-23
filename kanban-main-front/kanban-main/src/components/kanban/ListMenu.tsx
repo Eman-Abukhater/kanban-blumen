@@ -34,28 +34,95 @@ export function ListMenu(props: IListMenuProps) {
         leaveFrom="transform opacity-100 scale-100"
         leaveTo="transform opacity-0 scale-95"
       >
-        <Menu.Item>
-  {({ active }) => (
-    <button
-      className={`${
-        active ? "bg-red-500 text-white" : "text-gray-900 dark:text-white"
-      } group flex w-full items-center rounded-md px-2 py-2 text-xs font-semibold`}
-      onClick={() =>
-        handleOpenModal({
+        <Menu.Items
+          className="
+            absolute right-0 mt-2 w-[170px] origin-top-right overflow-hidden
+            rounded-[16px] border border-slate500_12 bg-white shadow-[0_18px_45px_rgba(145,158,171,0.24)]
+            focus:outline-none
+            dark:border-slate500_20 dark:bg-[#1B232D]
+          "
+        >
+          <div className="p-2">
+            {/* Rename */}
+            <Menu.Item>
+              {({ active }) => (
+                <button
+                  className={`
+                    flex w-full items-center gap-3 rounded-[12px] px-3 py-2 text-[14px]
+                    ${active ? "bg-slate500_08 dark:bg-white/5" : ""}
+                    text-ink dark:text-white
+                  `}
+                  onClick={() =>
+                    handleOpenModal({
+                      type: "RENAME_LIST",
+                      modalProps: {
+                        listIndex: props.listIndex,
+                        title: props.title,
+                        listid: props.listid,
+                        userInfo: props.userInfo,
+                      },
+                    })
+                  }
+                >
+                  <PencilIcon className="h-5 w-5" />
+                  <span>Rename</span>
+                </button>
+              )}
+            </Menu.Item>
+
+            {/* Clear (if you have modal/action for it) */}
+            <Menu.Item>
+              {({ active }) => (
+                <button
+                  className={`
+                    flex w-full items-center gap-3 rounded-[12px] px-3 py-2 text-[14px]
+                    ${active ? "bg-slate500_08 dark:bg-white/5" : ""}
+                    text-ink dark:text-white
+                  `}
+                  onClick={() =>
+                    handleOpenModal({
+                      type: "CLEAR_LIST", // adjust to your real modal type
+                      modalProps: {
+                        listIndex: props.listIndex,
+                        listid: props.listid,
+                        title: props.title,
+                        userInfo: props.userInfo,
+                      },
+                    })
+                  }
+                >
+                  <Eraser className="h-5 w-5" />
+                  <span>Clear</span>
+                </button>
+              )}
+            </Menu.Item>
+
+            {/* Delete */}
+            <Menu.Item>
+              {({ active }) => (
+                <button
+                  className={`
+                    flex w-full items-center gap-3 rounded-[12px] px-3 py-2 text-[14px]
+                    ${active ? "bg-red-50 dark:bg-red-500/10" : ""}
+                    text-[#FF5630]
+                  `}
+                  onClick={() =>
+                   handleOpenModal({
           type: "DELETE_LIST",
           modalProps: {
             listIndex: props.listIndex,
             title: props.title,
           },
         })
-      }
-    >
-      <TrashIcon className="mr-2 h-4 w-4" />
-      Delete list
-    </button>
-  )}
-</Menu.Item>
-
+                  }
+                >
+                  <TrashIcon className="h-5 w-5" />
+                  <span>Delete</span>
+                </button>
+              )}
+            </Menu.Item>
+          </div>
+        </Menu.Items>
       </Transition>
     </Menu>
   );
