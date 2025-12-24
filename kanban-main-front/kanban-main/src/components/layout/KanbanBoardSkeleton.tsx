@@ -20,10 +20,6 @@ function KanbanBoardSkeleton() {
               <div className="h-4 w-24 rounded-full bg-slate500_12 dark:bg-slate500_20" />
             </div>
 
-            {/* right: + button + menu */}
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-full bg-black/10 dark:bg-white/10" />
-            </div>
           </div>
 
           {/* LIST BODY (cards) */}

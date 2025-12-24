@@ -80,7 +80,7 @@ export function ListMenu(props: IListMenuProps) {
                     ${active ? "bg-slate500_08 dark:bg-white/5" : ""}
                     text-ink dark:text-white
                   `}
-onClick={() => handleClearList(props.listid)}
+                    onClick={() => handleClearList(props.listid, props.userInfo)}
 
                 >
                   <Eraser className="h-5 w-5" />

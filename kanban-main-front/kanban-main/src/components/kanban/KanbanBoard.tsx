@@ -1,5 +1,5 @@
 // src/components/kanban/KanbanBoard.tsx
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { DragDropContext, Droppable } from "react-beautiful-dnd";
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import KanbanContext from "../../context/kanbanContext";
@@ -12,18 +12,22 @@ export function KanbanBoard(props: IKanbanBoardProps) {
   const { kanbanState, handleDragEnd, handleCreateList, userInfo } =
     useContext(KanbanContext);
 
-  // ---------- DENSE + PAGINATION STATE ----------
   const [dense, setDense] = useState(false);
 
-  // ✅ default = 0 (means: not set yet) then we set it to total columns once we have data
-  const [columnsPerPage, setColumnsPerPage] = useState(0);
-
+  // pagination
+  const [columnsPerPage, setColumnsPerPage] = useState<number>(0); // will set to total on first load
   const [page, setPage] = useState(0);
   const [rowsMenuOpen, setRowsMenuOpen] = useState(false);
 
   const total = kanbanState.length;
 
-  // ✅ set default columns-per-page to ALL columns (total) one time after data arrives
+  // IMPORTANT: these two must match your UI sizes
+  const COL_WIDTH = 340; // column width (w-[340px])
+  const COL_GAP = 24; // gap-6 = 24px
+
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  // set default columns-per-page to ALL columns once data arrives
   useEffect(() => {
     if (columnsPerPage === 0 && total > 0) {
       setColumnsPerPage(total);
@@ -31,13 +35,10 @@ export function KanbanBoard(props: IKanbanBoardProps) {
     }
   }, [columnsPerPage, total]);
 
-  // use "total" when columnsPerPage is still 0
   const effectiveColumnsPerPage = columnsPerPage || total || 1;
 
   const startIndex = page * effectiveColumnsPerPage;
   const endIndex = Math.min(startIndex + effectiveColumnsPerPage, total);
-
-  const visibleLists = kanbanState.slice(startIndex, endIndex);
 
   const canPrev = page > 0;
   const canNext = endIndex < total;
@@ -56,11 +57,28 @@ export function KanbanBoard(props: IKanbanBoardProps) {
     setRowsMenuOpen(false);
   };
 
-  // ---------- RENDER ----------
+  // ✅ Pagination controls scroll position (but scrollbar still represents whole board)
+  useEffect(() => {
+    if (!scrollRef.current) return;
+
+    const left = startIndex * (COL_WIDTH + COL_GAP);
+
+    // next paint -> smooth
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollTo({ left, behavior: "smooth" });
+    });
+  }, [startIndex, COL_WIDTH, COL_GAP]);
+
+  // used only for "disabled" look if you want it
+  const pageRange = useMemo(() => {
+    if (total === 0) return "0-0 of 0";
+    return `${startIndex + 1}-${endIndex} of ${total}`;
+  }, [total, startIndex, endIndex]);
+
   return (
     <>
-      {/* SCROLLABLE COLUMNS AREA */}
-      <div className="kanban-scroll overflow-x-auto pb-4">
+      {/* SCROLLABLE COLUMNS AREA (scroll width grows with ALL columns) */}
+      <div ref={scrollRef} className="kanban-scroll overflow-x-auto pb-4">
         <DragDropContext onDragEnd={handleDragEnd}>
           <Droppable
             droppableId="all-lists"
@@ -69,40 +87,47 @@ export function KanbanBoard(props: IKanbanBoardProps) {
           >
             {(provided) => (
               <div
-                className="flex h-full flex-row flex-nowrap items-start gap-6 pb-10 min-w-max"
+                className="flex w-max flex-row flex-nowrap items-start gap-6 pb-10"
                 {...provided.droppableProps}
                 ref={provided.innerRef}
               >
-                {/* Visible columns only (pagination) */}
-                {visibleLists.map((list, idx) => (
-                  <KanbanListComponent
+                {/* ✅ Render ALL columns (so width always grows) */}
+                {kanbanState.map((list, idx) => (
+                  <div
                     key={list.id}
-                    listIndex={startIndex + idx} // keep global index
-                    list={list}
-                    dense={dense}
-                  />
+                    className={
+                      idx >= startIndex && idx < endIndex
+                        ? "opacity-100"
+                        : "opacity-30 pointer-events-none select-none"
+                    }
+                    aria-hidden={!(idx >= startIndex && idx < endIndex)}
+                  >
+                    <KanbanListComponent
+                      listIndex={idx} // IMPORTANT: keep global index for drag
+                      list={list}
+                      dense={dense}
+                    />
+                  </div>
                 ))}
 
                 {provided.placeholder}
 
-                {/* Add column card – only on last page */}
-                {kanbanState.length < 6 && endIndex === total && (
-                  <div className="w-[340px]">
-                    <AddForm
-                      text="Add column"
-                      placeholder="Untitled"
-                      onSubmit={handleCreateList}
-                      userInfo={userInfo}
-                    />
-                  </div>
-                )}
+                {/* ✅ Add column ALWAYS visible */}
+                <div className="w-[340px] shrink-0">
+                  <AddForm
+                    text="Add column"
+                    placeholder="Untitled"
+                    onSubmit={handleCreateList}
+                    userInfo={userInfo}
+                  />
+                </div>
               </div>
             )}
           </Droppable>
         </DragDropContext>
       </div>
 
-      {/* ---------- DENSE + PAGINATION FOOTER ---------- */}
+      {/* DENSE + PAGINATION FOOTER */}
       {total > 0 && (
         <div className="mx-auto flex max-w-[1120px] items-center justify-between pb-6 pt-4 text-[13px]">
           {/* Dense toggle */}
@@ -125,7 +150,7 @@ export function KanbanBoard(props: IKanbanBoardProps) {
             <span className="text-[#212B36] dark:text-slate500_80">Dense</span>
           </button>
 
-          {/* Right side: columns per page + range + arrows */}
+          {/* Right side */}
           <div className="flex items-center gap-5 text-black dark:text-slate500_80">
             {/* Columns per page */}
             <div className="flex items-center gap-2">
@@ -164,7 +189,7 @@ export function KanbanBoard(props: IKanbanBoardProps) {
 
             {/* Range text */}
             <span className="text-[#212B36] dark:text-slate500_80">
-              {total === 0 ? "0-0 of 0" : `${startIndex + 1}-${endIndex} of ${total}`}
+              {pageRange}
             </span>
 
             {/* Arrows */}
@@ -197,8 +222,6 @@ export function KanbanBoard(props: IKanbanBoardProps) {
             </div>
           </div>
         </div>
-
-
       )}
     </>
   );
