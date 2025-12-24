@@ -550,36 +550,37 @@ export function CardModal(props: CardModalProps) {
                         </div>
                       </div>
 
-                      {/* ================= TABS ================= */}
-                      <div className="border-b border-slate500_12 px-6 py-4 dark:border-slate500_20">
-                        <div className="grid w-full grid-cols-2 rounded-[14px] bg-[#F4F6F8] p-1 dark:bg-[#232C36]">
-                          <button
-                            type="button"
-                            onClick={() => setActiveTab("overview")}
-                            className={classNames(
-                              "w-full rounded-[12px] px-4 py-3 text-[14px] font-semibold transition",
-                              activeTab === "overview"
-                                ? "bg-white text-ink shadow-sm dark:bg-[#1B232D] dark:text-white"
-                                : "text-slate500 dark:text-slate500_80"
-                            )}
-                          >
-                            Overview
-                          </button>
+{/* ================= TABS ================= */}
+<div className="border-b border-slate500_12 bg-[#F4F6F8] px-3 py-1 dark:border-slate500_20 dark:bg-[#232C36]">
+  <div className="grid grid-cols-2 rounded-[14px] p-1">
+    <button
+      type="button"
+      onClick={() => setActiveTab("overview")}
+      className={classNames(
+        "w-full rounded-[12px] px-6 py-3 text-[12px] font-semibold transition",
+        activeTab === "overview"
+          ? "bg-white text-ink shadow-sm dark:bg-[#1B232D] dark:text-white"
+          : "bg-transparent text-slate500 dark:text-slate500_80"
+      )}
+    >
+      Overview
+    </button>
 
-                          <button
-                            type="button"
-                            onClick={() => setActiveTab("subtasks")}
-                            className={classNames(
-                              "w-full rounded-[12px] px-4 py-3 text-[14px] font-semibold transition",
-                              activeTab === "subtasks"
-                                ? "bg-white text-ink shadow-sm dark:bg-[#1B232D] dark:text-white"
-                                : "text-slate500 dark:text-slate500_80"
-                            )}
-                          >
-                            Subtasks
-                          </button>
-                        </div>
-                      </div>
+    <button
+      type="button"
+      onClick={() => setActiveTab("subtasks")}
+      className={classNames(
+        "w-full rounded-[12px] px-6 py-3 text-[12px] font-semibold transition",
+        activeTab === "subtasks"
+          ? "bg-white text-ink shadow-sm dark:bg-[#1B232D] dark:text-white"
+          : "bg-transparent text-slate500 dark:text-slate500_80"
+      )}
+    >
+      Subtasks
+    </button>
+  </div>
+</div>
+
 
                       {/* ================= CONTENT ================= */}
                       <div className="relative flex-1 overflow-y-auto px-6 py-6 
