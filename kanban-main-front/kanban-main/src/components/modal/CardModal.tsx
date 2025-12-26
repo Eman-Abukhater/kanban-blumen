@@ -24,6 +24,7 @@ import { toast } from "react-toastify";
 import { GetCardImagePath } from "@/utility/baseUrl";
 import dayjs from "dayjs";
 import { DueDateModal } from "../kanban/DueDateModal";
+import Image from "next/image";
 
 export interface CardModalProps {
   listIndex: number;
@@ -106,29 +107,29 @@ export function CardModal(props: CardModalProps) {
   const { handleUpdateCard, handleCloseModal, modalState, userInfo } =
     useContext(KanbanContext);
 
-  // ================= DATE LABEL (matches screenshot style) =================
-  const formatDateRange = (d: DateValueType | null) => {
-    if (!d?.startDate || !d?.endDate) return "DD - DD MMM";
+  // ================= DATE LABEL =================
+const formatDateRange = (d: DateValueType | null) => {
+  if (!d?.startDate || !d?.endDate) return "—";
 
-    const s = dayjs(d.startDate);
-    const e = dayjs(d.endDate);
+  const s = dayjs(d.startDate);
+  const e = dayjs(d.endDate);
 
-    const sameYear = s.year() === e.year();
-    const sameMonth = s.month() === e.month();
+  const sameYear = s.year() === e.year();
+  const sameMonth = s.month() === e.month();
 
-    if (sameYear && sameMonth) {
-      // 22 - 23 Jun
-      return `${s.format("DD")} - ${e.format("DD")} ${s.format("MMM")}`;
-    }
+  if (sameYear && sameMonth) {
+    // 28 - 29 Dec 2025
+    return `${s.format("DD")} - ${e.format("DD")} ${s.format("MMM YYYY")}`;
+  }
 
-    if (sameYear && !sameMonth) {
-      // 28 Jun - 02 Jul
-      return `${s.format("DD MMM")} - ${e.format("DD MMM")}`;
-    }
+  if (sameYear && !sameMonth) {
+    // 28 Dec - 02 Jan 2025
+    return `${s.format("DD MMM")} - ${e.format("DD MMM YYYY")}`;
+  }
 
-    // 22 Jun 2025 - 23 Jun 2026
-    return `${s.format("DD MMM YYYY")} - ${e.format("DD MMM YYYY")}`;
-  };
+  // 22 Jun 2025 - 23 Jun 2026
+  return `${s.format("DD MMM YYYY")} - ${e.format("DD MMM YYYY")}`;
+};
 
   // ================= IMAGE UPLOAD =================
   const handleImageUpload = async (f: File) => {
@@ -599,71 +600,72 @@ export function CardModal(props: CardModalProps) {
                           {/* ============= OVERVIEW TAB (MATCH SCREEN 1) ============= */}
                           {activeTab === "overview" && (
                             <div className="mt-6 grid grid-cols-[110px,1fr] items-start gap-x-8 gap-y-6">
-                              {/* Tag */}
-                              <div className="pt-2 text-[13px] font-medium text-slate600 dark:text-slate500_80">
-                                Tag
-                              </div>
-                              <div className="flex flex-wrap items-center gap-2">
-                                {kanbanTags.map((tag, index) => (
-                                  <div
-                                    key={tag.kanbanTagId ?? index}
-                                    className="flex items-center gap-2 rounded-full bg-[#D0F2FF] px-3 py-1 text-[13px] font-semibold text-[#006C9C]"
-                                  >
-                                    <span>{tag.title}</span>
+{/* Tag */}
+<div className="pt-2 text-[13px] font-medium text-slate600 dark:text-slate500_80">
+  Tag
+</div>
 
-                                    {tag.addedBy === userInfo.username && (
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          handleDeleteTag(index, tag.kanbanTagId)
-                                        }
-                                        disabled={isDeletingTag === tag.kanbanTagId}
-                                        className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/70 hover:bg-white"
-                                      >
-                                        <XMarkIcon className="h-4 w-4 text-slate500" />
-                                      </button>
-                                    )}
-                                  </div>
-                                ))}
+<div className="flex flex-wrap items-center gap-2">
+  {kanbanTags.map((tag, index) => (
+    <div
+      key={tag.kanbanTagId ?? index}
+      className="inline-flex py-1 items-center gap-2 rounded-[10px] bg-[#D0F2FF] px-2 text-[11px] font-semibold text-[#006C9C]"
+    >
+      <span className="leading-none">{tag.title}</span>
 
-                                {isCreatingTag && (
-                                  <div className="h-7 w-20 animate-pulse rounded-full bg-slate500_12 dark:bg-slate500_20" />
-                                )}
+      <button
+        type="button"
+        onClick={() => handleDeleteTag(index, tag.kanbanTagId)}
+        disabled={isDeletingTag === tag.kanbanTagId}
+        aria-label="Delete tag"
+      >
+        <img
+          src="/icons/tag-delete-icon.png"
+          alt=""
+          className="h-4 w-4 "
+        />
+      </button>
+    </div>
+  ))}
 
-                                {kanbanTags.length < 6 && (
-                                  <button
-                                    type="button"
-                                    onClick={() => setOpenTagModal(true)}
-                                    disabled={isCreatingTag}
-                                    className="inline-flex h-8 items-center justify-center rounded-full border border-dashed border-slate500_20 px-3 text-[13px] font-medium text-slate500 hover:bg-slate500_08 dark:border-slate500_48 dark:text-slate500_80"
-                                  >
-                                    <PlusIcon className="mr-1 h-4 w-4" />
-                                    Add tag
-                                  </button>
-                                )}
+  {isCreatingTag && (
+    <div className="h-8 w-24 animate-pulse rounded-md bg-slate500_12 dark:bg-slate500_20" />
+  )}
 
-                                <CreateTagModal
-                                  show={openTagModal}
-                                  handleClose={setOpenTagModal}
-                                  handleSubmit={handleCreateTag}
-                                />
-                              </div>
+  {kanbanTags.length < 6 && (
+    <button
+      type="button"
+      onClick={() => setOpenTagModal(true)}
+      disabled={isCreatingTag}
+      className="inline-flex h-8 items-center justify-center rounded-md border border-dashed border-slate500_20 px-3 text-[13px] font-medium text-slate500 hover:bg-slate500_12 dark:border-slate500_48 dark:text-slate500_80"
+    >
+      <PlusIcon className="mr-1 h-4 w-4" />
+      Add tag
+    </button>
+  )}
 
-                              {/* Due date */}
-                              <div className="pt-2 text-[13px] font-medium text-slate600 dark:text-slate500_80">
-                                Due date
-                              </div>
-                              <div className="flex items-center">
-                                <button
-                                  type="button"
-                                  onClick={() => setIsDueDateModalOpen(true)}
-                                  className="text-[15px] font-semibold text-ink hover:opacity-80 dark:text-white"
-                                >
-                                  {date?.startDate && date?.endDate
-                                    ? formatDateRange(date)
-                                    : "—"}
-                                </button>
-                              </div>
+  <CreateTagModal
+    show={openTagModal}
+    handleClose={setOpenTagModal}
+    handleSubmit={handleCreateTag}
+  />
+</div>
+
+                {/* Due date */}
+<div className="pt-2 text-[13px] font-medium text-slate600 dark:text-slate500_80">
+  Due date
+</div>
+
+<div className="flex items-center ">
+  <button
+    type="button"
+    onClick={() => setIsDueDateModalOpen(true)}
+    className="text-[15px] font-semibold text-ink hover:opacity-80 dark:text-white"
+  >
+    {date?.startDate && date?.endDate ? formatDateRange(date) : "—"}
+  </button>
+</div>
+
 
                               {/* Description */}
                               <div className="pt-2 text-[13px] font-medium text-slate600 dark:text-slate500_80">
