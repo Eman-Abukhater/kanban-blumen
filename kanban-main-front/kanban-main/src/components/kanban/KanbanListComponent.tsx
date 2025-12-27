@@ -1,5 +1,5 @@
 // src/components/kanban/KanbanListComponent.tsx
-import { useContext, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { Draggable, Droppable } from "react-beautiful-dnd";
 import { KanbanList } from "./KanbanTypes";
 import { AddCardForm } from "./AddCardForm";
@@ -9,6 +9,7 @@ import { ListMenu } from "./ListMenu";
 import KanbanCardComponent from "./KanbanCardComponent";
 import { Plus } from "lucide-react";
 import Image from "next/image";
+import { toast } from "react-toastify";
 
 export interface IKanbanListComponentProps {
   listIndex: number; // ✅ global index
@@ -18,10 +19,56 @@ export interface IKanbanListComponentProps {
 }
 
 function KanbanListComponent(props: IKanbanListComponentProps) {
-  const { handleCreateCard, userInfo } = useContext(KanbanContext);
+  const { handleCreateCard, handleRenameList, userInfo } = useContext(KanbanContext);
 
   const cardCount = props.list.kanbanCards?.length ?? 0;
   const [showAddCard, setShowAddCard] = useState(false);
+
+  // ✅ Inline rename state
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState(props.list.title);
+  const renameInputRef = useRef<HTMLInputElement>(null);
+
+  // keep input synced when list title changes (but not while editing)
+  useEffect(() => {
+    if (!isRenaming) setRenameValue(props.list.title);
+  }, [props.list.title, isRenaming]);
+
+  const startRename = () => {
+    setIsRenaming(true);
+    // focus & select
+    setTimeout(() => {
+      renameInputRef.current?.focus();
+      renameInputRef.current?.select();
+    }, 0);
+  };
+
+  const cancelRename = () => {
+    setIsRenaming(false);
+    setRenameValue(props.list.title);
+  };
+
+  const commitRename = () => {
+    const next = renameValue.trim();
+
+    if (!next) {
+      toast.error("List title cannot be empty", { position: toast.POSITION.TOP_CENTER });
+      cancelRename();
+      return;
+    }
+
+    if (next === props.list.title.trim()) {
+      setIsRenaming(false);
+      return;
+    }
+
+    // ✅ update local state via context
+    handleRenameList(props.listIndex, next);
+
+
+    setIsRenaming(false);
+    toast.success("List renamed", { position: toast.POSITION.TOP_CENTER });
+  };
 
   return (
     <Draggable draggableId={props.list.id} index={props.dragIndex}>
@@ -42,9 +89,42 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
                   {cardCount}
                 </span>
 
-                <div className="text-[17px] font-semibold text-ink dark:text-white">
-                  {props.list.title}
-                </div>
+                {/* ✅ Title / Inline rename */}
+                {!isRenaming ? (
+                  <div className="text-[17px] font-semibold text-ink dark:text-white">
+                    {props.list.title}
+                  </div>
+                ) : (
+                 <input
+  ref={renameInputRef}
+  value={renameValue}
+  onChange={(e) => setRenameValue(e.target.value)}
+  onBlur={commitRename}
+  onKeyDown={(e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      commitRename();
+    }
+    if (e.key === "Escape") {
+      e.preventDefault();
+      cancelRename();
+    }
+  }}
+  className="
+                      h-10 w-[170px] max-w-[170px]
+                      rounded-[10px] border-2 border-[#1C252E] bg-white
+                      px-3 text-[16px] font-semibold text-ink
+                      outline-none
+                      focus:outline-none focus:ring-0 focus:ring-offset-0
+                      focus:border-[#1C252E]
+                      focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0
+                      dark:bg-[#1C252E] dark:text-white dark:border-white
+                    "
+
+
+/>
+
+                )}
               </div>
 
               <div className="flex items-center gap-1">
@@ -54,9 +134,7 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
                   onClick={() => {
                     setShowAddCard(true);
                     setTimeout(() => {
-                      const el = document.getElementById(
-                        `add-card-${props.list.kanbanListId}`
-                      );
+                      const el = document.getElementById(`add-card-${props.list.kanbanListId}`);
                       if (el) {
                         el.scrollIntoView({ behavior: "smooth", block: "start" });
                         const input = el.querySelector("input");
@@ -69,11 +147,13 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
                   <Plus className="h-3 w-3" />
                 </button>
 
+                {/* ✅ Menu: rename now inline */}
                 <ListMenu
                   listid={props.list.kanbanListId}
-                  listIndex={props.listIndex} // ✅ still global index
+                  listIndex={props.listIndex}
                   title={props.list.title}
                   userInfo={userInfo}
+                  onRename={startRename}
                 />
 
                 {/* ✅ drag handle only */}
@@ -108,7 +188,7 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
                           placeholder="Task name"
                           onSubmit={(title, kanbanCardId, seqNo, fkKanbanListId) =>
                             handleCreateCard(
-                              props.listIndex, // ✅ global list index
+                              props.listIndex,
                               title,
                               kanbanCardId,
                               seqNo,
@@ -125,7 +205,7 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
                     {props.list.kanbanCards?.map((card, index) => (
                       <KanbanCardComponent
                         key={card.id}
-                        listIndex={props.listIndex} // ✅ global
+                        listIndex={props.listIndex}
                         cardIndex={index}
                         card={card}
                       />

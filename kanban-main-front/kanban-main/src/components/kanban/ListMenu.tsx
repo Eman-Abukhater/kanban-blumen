@@ -9,11 +9,11 @@ export interface IListMenuProps {
   listIndex: number;
   listid: number;
   userInfo: any;
+  onRename: () => void; // ✅ NEW
 }
 
 export function ListMenu(props: IListMenuProps) {
   const { handleOpenModal, handleClearList } = useContext(KanbanContext);
-
 
   return (
     <Menu as="div" className="relative">
@@ -22,7 +22,6 @@ export function ListMenu(props: IListMenuProps) {
         className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-slate500_12 dark:hover:bg-slate500_20"
         title="Menu"
       >
-        {/* horizontal dots like figma */}
         <MoreHorizontal className="h-5 w-5 text-[#637381] dark:text-slate500_80" />
       </Menu.Button>
 
@@ -44,7 +43,7 @@ export function ListMenu(props: IListMenuProps) {
           "
         >
           <div className="p-2">
-            {/* Rename */}
+            {/* ✅ Rename (INLINE) */}
             <Menu.Item>
               {({ active }) => (
                 <button
@@ -53,17 +52,9 @@ export function ListMenu(props: IListMenuProps) {
                     ${active ? "bg-slate500_08 dark:bg-white/5" : ""}
                     text-ink dark:text-white
                   `}
-                  onClick={() =>
-                    handleOpenModal({
-                      type: "RENAME_LIST",
-                      modalProps: {
-                        listIndex: props.listIndex,
-                        title: props.title,
-                        listid: props.listid,
-                        userInfo: props.userInfo,
-                      },
-                    })
-                  }
+                  onClick={() => {
+                    props.onRename(); // ✅ inline rename start
+                  }}
                 >
                   <PencilIcon className="h-5 w-5" />
                   <span>Rename</span>
@@ -71,7 +62,7 @@ export function ListMenu(props: IListMenuProps) {
               )}
             </Menu.Item>
 
-            {/* Clear (if you have modal/action for it) */}
+            {/* Clear */}
             <Menu.Item>
               {({ active }) => (
                 <button
@@ -80,8 +71,7 @@ export function ListMenu(props: IListMenuProps) {
                     ${active ? "bg-slate500_08 dark:bg-white/5" : ""}
                     text-ink dark:text-white
                   `}
-                    onClick={() => handleClearList(props.listid, props.userInfo)}
-
+                  onClick={() => handleClearList(props.listid, props.userInfo)}
                 >
                   <Eraser className="h-5 w-5" />
                   <span>Clear</span>
@@ -89,7 +79,7 @@ export function ListMenu(props: IListMenuProps) {
               )}
             </Menu.Item>
 
-            {/* Delete */}
+            {/* Delete (keep modal) */}
             <Menu.Item>
               {({ active }) => (
                 <button
@@ -99,13 +89,13 @@ export function ListMenu(props: IListMenuProps) {
                     text-[#FF5630]
                   `}
                   onClick={() =>
-                   handleOpenModal({
-          type: "DELETE_LIST",
-          modalProps: {
-            listIndex: props.listIndex,
-            title: props.title,
-          },
-        })
+                    handleOpenModal({
+                      type: "DELETE_LIST",
+                      modalProps: {
+                        listIndex: props.listIndex,
+                        title: props.title,
+                      },
+                    })
                   }
                 >
                   <TrashIcon className="h-5 w-5" />
