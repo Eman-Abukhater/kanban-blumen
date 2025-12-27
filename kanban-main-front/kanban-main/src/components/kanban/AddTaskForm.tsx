@@ -1,12 +1,14 @@
 import { CheckIcon, PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
 import chroma from "chroma-js";
 //import { ColourOption, } from "../data";
 import { MultiValue, StylesConfig } from "react-select";
 import CreatableSelect from "react-select/creatable";
 import { fetchAllMembers, AddTask } from "@/services/kanbanApi";
+import { Dialog, Transition, Disclosure, Menu } from "@headlessui/react";
+import { ChevronDownIcon, ChevronUpIcon } from "@heroicons/react/20/solid";
+
 
 export interface IAddFormProps {
   text: string;
@@ -220,13 +222,25 @@ export function AddTaskForm(props: IAddFormProps) {
             </div>
           </form>
         ) : (
-          <button
-            onClick={() => setShowForm((prev) => !prev)}
-            className="flex min-w-[256px] items-center justify-center gap-1 rounded-lg border border-slate-300 bg-slate-200 px-3 py-2 text-sm font-semibold transition-colors duration-200 focus:border-none focus:border-indigo-600 focus:outline-none focus:ring focus:ring-indigo-600 hover:border-indigo-600 hover:bg-indigo-100/50 dark:border-slate-500 dark:bg-slate-600 dark:text-white dark:hover:border-indigo-600 dark:hover:bg-indigo-900/20"
-          >
-            <PlusIcon className="h-4 w-5" />
-            {props.text}
-          </button>
+         <button
+  type="button"
+  onClick={() => setShowForm(true)}
+  className="
+    inline-flex items-center gap-3
+    h-[25px] px-4
+    rounded-[6px]
+    border border-slate500_20
+    bg-white
+    text-[13px] font-semibold text-ink
+    hover:bg-slate500_08
+    transition
+    dark:bg-transparent dark:text-white dark:border-slate500_48 dark:hover:bg-slate500_12
+  "
+>
+  <PlusIcon className="h-4 w-4" />
+  {props.text}
+</button>
+
         )}
       </div>
     </>

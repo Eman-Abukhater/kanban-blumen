@@ -1,8 +1,8 @@
 // src/components/modal/CardModal.tsx
-import { Fragment, useContext, useRef, useState } from "react";
-import { Dialog, Transition, Disclosure } from "@headlessui/react";
-import { PlusIcon, TrashIcon, XMarkIcon } from "@heroicons/react/24/outline";
-import { ChevronUpIcon } from "@heroicons/react/20/solid";
+import { Fragment, useContext, useEffect, useRef, useState } from "react";
+import { Dialog, Transition, Disclosure, Menu } from "@headlessui/react";
+import { PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { ChevronDownIcon, ChevronUpIcon } from "@heroicons/react/20/solid";
 import KanbanContext from "../../context/kanbanContext";
 import useAutosizeTextArea from "../../hooks/useAutosizeTextarea";
 import { KanbanCard } from "../kanban/KanbanTypes";
@@ -17,14 +17,12 @@ import {
   AddTag,
   EditCard,
   AddTask,
-  SubmitTask,
   uploadImageToCloudinary,
 } from "@/services/kanbanApi";
 import { toast } from "react-toastify";
 import { GetCardImagePath } from "@/utility/baseUrl";
 import dayjs from "dayjs";
 import { DueDateModal } from "../kanban/DueDateModal";
-import Image from "next/image";
 
 export interface CardModalProps {
   listIndex: number;
@@ -32,35 +30,46 @@ export interface CardModalProps {
   card: KanbanCard;
 }
 
+type CardStatus = "To do" | "In progress" | "Ready to test" | "Done";
+const STATUS_OPTIONS: CardStatus[] = ["To do", "In progress", "Ready to test", "Done"];
+
 export function CardModal(props: CardModalProps) {
   const descTextAreaRef = useRef<HTMLTextAreaElement>(null);
 
   const [title, setTitle] = useState<string>(props.card.title);
   const [desc, setDesc] = useState(props.card.desc);
+
   const [date, setDate] = useState<DateValueType | null>({
     startDate: props.card.startDate,
     endDate: props.card.endDate,
   });
+
   const [completed, setCompleted] = useState(props.card.completed);
+
+  // ✅ Status dropdown (Figma)
+  const [status, setStatus] = useState<CardStatus>(() => {
+    const raw = (props.card as any)?.status as CardStatus | undefined;
+    if (raw && STATUS_OPTIONS.includes(raw)) return raw;
+    return props.card.completed ? "Done" : "In progress";
+  });
+
+  useEffect(() => {
+    setCompleted(status === "Done");
+  }, [status]);
+
   const CardImagePath = GetCardImagePath();
 
   // tabs: "overview" | "subtasks"
-  const [activeTab, setActiveTab] = useState<"overview" | "subtasks">(
-    "overview"
-  );
+  const [activeTab, setActiveTab] = useState<"overview" | "subtasks">("overview");
 
   const [isDueDateModalOpen, setIsDueDateModalOpen] = useState(false);
 
-  // local priority (still saved; UI removed from overview to match your screenshots)
+  // local priority (still saved)
   const [priority, setPriority] = useState<"low" | "medium" | "high">(
     ((props.card as any).priority as "low" | "medium" | "high") || "low"
   );
 
-  const assigneeAvatars = [
-    "/icons/Avatar_1.png",
-    "/icons/Avatar_2.png",
-    "/icons/Avatar_3.png",
-  ];
+  const assigneeAvatars = ["/icons/Avatar_1.png", "/icons/Avatar_2.png", "/icons/Avatar_3.png"];
 
   const isCloudinaryUrl = (url: string) =>
     url && (url.startsWith("http://") || url.startsWith("https://"));
@@ -71,10 +80,7 @@ export function CardModal(props: CardModalProps) {
     return `${CardImagePath}/${props.card.kanbanCardId}/${imageUrl}`;
   };
 
-  const [displayImage, setImageUrl] = useState(
-    getImageUrl(props.card.imageUrl || null)
-  );
-  const [file, setFile] = useState<File | null>(null);
+  const [displayImage, setImageUrl] = useState(getImageUrl(props.card.imageUrl || null));
   const [fileSizeExceeded, setFileSizeExceeded] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [cloudinaryUrl, setCloudinaryUrl] = useState<string>(
@@ -87,11 +93,7 @@ export function CardModal(props: CardModalProps) {
   const [openTagModal, setOpenTagModal] = useState<boolean>(false);
   const [submit, setSubmit] = useState<boolean>(false);
 
-  // task state (subtasks tab)
-  const [taskCompleted, setTaskCompleted] = useState<boolean>(false);
-  const [taskFile, setTaskFile] = useState<File | null>(null);
-  const [taskFileSizeExceeded, setTaskFileSizeExceeded] = useState(false);
-  const [submitTask, setSubmitTask] = useState<boolean>(false);
+  // tasks loading
   const [isCreatingTask, setIsCreatingTask] = useState<boolean>(false);
 
   // tag/task loading states
@@ -104,32 +106,31 @@ export function CardModal(props: CardModalProps) {
   // keep autosize for description
   useAutosizeTextArea(descTextAreaRef, desc);
 
-  const { handleUpdateCard, handleCloseModal, modalState, userInfo } =
-    useContext(KanbanContext);
+  const { handleUpdateCard, handleCloseModal, modalState, userInfo } = useContext(KanbanContext);
 
   // ================= DATE LABEL =================
-const formatDateRange = (d: DateValueType | null) => {
-  if (!d?.startDate || !d?.endDate) return "—";
+  const formatDateRange = (d: DateValueType | null) => {
+    if (!d?.startDate || !d?.endDate) return "—";
 
-  const s = dayjs(d.startDate);
-  const e = dayjs(d.endDate);
+    const s = dayjs(d.startDate);
+    const e = dayjs(d.endDate);
 
-  const sameYear = s.year() === e.year();
-  const sameMonth = s.month() === e.month();
+    const sameYear = s.year() === e.year();
+    const sameMonth = s.month() === e.month();
 
-  if (sameYear && sameMonth) {
-    // 28 - 29 Dec 2025
-    return `${s.format("DD")} - ${e.format("DD")} ${s.format("MMM YYYY")}`;
-  }
+    if (sameYear && sameMonth) {
+      // 28 - 29 Dec 2025
+      return `${s.format("DD")} - ${e.format("DD")} ${s.format("MMM YYYY")}`;
+    }
 
-  if (sameYear && !sameMonth) {
-    // 28 Dec - 02 Jan 2025
-    return `${s.format("DD MMM")} - ${e.format("DD MMM YYYY")}`;
-  }
+    if (sameYear && !sameMonth) {
+      // 28 Dec - 02 Jan 2025
+      return `${s.format("DD MMM")} - ${e.format("DD MMM YYYY")}`;
+    }
 
-  // 22 Jun 2025 - 23 Jun 2026
-  return `${s.format("DD MMM YYYY")} - ${e.format("DD MMM YYYY")}`;
-};
+    // 22 Jun 2025 - 23 Jun 2026
+    return `${s.format("DD MMM YYYY")} - ${e.format("DD MMM YYYY")}`;
+  };
 
   // ================= IMAGE UPLOAD =================
   const handleImageUpload = async (f: File) => {
@@ -167,7 +168,7 @@ const formatDateRange = (d: DateValueType | null) => {
             ...props.card,
             title,
             desc,
-            completed,
+            completed: status === "Done",
             imageUrl: cardData.imageUrl || props.card.imageUrl || "",
             kanbanTags,
             kanbanTasks,
@@ -175,18 +176,19 @@ const formatDateRange = (d: DateValueType | null) => {
             startDate: date?.startDate as Date,
             endDate: date?.endDate as Date,
           });
+
           handleCloseModal();
           setSubmit(false);
+
           toast.success(`Card updated successfully!`, {
             position: toast.POSITION.TOP_CENTER,
           });
         }
 
         if (customResponse?.status != 200 || customResponse?.data == null) {
-          toast.error(
-            `something went wrong could not Edit the Card, please try again later`,
-            { position: toast.POSITION.TOP_CENTER }
-          );
+          toast.error(`something went wrong could not Edit the Card, please try again later`, {
+            position: toast.POSITION.TOP_CENTER,
+          });
           setSubmit(false);
         }
       } catch (err: any) {
@@ -223,12 +225,13 @@ const formatDateRange = (d: DateValueType | null) => {
       desc: desc || "....",
       imageUrl: finalImageUrl,
       imagePublicId: cloudinaryPublicId,
-      completed,
+      completed: status === "Done",
       startDate: date?.startDate ? date.startDate.toString() : undefined,
       endDate: date?.endDate ? date.endDate.toString() : undefined,
       fkboardid: userInfo.fkboardid,
       fkpoid: userInfo.fkpoid,
       priority,
+ status,
     };
 
     mutation.mutate(cardData);
@@ -269,6 +272,7 @@ const formatDateRange = (d: DateValueType | null) => {
           createdAt: new Date(),
           addedBy: userInfo.username,
         });
+
         setTags(newTags);
         handleUpdateCard(props.listIndex, props.cardIndex, {
           ...props.card,
@@ -279,10 +283,9 @@ const formatDateRange = (d: DateValueType | null) => {
           position: toast.POSITION.TOP_CENTER,
         });
       } else {
-        toast.error(
-          `something went wrong could not add the Tag, please try again later`,
-          { position: toast.POSITION.TOP_CENTER }
-        );
+        toast.error(`something went wrong could not add the Tag, please try again later`, {
+          position: toast.POSITION.TOP_CENTER,
+        });
       }
     } finally {
       setIsCreatingTag(false);
@@ -302,19 +305,20 @@ const formatDateRange = (d: DateValueType | null) => {
       if (customResponse?.status === 200) {
         const newTags = [...kanbanTags];
         newTags.splice(tagIndex, 1);
+
         setTags(newTags);
         handleUpdateCard(props.listIndex, props.cardIndex, {
           ...props.card,
           kanbanTags: newTags,
         });
+
         toast.success(` ${customResponse?.data}`, {
           position: toast.POSITION.TOP_CENTER,
         });
       } else {
-        toast.error(
-          `something went wrong could not Remove the Tag, please try again later`,
-          { position: toast.POSITION.TOP_CENTER }
-        );
+        toast.error(`something went wrong could not Remove the Tag, please try again later`, {
+          position: toast.POSITION.TOP_CENTER,
+        });
       }
     } finally {
       setIsDeletingTag(null);
@@ -335,19 +339,20 @@ const formatDateRange = (d: DateValueType | null) => {
       if (customResponse?.status === 200) {
         const tempTask = [...kanbanTasks];
         tempTask.splice(taskIndex, 1);
+
         setTasks(tempTask);
         handleUpdateCard(props.listIndex, props.cardIndex, {
           ...props.card,
           kanbanTasks: tempTask,
         });
+
         toast.success(` ${customResponse?.data}`, {
           position: toast.POSITION.TOP_CENTER,
         });
       } else {
-        toast.error(
-          `something went wrong could not Remove the Task, please try again later`,
-          { position: toast.POSITION.TOP_CENTER }
-        );
+        toast.error(`something went wrong could not Remove the Task, please try again later`, {
+          position: toast.POSITION.TOP_CENTER,
+        });
       }
     } finally {
       setIsDeletingTask(null);
@@ -363,9 +368,7 @@ const formatDateRange = (d: DateValueType | null) => {
     try {
       setIsCreatingTask(true);
 
-      const assignToJoin = selectedOptions
-        .map((option) => `${option.value}`)
-        .join(" - ");
+      const assignToJoin = selectedOptions.map((option) => `${option.value}`).join(" - ");
 
       const customResponse = await AddTask(
         taskTitle,
@@ -392,99 +395,24 @@ const formatDateRange = (d: DateValueType | null) => {
           imageUrl: "",
           updatedBy: "",
         });
+
         setTasks(tempTask);
         handleUpdateCard(props.listIndex, props.cardIndex, {
           ...props.card,
           kanbanTasks: tempTask,
         });
+
         toast.success(`Task ID: ${customResponse?.data} Created Successfully`, {
           position: toast.POSITION.TOP_CENTER,
         });
       } else {
-        toast.error(
-          `something went wrong could not add the Task, please try again later`,
-          { position: toast.POSITION.TOP_CENTER }
-        );
+        toast.error(`something went wrong could not add the Task, please try again later`, {
+          position: toast.POSITION.TOP_CENTER,
+        });
       }
     } finally {
       setIsCreatingTask(false);
     }
-  };
-
-  const handleSubmitTask = async (kanbanTaskId: number, index: number) => {
-    if (!taskCompleted) return;
-
-    try {
-      setSubmitTask(true);
-
-      let fileUrl: string | null = null;
-
-      if (taskFile) {
-        try {
-          toast.info("Uploading file...", {
-            position: toast.POSITION.TOP_CENTER,
-            autoClose: 2000,
-          });
-
-          const uploadResult = await uploadImageToCloudinary(taskFile);
-
-          if (uploadResult && uploadResult.data) {
-            fileUrl = uploadResult.data.url;
-          } else {
-            throw new Error("Upload failed - no URL returned");
-          }
-        } catch (uploadError: any) {
-          toast.error(uploadError.message || "Failed to upload file", {
-            position: toast.POSITION.TOP_CENTER,
-          });
-          setSubmitTask(false);
-          return;
-        }
-      }
-
-      const customResponse = await SubmitTask(
-        kanbanTaskId,
-        userInfo.username,
-        taskCompleted,
-        fileUrl,
-        userInfo.fkboardid,
-        userInfo.fkpoid
-      );
-
-      if (customResponse?.status === 200) {
-        const tempTask = [...kanbanTasks];
-        tempTask[index].completed = !tempTask[index].completed;
-        tempTask[index].updatedBy = userInfo.username;
-        if (fileUrl) tempTask[index].imageUrl = fileUrl;
-
-        setTasks(tempTask);
-        handleUpdateCard(props.listIndex, props.cardIndex, {
-          ...props.card,
-          kanbanTasks: tempTask,
-        });
-
-        setSubmitTask(false);
-        setTaskCompleted(false);
-        setTaskFile(null);
-
-        toast.success("Task submitted successfully!", {
-          position: toast.POSITION.TOP_CENTER,
-        });
-      } else {
-        toast.error("Failed to submit task", {
-          position: toast.POSITION.TOP_CENTER,
-        });
-        setSubmit(false);
-      }
-    } catch (err: any) {
-      toast.error(err, { position: "top-center" });
-      setSubmit(false);
-      return err.response;
-    }
-  };
-
-  const handleToggleTaskCompleted = () => {
-    setTaskCompleted((prev) => !prev);
   };
 
   // ================= RENDER =================
@@ -519,74 +447,103 @@ const formatDateRange = (d: DateValueType | null) => {
                 >
                   <Dialog.Panel className="pointer-events-auto w-screen max-w-[450px]">
                     <div className="flex h-full flex-col bg-white shadow-xl dark:bg-[#1B232D]">
-                      {/* ================= TOP BAR ================= */}
-                      <div className="flex items-center justify-between border-b border-slate500_12 px-6 py-4 dark:border-slate500_20">
-                        {/* Status pill */}
-                        <button
-                          type="button"
-                          onClick={() => setCompleted((prev) => !prev)}
-                          className="inline-flex items-center gap-2 rounded-full border border-slate500_20 bg-[#F4F6F8] px-4 py-2 text-[14px] font-semibold text-ink dark:bg-[#232C36] dark:text-white"
-                        >
-                          {completed ? "Done" : "In progress"}
-                          <ChevronUpIcon className="h-4 w-4 rotate-180 opacity-70" />
-                        </button>
+                     {/* ================= TOP BAR (UPDATED) ================= */}
+<div className="relative z-[80] flex items-center justify-between border-b border-slate500_12 px-6 py-4 dark:border-slate500_20">
+  {/* Status dropdown (Figma) */}
+  <Menu as="div" className="relative z-[90]">
+    <Menu.Button
+      type="button"
+      className="inline-flex h-10 items-center gap-2 rounded-md border border-slate500_20 bg-[#F4F6F8] px-4 text-[14px] font-semibold text-ink hover:bg-slate500_08 focus:outline-none dark:border-slate500_48 dark:bg-[#232C36] dark:text-white"
+    >
+      {status}
+      <ChevronDownIcon className="h-4 w-4 text-slate500 dark:text-slate500_80" />
+    </Menu.Button>
 
-                        {/* Icons */}
-                        <div className="flex items-center gap-2">
+    <Transition
+      as={Fragment}
+      enter="transition ease-out duration-150"
+      enterFrom="opacity-0 translate-y-1"
+      enterTo="opacity-100 translate-y-0"
+      leave="transition ease-in duration-100"
+      leaveFrom="opacity-100 translate-y-0"
+      leaveTo="opacity-0 translate-y-1"
+    >
+      <Menu.Items
+        className="absolute left-0 z-[999] mt-3 w-40 origin-top-left rounded-[16px] bg-white p-2 shadow-[0_24px_80px_rgba(15,23,42,0.16)] ring-1 ring-black/5 focus:outline-none pointer-events-auto dark:bg-[#1B232D]"
+      >
+        {STATUS_OPTIONS.map((opt) => (
+          <Menu.Item key={opt}>
+            {({ active }) => (
+              <button
+                type="button"
+                onClick={() => setStatus(opt)}
+                className={classNames(
+                  "flex w-full items-center rounded-[12px] px-3 py-3 text-left text-[12px] font-medium outline-none focus:outline-none focus:ring-0",
+                  active ? "bg-[#F4F6F8]/60 dark:bg-white/5" : "",
+                  opt === status
+                    ? "text-ink dark:text-white"
+                    : "text-ink/90 dark:text-white/90"
+                )}
+              >
+                {opt}
+              </button>
+            )}
+          </Menu.Item>
+        ))}
+      </Menu.Items>
+    </Transition>
+  </Menu>
+
+  {/* Right icon (trash only like Figma) */}
+  <button
+    onClick={deleteCard}
+    type="button"
+    className="inline-flex h-10 w-10 items-center justify-center rounded-full hover:bg-slate500_12 dark:hover:bg-slate500_12"
+    aria-label="Delete card"
+  >
+<img
+  src="/icons/trash.png"
+  alt="Delete"
+  className="h-5 w-5"
+/>
+  </button>
+</div>
+
+
+                      {/* ================= TABS ================= */}
+                      <div className="border-b border-slate500_12 bg-[#F4F6F8] px-3 py-1 dark:border-slate500_20 dark:bg-[#232C36]">
+                        <div className="grid grid-cols-2 rounded-[14px] p-1">
                           <button
-                            onClick={deleteCard}
                             type="button"
-                            className="inline-flex items-center justify-center rounded-full p-2 hover:bg-slate500_12 dark:hover:bg-slate500_12"
+                            onClick={() => setActiveTab("overview")}
+                            className={classNames(
+                              "w-full rounded-[12px] px-6 py-3 text-[12px] font-semibold transition",
+                              activeTab === "overview"
+                                ? "bg-white text-ink shadow-sm dark:bg-[#1B232D] dark:text-white"
+                                : "bg-transparent text-slate500 dark:text-slate500_80"
+                            )}
                           >
-                            <TrashIcon className="h-5 w-5 text-slate500 dark:text-slate500_80" />
+                            Overview
                           </button>
 
                           <button
-                            onClick={handleCloseModal}
                             type="button"
-                            className="inline-flex items-center justify-center rounded-full p-2 hover:bg-slate500_12 dark:hover:bg-slate500_12"
+                            onClick={() => setActiveTab("subtasks")}
+                            className={classNames(
+                              "w-full rounded-[12px] px-6 py-3 text-[12px] font-semibold transition",
+                              activeTab === "subtasks"
+                                ? "bg-white text-ink shadow-sm dark:bg-[#1B232D] dark:text-white"
+                                : "bg-transparent text-slate500 dark:text-slate500_80"
+                            )}
                           >
-                            <XMarkIcon className="h-5 w-5 text-slate500 dark:text-slate500_80" />
+                            Subtasks
                           </button>
                         </div>
                       </div>
 
-{/* ================= TABS ================= */}
-<div className="border-b border-slate500_12 bg-[#F4F6F8] px-3 py-1 dark:border-slate500_20 dark:bg-[#232C36]">
-  <div className="grid grid-cols-2 rounded-[14px] p-1">
-    <button
-      type="button"
-      onClick={() => setActiveTab("overview")}
-      className={classNames(
-        "w-full rounded-[12px] px-6 py-3 text-[12px] font-semibold transition",
-        activeTab === "overview"
-          ? "bg-white text-ink shadow-sm dark:bg-[#1B232D] dark:text-white"
-          : "bg-transparent text-slate500 dark:text-slate500_80"
-      )}
-    >
-      Overview
-    </button>
-
-    <button
-      type="button"
-      onClick={() => setActiveTab("subtasks")}
-      className={classNames(
-        "w-full rounded-[12px] px-6 py-3 text-[12px] font-semibold transition",
-        activeTab === "subtasks"
-          ? "bg-white text-ink shadow-sm dark:bg-[#1B232D] dark:text-white"
-          : "bg-transparent text-slate500 dark:text-slate500_80"
-      )}
-    >
-      Subtasks
-    </button>
-  </div>
-</div>
-
-
                       {/* ================= CONTENT ================= */}
-                      <div className="relative flex-1 overflow-y-auto px-6 py-6 
-                      ">
-                        <div className="pointer-events-none absolute inset-0 " />
+                      <div className="relative flex-1 overflow-y-auto px-6 py-6">
+                        <div className="pointer-events-none absolute inset-0" />
                         <div className="relative z-10">
                           {/* Title input */}
                           <input
@@ -597,78 +554,73 @@ const formatDateRange = (d: DateValueType | null) => {
                             minLength={3}
                           />
 
-                          {/* ============= OVERVIEW TAB (MATCH SCREEN 1) ============= */}
+                          {/* ============= OVERVIEW TAB ============= */}
                           {activeTab === "overview" && (
                             <div className="mt-6 grid grid-cols-[110px,1fr] items-start gap-x-8 gap-y-6">
-{/* Tag */}
-<div className="pt-2 text-[13px] font-medium text-slate600 dark:text-slate500_80">
-  Tag
-</div>
+                              {/* Tag */}
+                              <div className="pt-2 text-[13px] font-medium text-[#637381] dark:text-slate500_80">
+                                Tag
+                              </div>
 
-<div className="flex flex-wrap items-center gap-2">
-  {kanbanTags.map((tag, index) => (
-    <div
-      key={tag.kanbanTagId ?? index}
-      className="inline-flex py-1 items-center gap-2 rounded-[10px] bg-[#D0F2FF] px-2 text-[11px] font-semibold text-[#006C9C]"
-    >
-      <span className="leading-none">{tag.title}</span>
+                              <div className="flex flex-wrap items-center gap-2">
+                                {kanbanTags.map((tag, index) => (
+                                  <div
+                                    key={tag.kanbanTagId ?? index}
+                                    className="inline-flex items-center gap-2 rounded-[10px] bg-[#D0F2FF] px-2 py-1 text-[11px] font-semibold text-[#006C9C]"
+                                  >
+                                    <span className="leading-none">{tag.title}</span>
 
-      <button
-        type="button"
-        onClick={() => handleDeleteTag(index, tag.kanbanTagId)}
-        disabled={isDeletingTag === tag.kanbanTagId}
-        aria-label="Delete tag"
-      >
-        <img
-          src="/icons/tag-delete-icon.png"
-          alt=""
-          className="h-4 w-4 "
-        />
-      </button>
-    </div>
-  ))}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteTag(index, tag.kanbanTagId)}
+                                      disabled={isDeletingTag === tag.kanbanTagId}
+                                      aria-label="Delete tag"
+                                    >
+                                      <img src="/icons/tag-delete-icon.png" alt="" className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                ))}
 
-  {isCreatingTag && (
-    <div className="h-8 w-24 animate-pulse rounded-md bg-slate500_12 dark:bg-slate500_20" />
-  )}
+                                {isCreatingTag && (
+                                  <div className="h-8 w-24 animate-pulse rounded-md bg-slate500_12 dark:bg-slate500_20" />
+                                )}
 
-  {kanbanTags.length < 6 && (
-    <button
-      type="button"
-      onClick={() => setOpenTagModal(true)}
-      disabled={isCreatingTag}
-      className="inline-flex h-8 items-center justify-center rounded-md border border-dashed border-slate500_20 px-3 text-[13px] font-medium text-slate500 hover:bg-slate500_12 dark:border-slate500_48 dark:text-slate500_80"
-    >
-      <PlusIcon className="mr-1 h-4 w-4" />
-      Add tag
-    </button>
-  )}
+                                {kanbanTags.length < 6 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setOpenTagModal(true)}
+                                    disabled={isCreatingTag}
+                                    className="inline-flex h-8 items-center justify-center rounded-md border border-dashed border-slate500_20 px-3 text-[13px] font-medium text-slate500 hover:bg-slate500_12 dark:border-slate500_48 dark:text-slate500_80"
+                                  >
+                                    <PlusIcon className="mr-1 h-4 w-4" />
+                                    Add tag
+                                  </button>
+                                )}
 
-  <CreateTagModal
-    show={openTagModal}
-    handleClose={setOpenTagModal}
-    handleSubmit={handleCreateTag}
-  />
-</div>
+                                <CreateTagModal
+                                  show={openTagModal}
+                                  handleClose={setOpenTagModal}
+                                  handleSubmit={handleCreateTag}
+                                />
+                              </div>
 
-                {/* Due date */}
-<div className="pt-2 text-[13px] font-medium text-slate600 dark:text-slate500_80">
-  Due date
-</div>
+                              {/* Due date */}
+                              <div className="pt-2 text-[13px] font-medium text-[#637381] dark:text-slate500_80">
+                                Due date
+                              </div>
 
-<div className="flex items-center ">
-  <button
-    type="button"
-    onClick={() => setIsDueDateModalOpen(true)}
-    className="text-[15px] font-semibold text-ink hover:opacity-80 dark:text-white"
-  >
-    {date?.startDate && date?.endDate ? formatDateRange(date) : "—"}
-  </button>
-</div>
-
+                              <div className="flex items-center">
+                                <button
+                                  type="button"
+                                  onClick={() => setIsDueDateModalOpen(true)}
+                                  className="text-[15px] font-semibold text-ink hover:opacity-80 dark:text-white"
+                                >
+                                  {date?.startDate && date?.endDate ? formatDateRange(date) : "—"}
+                                </button>
+                              </div>
 
                               {/* Description */}
-                              <div className="pt-2 text-[13px] font-medium text-slate600 dark:text-slate500_80">
+                              <div className="pt-2 text-[13px] font-medium text-[#637381] dark:text-slate500_80">
                                 Description
                               </div>
                               <textarea
@@ -681,11 +633,11 @@ const formatDateRange = (d: DateValueType | null) => {
                               />
 
                               {/* Image */}
-                              <div className="pt-2 text-[13px] font-medium text-slate600 dark:text-slate500_80">
+                              <div className="pt-2 text-[13px] font-medium text-[#637381] dark:text-slate500_80">
                                 Image
                               </div>
                               <div className="flex items-start gap-4">
-                                <label className="flex h-[64px] w-[64px] cursor-pointer items-center justify-center rounded-[16px] border border-dashed border-slate500_20 bg-white hover:bg-slate500_08/60 dark:border-slate500_48 dark:bg-white/5">
+                                <label className="flex h-[64px] w-[64px] cursor-pointer items-center justify-center rounded-[16px] border border-dashed border-slate500_20 bg-[#919EAB33] hover:bg-slate500_08/60 dark:border-slate500_48 dark:bg-white/5">
                                   <input
                                     className="hidden"
                                     type="file"
@@ -704,13 +656,11 @@ const formatDateRange = (d: DateValueType | null) => {
                                         }
 
                                         setFileSizeExceeded(false);
-                                        setFile(selectedFile);
-
                                         handleImageUpload(selectedFile);
+
                                         const imageURL = URL.createObjectURL(selectedFile);
                                         setImageUrl(imageURL);
                                       } else {
-                                        setFile(null);
                                         setImageUrl("");
                                         setFileSizeExceeded(false);
                                       }
@@ -742,7 +692,7 @@ const formatDateRange = (d: DateValueType | null) => {
                             </div>
                           )}
 
-                          {/* ============= SUBTASKS TAB (MATCH SCREEN 2) ============= */}
+                          {/* ============= SUBTASKS TAB ============= */}
                           {activeTab === "subtasks" && (
                             <div className="mt-6">
                               <div className="grid grid-cols-[110px,1fr] items-start gap-x-8 gap-y-6">
@@ -756,14 +706,12 @@ const formatDateRange = (d: DateValueType | null) => {
                                     onClick={() => setIsDueDateModalOpen(true)}
                                     className="text-[15px] font-semibold text-ink hover:opacity-80 dark:text-white"
                                   >
-                                    {date?.startDate && date?.endDate
-                                      ? formatDateRange(date)
-                                      : "—"}
+                                    {date?.startDate && date?.endDate ? formatDateRange(date) : "—"}
                                   </button>
                                 </div>
 
                                 {/* Assignee */}
-                                <div className="pt-2 text-[13px] font-medium text-slate600 dark:text-slate500_80">
+                                <div className="pt-2 text-[13px] font-medium text-[#637381] dark:text-slate500_80">
                                   Assignee
                                 </div>
                                 <div className="flex flex-wrap items-center gap-2">
@@ -789,21 +737,28 @@ const formatDateRange = (d: DateValueType | null) => {
                                   </button>
                                 </div>
 
-                                {/* Completed */}
-                                <div className="pt-2 text-[13px] font-medium text-slate600 dark:text-slate500_80">
+                                {/* Completed (kept) */}
+                                <div className="pt-2 text-[13px] font-medium text-[#637381] dark:text-slate500_80">
                                   Completed
                                 </div>
                                 <div className="flex items-center">
                                   <input
                                     type="checkbox"
-                                    className="h-5 w-5 rounded-md"
+                                    className="h-4 w-4 rounded-[5px] border-1 border-[#637381]"
                                     checked={completed}
-                                    onChange={() => setCompleted((p) => !p)}
+                                   onChange={() => {
+  setCompleted((p) => {
+    const next = !p;
+    setStatus(next ? "Done" : "In progress");
+    return next;
+  });
+}}
+
                                   />
                                 </div>
 
                                 {/* Description */}
-                                <div className="pt-2 text-[13px] font-medium text-slate600 dark:text-slate500_80">
+                                <div className="pt-2 text-[13px] font-medium text-[#637381] dark:text-slate500_80">
                                   Description
                                 </div>
                                 <textarea
@@ -816,11 +771,11 @@ const formatDateRange = (d: DateValueType | null) => {
                                 />
 
                                 {/* Image */}
-                                <div className="pt-2 text-[13px] font-medium text-slate600 dark:text-slate500_80">
+                                <div className="pt-2 text-[13px] font-medium text-[#637381] dark:text-slate500_80">
                                   Image
                                 </div>
                                 <div className="flex items-start gap-4">
-                                  <label className="flex h-[64px] w-[64px] cursor-pointer items-center justify-center rounded-[16px] border border-dashed border-slate500_20 bg-white hover:bg-slate500_08/60 dark:border-slate500_48 dark:bg-white/5">
+                                  <label className="flex h-[64px] w-[64px] cursor-pointer items-center justify-center rounded-[16px] border border-dashed border-slate500_20 bg-[#919EAB33] hover:bg-slate500_08/60 dark:border-slate500_48 dark:bg-white/5">
                                     <input
                                       className="hidden"
                                       type="file"
@@ -832,21 +787,18 @@ const formatDateRange = (d: DateValueType | null) => {
                                         if (selectedFile) {
                                           if (selectedFile.size > maxFileSize) {
                                             setFileSizeExceeded(true);
-                                            toast.error(
-                                              "File size must be less than 5MB",
-                                              { position: toast.POSITION.TOP_CENTER }
-                                            );
+                                            toast.error("File size must be less than 5MB", {
+                                              position: toast.POSITION.TOP_CENTER,
+                                            });
                                             return;
                                           }
 
                                           setFileSizeExceeded(false);
-                                          setFile(selectedFile);
-
                                           handleImageUpload(selectedFile);
+
                                           const imageURL = URL.createObjectURL(selectedFile);
                                           setImageUrl(imageURL);
                                         } else {
-                                          setFile(null);
                                           setImageUrl("");
                                           setFileSizeExceeded(false);
                                         }
@@ -871,12 +823,8 @@ const formatDateRange = (d: DateValueType | null) => {
                                 </div>
                               </div>
 
-                              {/* ===== keep your existing Tasks UI under the fields ===== */}
+                              {/* Tasks list + AddTask button */}
                               <div className="mt-8">
-                                <div className="mb-3 text-[14px] font-medium text-slate500 dark:text-slate500_80">
-                                  Tasks
-                                </div>
-
                                 <div className="w-full">
                                   {kanbanTasks.map((_t, index) => (
                                     <Disclosure key={_t.kanbanTaskId ?? index}>
@@ -884,9 +832,7 @@ const formatDateRange = (d: DateValueType | null) => {
                                         <>
                                           <div className="mb-2 flex items-center justify-between rounded-[14px] border border-slate500_12 bg-white/60 px-4 py-3 dark:border-slate500_20 dark:bg-white/5 dark:text-white">
                                             <div className="flex items-center gap-2">
-                                              <span className="text-[14px] font-semibold">
-                                                {_t.title}
-                                              </span>
+                                              <span className="text-[14px] font-semibold">{_t.title}</span>
                                             </div>
 
                                             <div className="flex items-center gap-2">
@@ -899,151 +845,41 @@ const formatDateRange = (d: DateValueType | null) => {
                                                 />
                                               </Disclosure.Button>
 
-                                              {_t.addedBy === userInfo.username &&
-                                                _t.completed === false && (
-                                                  <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                      handleDeleteTask(index, _t.kanbanTaskId)
-                                                    }
-                                                    disabled={
-                                                      isDeletingTask === _t.kanbanTaskId
-                                                    }
-                                                    className="rounded-full p-2 hover:bg-slate500_08 dark:hover:bg-slate500_12"
-                                                  >
-                                                    {isDeletingTask === _t.kanbanTaskId ? (
-                                                      <svg
-                                                        className="h-5 w-5 animate-spin text-slate500"
-                                                        xmlns="http://www.w3.org/2000/svg"
-                                                        fill="none"
-                                                        viewBox="0 0 24 24"
-                                                      >
-                                                        <circle
-                                                          className="opacity-25"
-                                                          cx="12"
-                                                          cy="12"
-                                                          r="10"
-                                                          stroke="currentColor"
-                                                          strokeWidth="4"
-                                                        ></circle>
-                                                        <path
-                                                          className="opacity-75"
-                                                          fill="currentColor"
-                                                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                                        ></path>
-                                                      </svg>
-                                                    ) : (
-                                                      <TrashIcon className="h-5 w-5 text-slate500" />
-                                                    )}
-                                                  </button>
-                                                )}
+                                              {_t.addedBy === userInfo.username && _t.completed === false && (
+                                                <button
+                                                  type="button"
+                                                  onClick={() => handleDeleteTask(index, _t.kanbanTaskId)}
+                                                  disabled={isDeletingTask === _t.kanbanTaskId}
+                                                  className="rounded-full p-2 hover:bg-slate500_08 dark:hover:bg-slate500_12"
+                                                >
+                                                  {isDeletingTask === _t.kanbanTaskId ? (
+                                                    <svg
+                                                      className="h-5 w-5 animate-spin text-slate500"
+                                                      xmlns="http://www.w3.org/2000/svg"
+                                                      fill="none"
+                                                      viewBox="0 0 24 24"
+                                                    >
+                                                      <circle
+                                                        className="opacity-25"
+                                                        cx="12"
+                                                        cy="12"
+                                                        r="10"
+                                                        stroke="currentColor"
+                                                        strokeWidth="4"
+                                                      ></circle>
+                                                      <path
+                                                        className="opacity-75"
+                                                        fill="currentColor"
+                                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                                      ></path>
+                                                    </svg>
+                                                  ) : (
+                                                    <TrashIcon className="h-5 w-5 text-slate500" />
+                                                  )}
+                                                </button>
+                                              )}
                                             </div>
                                           </div>
-
-                                          <Disclosure.Panel className="mb-4 rounded-[14px] border border-slate500_12 bg-white/50 px-4 py-4 text-[14px] text-ink dark:border-slate500_20 dark:bg-white/5 dark:text-white">
-                                            {_t.completed ? (
-                                              <div className="space-y-3">
-                                                <div className="flex items-center gap-2">
-                                                  <span className="text-slate500 dark:text-slate500_80">
-                                                    Completed:
-                                                  </span>
-                                                  <span className="font-semibold">Yes</span>
-                                                </div>
-
-                                                <div className="flex items-center gap-2">
-                                                  <span className="text-slate500 dark:text-slate500_80">
-                                                    Uploaded File:
-                                                  </span>
-                                                  {_t.imageUrl ? (
-                                                    <a
-                                                      href={`${_t.imageUrl}`}
-                                                      target="_blank"
-                                                      rel="noopener noreferrer"
-                                                      className="font-semibold underline"
-                                                    >
-                                                      Open
-                                                    </a>
-                                                  ) : (
-                                                    <span className="font-semibold">—</span>
-                                                  )}
-                                                </div>
-
-                                                <div className="flex items-center gap-2">
-                                                  <span className="text-slate500 dark:text-slate500_80">
-                                                    Submit By:
-                                                  </span>
-                                                  <span className="font-semibold">
-                                                    {_t.updatedBy}
-                                                  </span>
-                                                </div>
-                                              </div>
-                                            ) : (
-                                              <form
-                                                onSubmit={(e) => {
-                                                  e.preventDefault();
-                                                  handleSubmitTask(_t.kanbanTaskId, index);
-                                                }}
-                                                className="space-y-4"
-                                              >
-                                                <div className="flex items-center gap-3">
-                                                  <span className="text-slate500 dark:text-slate500_80">
-                                                    Completed
-                                                  </span>
-                                                  <input
-                                                    type="checkbox"
-                                                    className="h-5 w-5 rounded-md"
-                                                    value={taskCompleted ? "on" : "off"}
-                                                    checked={taskCompleted}
-                                                    onChange={() => handleToggleTaskCompleted()}
-                                                    required
-                                                  />
-                                                </div>
-
-                                                <div className="flex flex-col gap-2">
-                                                  <span className="text-slate500 dark:text-slate500_80">
-                                                    Upload File
-                                                  </span>
-                                                  <input
-                                                    onChange={(e) => {
-                                                      const selectedFile =
-                                                        e.target.files?.[0];
-
-                                                      if (selectedFile) {
-                                                        if (selectedFile.size > maxFileSize) {
-                                                          setTaskFileSizeExceeded(true);
-                                                          return;
-                                                        }
-                                                        setTaskFile(selectedFile);
-                                                        setTaskFileSizeExceeded(false);
-                                                      } else {
-                                                        setTaskFile(null);
-                                                        setTaskFileSizeExceeded(false);
-                                                      }
-                                                    }}
-                                                    className="block w-full cursor-pointer rounded-[12px] border border-slate500_20 bg-white px-3 py-2 text-[13px] text-ink dark:bg-transparent dark:text-white"
-                                                    type="file"
-                                                    accept=".xlsx,.xls,image/*,.doc, .docx,.ppt, .pptx,.txt,.pdf"
-                                                  />
-
-                                                  {taskFileSizeExceeded && (
-                                                    <p className="text-[13px] font-semibold text-red-600">
-                                                      File size exceeded the limit of 5MB
-                                                    </p>
-                                                  )}
-                                                </div>
-
-                                                <div className="flex justify-end">
-                                                  <button
-                                                    disabled={submitTask}
-                                                    type="submit"
-                                                    className="inline-flex items-center justify-center rounded-[12px] bg-[#FFAB00] px-5 py-2 text-[14px] font-semibold text-ink transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                                                  >
-                                                    {submitTask ? "Submitting..." : "Submit"}
-                                                  </button>
-                                                </div>
-                                              </form>
-                                            )}
-                                          </Disclosure.Panel>
                                         </>
                                       )}
                                     </Disclosure>
@@ -1057,7 +893,7 @@ const formatDateRange = (d: DateValueType | null) => {
 
                                   {kanbanTasks.length < 21 && (
                                     <AddTaskForm
-                                      text="Add task"
+                                      text="Subtasks"
                                       placeholder="Task name..."
                                       onSubmit={handleCreateTask}
                                       userInfo={userInfo}
