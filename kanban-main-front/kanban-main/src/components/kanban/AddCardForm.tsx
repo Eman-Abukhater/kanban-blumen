@@ -5,6 +5,7 @@ import {
   useState,
 } from "react";
 import { toast } from "react-toastify";
+import { useInvalidateKanban } from "@/hooks/useKanbanMutations";
 
 export interface IAddFormProps {
   text: string;
@@ -23,7 +24,7 @@ export interface IAddFormProps {
 export function AddCardForm(props: IAddFormProps) {
   const [name, setName] = useState<string>("");
   const [isCreating, setIsCreating] = useState<boolean>(false);
-
+  const invalidateKanban = useInvalidateKanban();
   const createCard = async () => {
     const trimmed = name.trim();
     if (!trimmed || isCreating) return;
@@ -41,20 +42,29 @@ export function AddCardForm(props: IAddFormProps) {
 
     setIsCreating(false);
 
-    if (customResponse?.status === 200 && customResponse.data) {
-      props.onSubmit(
-        trimmed,
-        customResponse.data.kanbanCardId,
-        customResponse.data.seqNo,
-        props.fkKanbanListId
-      );
-      toast.success(
-        `Card ID: ${customResponse.data.kanbanCardId} Created Successfully`,
-        { position: toast.POSITION.TOP_CENTER }
-      );
-      setName("");
-      props.onCreated?.(); // 👈 بعد ما ينجح، خبّي الفورم
-    } else {
+if (customResponse?.status === 200 && customResponse.data) {
+  props.onSubmit(
+    trimmed,
+    customResponse.data.kanbanCardId,
+    customResponse.data.seqNo,
+    props.fkKanbanListId
+  );
+
+  // ✅ close immediately (no waiting)
+  setName("");
+  props.onCreated?.();
+
+  toast.success(
+    `Card ID: ${customResponse.data.kanbanCardId} Created Successfully`,
+    { position: toast.POSITION.TOP_CENTER }
+  );
+
+  // ✅ invalidate in background
+  invalidateKanban(); // <-- no await
+
+  return;
+}
+ else {
       toast.error(
         "Something went wrong, could not add the card. Please try again later.",
         { position: toast.POSITION.TOP_CENTER }
