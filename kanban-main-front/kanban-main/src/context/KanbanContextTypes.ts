@@ -23,7 +23,9 @@ export type hanbleOpenModalProps =
       modalProps: DeleteListModalProps;
     }
   | { type: "UPDATE_CARD"; modalProps: CardModalProps }
-  | { type: "RENAME_LIST"; modalProps: RenameListModalProps };
+  | { type: "RENAME_LIST"; modalProps: RenameListModalProps }
+  | { type: "CARD_MODAL"; modalProps: CardModalProps };
+
 
 export type KanbanContext = {
   kanbanState: KanbanBoardState;
