@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MoreVertical, Pencil, Trash2 } from "lucide-react";
 
 type Props = {
@@ -28,18 +28,41 @@ function MemberIcon({ className }: { className?: string }) {
   );
 }
 
-export default function ProjectCard({
-  project,
-  onView,
-  onEdit,
-  onDelete,
-}: Props) {
+export default function ProjectCard({ project, onView, onEdit, onDelete }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
+
+  // ✅ ref for outside click detection
+  const menuRef = useRef<HTMLDivElement | null>(null);
 
   const artboardCount = project?.artboardCount ?? "20+";
   const rawCreatedBy = project?.createdBy?.username ?? "Admin";
-  const createdBy =
-    rawCreatedBy.charAt(0).toUpperCase() + rawCreatedBy.slice(1);
+  const createdBy = rawCreatedBy.charAt(0).toUpperCase() + rawCreatedBy.slice(1);
+
+  // ✅ close menu on outside click + ESC
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    const onPointerDown = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as Node | null;
+      if (!target) return;
+      if (menuRef.current?.contains(target)) return; // click inside menu
+      setMenuOpen(false);
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("touchstart", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("touchstart", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [menuOpen]);
 
   const handleEditClick = () => {
     setMenuOpen(false);
@@ -51,22 +74,28 @@ export default function ProjectCard({
     onDelete();
   };
 
+  const handleViewClick = () => {
+    setMenuOpen(false);
+    onView();
+  };
+
   return (
     <article className="flex h-full flex-col rounded-[20px] border border-slate500_08 bg-white shadow-[0_20px_60px_rgba(15,23,42,0.04)] dark:border-slate500_20 dark:bg-[#1B232D] dark:shadow-none">
       {/* Top content */}
       <div className="flex-1 px-4 pt-3 pb-4">
         {/* ID + menu */}
         <div className="flex items-start justify-between">
-          <span className="inline-flex rounded-[6px] border-[3px] border-[#8E33FF]  px-1 py-[3px] text-[12px] font-bold leading-[14px] text-[#A855F7]">
+          <span className="inline-flex rounded-[6px] border-[3px] border-[#8E33FF] px-1 py-[3px] text-[12px] font-bold leading-[14px] text-[#A855F7]">
             ID : {String(project?.id ?? "1").padStart(3, "0")}
           </span>
 
           {/* Three-dots + menu */}
-          <div className="relative">
+          <div className="relative" ref={menuRef}>
             <button
               type="button"
               onClick={() => setMenuOpen((prev) => !prev)}
               className="rounded-full p-1.5 hover:bg-slate500_08 dark:hover:bg-slate500_20"
+              aria-label="More"
             >
               <MoreVertical className="h-5 w-5 text-[#637381] dark:text-slate500_80" />
             </button>
@@ -77,14 +106,13 @@ export default function ProjectCard({
                 <button
                   type="button"
                   onClick={handleEditClick}
- className="
-    flex w-full items-center gap-2 px-4 py-2 text-left
-    rounded-2xl
-    border border-transparent
-    hover:bg-white/5
-    hover:border-white/20
-  "
-
+                  className="
+                    flex w-full items-center gap-2 px-4 py-2 text-left
+                    rounded-2xl
+                    border border-transparent
+                    hover:bg-white/5
+                    hover:border-white/20
+                  "
                 >
                   <Pencil className="h-4 w-4" />
                   <span>Edit</span>
@@ -94,15 +122,14 @@ export default function ProjectCard({
                 <button
                   type="button"
                   onClick={handleDeleteClick}
- className="
-    flex w-full items-center gap-2 px-4 py-2 text-left
-    rounded-2xl
-    border border-transparent
-    hover:bg-white/5
-    hover:border-white/20
-  "
->
-                
+                  className="
+                    flex w-full items-center gap-2 px-4 py-2 text-left
+                    rounded-2xl
+                    border border-transparent
+                    hover:bg-white/5
+                    hover:border-white/20
+                  "
+                >
                   <Trash2 className="h-4 w-4" />
                   <span>Delete</span>
                 </button>
@@ -120,9 +147,7 @@ export default function ProjectCard({
         <div className="mt-3 space-y-2.5 text-[13px] leading-[18px]">
           {/* Created By */}
           <div className="flex items-center gap-2">
-            <span className="text-[#919EAB] dark:text-slate500_80">
-              Created By
-            </span>
+            <span className="text-[#919EAB] dark:text-slate500_80">Created By</span>
             <span className="font-semibold text-[#637381] dark:text-slate500_80">
               {createdBy}
             </span>
@@ -130,9 +155,7 @@ export default function ProjectCard({
 
           {/* Member(s) */}
           <div className="flex items-center gap-2">
-            <span className="text-[#919EAB] dark:text-slate500_80">
-              Member(s)
-            </span>
+            <span className="text-[#919EAB] dark:text-slate500_80">Member(s)</span>
 
             <div className="flex items-center">
               <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#EFD6FF] text-[#C684FF] shadow-[0_0_0_3px_#FFFFFF] dark:shadow-[0_0_0_2px_#1B232D]">
@@ -152,9 +175,7 @@ export default function ProjectCard({
 
           {/* Artboard */}
           <div className="flex items-center gap-2">
-            <span className="text-[#919EAB] dark:text-slate500_80">
-              Artboard
-            </span>
+            <span className="text-[#919EAB] dark:text-slate500_80">Artboard</span>
             <span className="text-[14px] font-bold text-[#637381] dark:text-slate500_80">
               {artboardCount}
             </span>
@@ -162,14 +183,14 @@ export default function ProjectCard({
         </div>
       </div>
 
-      {/* Dotted divider like Figma */}
+      {/* Dotted divider */}
       <div className="w-full border-t border-dashed border-[#E5EAF1] dark:border-[#232C36]" />
 
       {/* Footer / View button */}
       <div className="px-4 py-4">
         <button
           type="button"
-          onClick={onView}
+          onClick={handleViewClick}
           className="inline-flex h-9 items-center justify-center rounded-[10px] bg-[#1C252E] px-5 text-[12px] font-semibold text-white shadow-[0_10px_25px_rgba(15,23,42,0.18)] hover:opacity-95 dark:bg-white dark:text-[#1C252E] dark:shadow-none"
         >
           View
