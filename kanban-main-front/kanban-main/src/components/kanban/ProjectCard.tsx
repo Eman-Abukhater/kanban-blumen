@@ -101,7 +101,8 @@ export default function ProjectCard({ project, onView, onEdit, onDelete }: Props
             </button>
 
             {menuOpen && (
-              <div className="absolute right-0 mt-2 w-32 rounded-2xl bg-white py-2 text-sm text-black shadow-[0_18px_45px_rgba(15,23,42,0.40)] dark:bg-[#232C36] dark:text-white">
+              <div className="absolute right-0 mt-2 w-32 rounded-2xl bg-white py-2 text-sm text-black shadow-[0_18px_45px_rgba(15,23,42,0.40)]
+] dark:bg-[#232C36] dark:text-white">
                 {/* Edit */}
                 <button
                   type="button"
@@ -110,8 +111,7 @@ export default function ProjectCard({ project, onView, onEdit, onDelete }: Props
                     flex w-full items-center gap-2 px-4 py-2 text-left
                     rounded-2xl
                     border border-transparent
-                    hover:bg-white/5
-                    hover:border-white/20
+                   
                   "
                 >
                   <Pencil className="h-4 w-4" />
@@ -126,8 +126,7 @@ export default function ProjectCard({ project, onView, onEdit, onDelete }: Props
                     flex w-full items-center gap-2 px-4 py-2 text-left
                     rounded-2xl
                     border border-transparent
-                    hover:bg-white/5
-                    hover:border-white/20
+                  
                   "
                 >
                   <Trash2 className="h-4 w-4" />
