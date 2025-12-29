@@ -1,25 +1,33 @@
 // src/components/kanban/KanbanListComponent.tsx
 import { useContext, useEffect, useRef, useState } from "react";
 import { Draggable, Droppable } from "react-beautiful-dnd";
-import { KanbanList } from "./KanbanTypes";
-import { AddCardForm } from "./AddCardForm";
-import KanbanContext from "../../context/kanbanContext";
-import { classNames } from "../../utility/css";
-import { ListMenu } from "./ListMenu";
-import KanbanCardComponent from "./KanbanCardComponent";
-import { Plus } from "lucide-react";
 import Image from "next/image";
+import { Plus } from "lucide-react";
 import { toast } from "react-toastify";
 
+import { KanbanList } from "./KanbanTypes";
+import { AddCardForm } from "./AddCardForm";
+import KanbanCardComponent from "./KanbanCardComponent";
+import { ListMenu } from "./ListMenu";
+
+import KanbanContext from "../../context/kanbanContext";
+import { classNames } from "../../utility/css";
+
+import { EditListName } from "@/services/kanbanApi";
+import { useInvalidateKanban } from "@/hooks/useKanbanMutations";
+
 export interface IKanbanListComponentProps {
-  listIndex: number; // ✅ global index
+  listIndex: number; // ✅ global index in your kanban state
   dragIndex: number; // ✅ visible index for DnD
   list: KanbanList;
   dense: boolean;
 }
 
 function KanbanListComponent(props: IKanbanListComponentProps) {
-  const { handleCreateCard, handleRenameList, userInfo } = useContext(KanbanContext);
+  const { handleCreateCard, handleRenameList, userInfo } =
+    useContext(KanbanContext);
+
+  const invalidateKanban = useInvalidateKanban();
 
   const cardCount = props.list.kanbanCards?.length ?? 0;
   const [showAddCard, setShowAddCard] = useState(false);
@@ -48,26 +56,54 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
     setRenameValue(props.list.title);
   };
 
-  const commitRename = () => {
+  // ✅ IMPORTANT: this persists rename to backend + keeps UI consistent
+  const commitRename = async () => {
     const next = renameValue.trim();
+    const prev = props.list.title;
 
     if (!next) {
-      toast.error("List title cannot be empty", { position: toast.POSITION.TOP_CENTER });
+      toast.error("List title cannot be empty", {
+        position: toast.POSITION.TOP_CENTER,
+      });
       cancelRename();
       return;
     }
 
-    if (next === props.list.title.trim()) {
+    if (next === prev.trim()) {
       setIsRenaming(false);
       return;
     }
 
-    // ✅ update local state via context
+    // 1) optimistic local update
     handleRenameList(props.listIndex, next);
-
-
     setIsRenaming(false);
-    toast.success("List renamed", { position: toast.POSITION.TOP_CENTER });
+
+    // 2) persist to backend
+    try {
+      const res = await EditListName(
+        next,
+        props.list.kanbanListId,
+        userInfo.username,
+        userInfo.fkboardid,
+        userInfo.fkpoid
+      );
+
+      if (res?.status === 200) {
+        toast.success("List renamed", { position: toast.POSITION.TOP_CENTER });
+        invalidateKanban(); // ✅ no await (no UI delay)
+        return;
+      }
+
+      // rollback
+      handleRenameList(props.listIndex, prev);
+      toast.error("Rename failed", { position: toast.POSITION.TOP_CENTER });
+    } catch (e: any) {
+      // rollback
+      handleRenameList(props.listIndex, prev);
+      toast.error(e?.message || "Rename failed", {
+        position: toast.POSITION.TOP_CENTER,
+      });
+    }
   };
 
   return (
@@ -95,22 +131,25 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
                     {props.list.title}
                   </div>
                 ) : (
-                 <input
-  ref={renameInputRef}
-  value={renameValue}
-  onChange={(e) => setRenameValue(e.target.value)}
-  onBlur={commitRename}
-  onKeyDown={(e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      commitRename();
-    }
-    if (e.key === "Escape") {
-      e.preventDefault();
-      cancelRename();
-    }
-  }}
-  className="
+                  <input
+                    ref={renameInputRef}
+                    value={renameValue}
+                    onChange={(e) => setRenameValue(e.target.value)}
+                    onBlur={() => {
+                      // onBlur triggers rename commit
+                      void commitRename();
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        void commitRename();
+                      }
+                      if (e.key === "Escape") {
+                        e.preventDefault();
+                        cancelRename();
+                      }
+                    }}
+                    className="
                       h-10 w-[170px] max-w-[170px]
                       rounded-[10px] border-2 border-[#1C252E] bg-white
                       px-3 text-[16px] font-semibold text-ink
@@ -120,10 +159,7 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
                       focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0
                       dark:bg-[#1C252E] dark:text-white dark:border-white
                     "
-
-
-/>
-
+                  />
                 )}
               </div>
 
@@ -134,9 +170,14 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
                   onClick={() => {
                     setShowAddCard(true);
                     setTimeout(() => {
-                      const el = document.getElementById(`add-card-${props.list.kanbanListId}`);
+                      const el = document.getElementById(
+                        `add-card-${props.list.kanbanListId}`
+                      );
                       if (el) {
-                        el.scrollIntoView({ behavior: "smooth", block: "start" });
+                        el.scrollIntoView({
+                          behavior: "smooth",
+                          block: "start",
+                        });
                         const input = el.querySelector("input");
                         if (input) (input as HTMLInputElement).focus();
                       }
@@ -147,7 +188,7 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
                   <Plus className="h-3 w-3" />
                 </button>
 
-                {/* ✅ Menu: rename now inline */}
+                {/* ✅ Menu: rename is inline */}
                 <ListMenu
                   listid={props.list.kanbanListId}
                   listIndex={props.listIndex}
@@ -186,7 +227,12 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
                         <AddCardForm
                           text="Add card"
                           placeholder="Task name"
-                          onSubmit={(title, kanbanCardId, seqNo, fkKanbanListId) =>
+                          onSubmit={(
+                            title,
+                            kanbanCardId,
+                            seqNo,
+                            fkKanbanListId
+                          ) =>
                             handleCreateCard(
                               props.listIndex,
                               title,

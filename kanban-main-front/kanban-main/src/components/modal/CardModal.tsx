@@ -23,6 +23,7 @@ import { toast } from "react-toastify";
 import { GetCardImagePath } from "@/utility/baseUrl";
 import dayjs from "dayjs";
 import { DueDateModal } from "../kanban/DueDateModal";
+import { useInvalidateKanban } from "@/hooks/useKanbanMutations";
 
 export interface CardModalProps {
   listIndex: number;
@@ -102,6 +103,8 @@ export function CardModal(props: CardModalProps) {
   const [isDeletingTask, setIsDeletingTask] = useState<number | null>(null);
 
   const maxFileSize = 5000000;
+ 
+  const invalidateKanban = useInvalidateKanban();
 
   // keep autosize for description
   useAutosizeTextArea(descTextAreaRef, desc);
@@ -179,7 +182,7 @@ export function CardModal(props: CardModalProps) {
 
           handleCloseModal();
           setSubmit(false);
-
+          invalidateKanban();
           toast.success(`Card updated successfully!`, {
             position: toast.POSITION.TOP_CENTER,
           });
@@ -311,7 +314,8 @@ export function CardModal(props: CardModalProps) {
           ...props.card,
           kanbanTags: newTags,
         });
-
+        
+        invalidateKanban();
         toast.success(` ${customResponse?.data}`, {
           position: toast.POSITION.TOP_CENTER,
         });
@@ -345,6 +349,8 @@ export function CardModal(props: CardModalProps) {
           ...props.card,
           kanbanTasks: tempTask,
         });
+
+      invalidateKanban();
 
         toast.success(` ${customResponse?.data}`, {
           position: toast.POSITION.TOP_CENTER,
@@ -402,6 +408,7 @@ export function CardModal(props: CardModalProps) {
           kanbanTasks: tempTask,
         });
 
+        invalidateKanban();
         toast.success(`Task ID: ${customResponse?.data} Created Successfully`, {
           position: toast.POSITION.TOP_CENTER,
         });

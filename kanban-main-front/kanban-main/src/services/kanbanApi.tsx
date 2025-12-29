@@ -152,6 +152,20 @@ export async function deleteProject(
     return null;
   }
 }
+// ✅ Delete List (admin)
+export async function deleteList(listId: number): Promise<AddCustomResponse<any> | null> {
+  try {
+    const response = await apiClient.delete(`/lists/${listId}`);
+
+    return {
+      status: response.status,
+      data: response.data,
+    };
+  } catch (error: any) {
+    console.error("Error deleting list:", error?.response?.data ?? error?.message);
+    return null;
+  }
+}
 
 // Add member to project
 export async function addProjectMember(

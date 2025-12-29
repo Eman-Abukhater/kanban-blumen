@@ -2,6 +2,7 @@ import { AddKanbanList } from "@/services/kanbanApi";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
+import { useInvalidateKanban } from "@/hooks/useKanbanMutations";
 
 export interface IAddFormProps {
   text: string;
@@ -18,6 +19,7 @@ export interface IAddFormProps {
 export function AddForm(props: IAddFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const invalidateKanban = useInvalidateKanban();
 
   const [name, setName] = useState<string>("");
   const [showForm, setShowForm] = useState<boolean>(false);
@@ -75,6 +77,7 @@ export function AddForm(props: IAddFormProps) {
           customResponse.data.seqNo,
           props.userInfo.fkboardid
         );
+        await invalidateKanban();
 
         toast.success(
           `List "${trimmed}" created successfully`,
