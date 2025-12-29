@@ -190,7 +190,7 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
 
                 {/* ✅ Menu: rename is inline */}
                 <ListMenu
-                  listid={props.list.kanbanListId}
+                  listId={props.list.kanbanListId}
                   listIndex={props.listIndex}
                   title={props.list.title}
                   userInfo={userInfo}

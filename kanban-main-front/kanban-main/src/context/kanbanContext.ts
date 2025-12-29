@@ -1,29 +1,28 @@
 import { createContext } from "react";
-import { KanbanBoardState } from "../components/kanban/KanbanTypes";
-import { tagColors } from "../components/modal/CreateTagModal";
-//import { GetBaseURL } from "../utility/baseUrl";
-import { s4 } from "../utility/uuidGenerator";
-import { KanbanContext, ModalContextState } from "./KanbanContextTypes";
-import { HubConnection } from "@microsoft/signalr/dist/esm/HubConnection";
-import { IStreamResult } from "@microsoft/signalr";
+import type { KanbanBoardState } from "../components/kanban/KanbanTypes";
+import type {
+  KanbanContext as KanbanContextType,
+  ModalContextState,
+} from "./KanbanContextTypes";
+import type { HubConnection } from "@microsoft/signalr/dist/esm/HubConnection";
 
 export const defaultKanbanBoardState: KanbanBoardState = [];
 
 export const defaultModalContextState: ModalContextState = {
-  type: null,
   isOpen: false,
+  type: null,
   modalProps: null,
 };
 
 export const userInfo: any = {};
-//export const signalRConnection: HubConnection ={};
 
-const initialContextState: KanbanContext = {
+const initialContextState: KanbanContextType = {
   kanbanState: defaultKanbanBoardState,
   modalState: defaultModalContextState,
-  userInfo: userInfo,
-  signalRConnection: undefined,
+  userInfo,
+  signalRConnection: undefined as HubConnection | undefined,
   onlineUsers: [],
+
   handleCreateList: () => {},
   handleDeleteList: () => {},
   handleRenameList: () => {},
@@ -31,15 +30,19 @@ const initialContextState: KanbanContext = {
   handleDeleteCard: () => {},
   handleUpdateCard: () => {},
   handleDragEnd: () => {},
+
   handleOpenModal: () => {},
   handleCloseModal: () => {},
+
+  handleClearList: () => {},
+
   setKanbanListState: () => {},
   handleSetUserInfo: () => {},
   setSignalRConnection: () => {},
   setUsersOnline: () => {},
 };
 
-const KanbanContext = createContext<KanbanContext>(initialContextState);
+const KanbanContext = createContext<KanbanContextType>(initialContextState);
 
 export const KanbanContextConsumer = KanbanContext.Consumer;
 export const KanbanContextProvider = KanbanContext.Provider;

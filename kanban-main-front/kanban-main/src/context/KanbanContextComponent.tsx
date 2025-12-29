@@ -1,27 +1,23 @@
-import { PropsWithChildren, useState, useEffect, useRef } from "react";
+import { PropsWithChildren, useState } from "react";
 import { DropResult } from "react-beautiful-dnd";
-import {
-  KanbanBoardState,
-  KanbanCard,
-  KanbanList,
-} from "../components/kanban/KanbanTypes";
-import { CardModal, CardModalProps } from "../components/modal/CardModal";
-import {
-  DeleteListModal,
-  DeleteListModalProps,
-} from "../components/modal/DeleteListModal";
-import RenameListModal, {
-  RenameListModalProps,
-} from "../components/modal/RenameListModal";
+import { KanbanBoardState, KanbanCard } from "../components/kanban/KanbanTypes";
+
+import { CardModal } from "../components/modal/CardModal";
+import { DeleteListModal } from "../components/modal/DeleteListModal";
+import RenameListModal from "../components/modal/RenameListModal";
+
 import useLocalStorage from "../hooks/useLocalStorage";
 import { s4 } from "../utility/uuidGenerator";
+
 import {
   defaultKanbanBoardState,
   defaultModalContextState,
   KanbanContextProvider,
 } from "./kanbanContext";
+
 import { hanbleOpenModalProps, ModalContextState } from "./KanbanContextTypes";
-import { useOnDragEndCard, useOnDragEndList } from "@/services/kanbanApi";
+
+import { useOnDragEndCard } from "@/services/kanbanApi";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { HubConnection } from "@microsoft/signalr";
@@ -32,19 +28,9 @@ export interface IAppProps extends PropsWithChildren {}
 export function KanbanContextComponent(props: IAppProps) {
   const { children } = props;
 
-  // if (!isDataFetched) {
-  //   return <div>Loading...</div>; // You can replace this with a loading indicator
-  // }
-
-  //set the default list on page load
   const [userInfo, setUserInfo] = useState<any>();
 
-  //set Connection for signalR for websocket
-  const [signalRConnection, setConnection] = useState<
-    HubConnection | undefined
-  >();
-
-  //online users list
+  const [signalRConnection, setConnection] = useState<HubConnection | undefined>();
   const [onlineUsers, setOnlineUsers] = useState<any>([]);
 
   const [kanbanState, setKanbanState] = useLocalStorage<KanbanBoardState>(
@@ -64,12 +50,12 @@ export function KanbanContextComponent(props: IAppProps) {
   ) => {
     const tempList = [...kanbanState];
     tempList.push({
-      kanbanListId: kanbanListId,
+      kanbanListId,
       id: s4(),
       title,
       kanbanCards: [],
-      fkBoardId: fkBoardId,
-      seqNo: seqNo,
+      fkBoardId,
+      seqNo,
       createdAt: new Date(),
       addedBy: "",
     });
@@ -84,8 +70,13 @@ export function KanbanContextComponent(props: IAppProps) {
 
   const handleRenameList = (listIndex: number, title: string) => {
     const tempList = [...kanbanState];
+    if (!tempList[listIndex]) return;
     tempList[listIndex].title = title;
     setKanbanState(tempList);
+  };
+
+  const setKanbanListState = (KanbanList: KanbanBoardState) => {
+    setKanbanState(KanbanList);
   };
 
   const handleCreateCard = (
@@ -97,7 +88,7 @@ export function KanbanContextComponent(props: IAppProps) {
   ) => {
     const tempList = [...kanbanState];
     tempList[listIndex].kanbanCards.push({
-      kanbanCardId: kanbanCardId,
+      kanbanCardId,
       id: s4(),
       title,
       desc: title,
@@ -105,8 +96,8 @@ export function KanbanContextComponent(props: IAppProps) {
       kanbanTasks: [],
       kanbanTags: [],
       date: null,
-      fkKanbanListId: fkKanbanListId,
-      seqNo: seqNo,
+      fkKanbanListId,
+      seqNo,
       createdAt: new Date(),
       addedBy: "",
       startDate: new Date(),
@@ -131,11 +122,8 @@ export function KanbanContextComponent(props: IAppProps) {
     setKanbanState(tempList);
   };
 
-  const controller = new AbortController();
   let lastCardId: number | null = null;
-  let intervalId: NodeJS.Timer | null = null;
 
-  //API- ... post the updated card positions to the DB
   async function updateCardPosition(
     SourceListId: number,
     DestinationListId: number,
@@ -144,7 +132,6 @@ export function KanbanContextComponent(props: IAppProps) {
     oldSeqNo: number,
     newSeqNo: number
   ) {
-    // Call the API here with the value
     const customResponse = await useOnDragEndCard(
       SourceListId,
       DestinationListId,
@@ -156,19 +143,15 @@ export function KanbanContextComponent(props: IAppProps) {
       userInfo.fkboardid,
       userInfo.fkpoid
     );
+
     if (customResponse?.status === 200) {
       toast.success(` ${customResponse?.data} `, {
         position: toast.POSITION.TOP_CENTER,
       });
-      //  lastCardId = null;
-    }
-    if (customResponse?.status != 200 || customResponse?.data == null) {
+    } else {
       toast.error(
-        `something went wrong, could not save the changes for swaped Lists` +
-          customResponse,
-        {
-          position: toast.POSITION.TOP_CENTER,
-        }
+        `something went wrong, could not save the changes for swapped Lists`,
+        { position: toast.POSITION.TOP_CENTER }
       );
     }
   }
@@ -177,7 +160,6 @@ export function KanbanContextComponent(props: IAppProps) {
     const { source, destination, type } = dropResult;
 
     if (!destination) return;
-
     if (
       destination.droppableId === source.droppableId &&
       destination.index === source.index
@@ -188,22 +170,15 @@ export function KanbanContextComponent(props: IAppProps) {
     if (type === "all-lists") {
       const tempBoard = [...kanbanState];
       const draggedBoard = tempBoard[source.index];
-      //get dragged board id and fkBoardId
-      const draggedListId = draggedBoard.kanbanListId;
       const draggedListSeqNo = draggedBoard.seqNo;
       const fkBoardId = draggedBoard.fkBoardId;
-      //get destination board id
-      const destListId = tempBoard[destination.index].kanbanListId;
+
       const destListSeqNo = tempBoard[destination.index].seqNo;
 
-      // set the action wther to add 1 or minus one based on grater then or less then condition of moving
-
       if (draggedListSeqNo < destListSeqNo) {
-        // Item moved down, increment sequence numbers
         const minSeqNo = draggedListSeqNo;
         const maxSeqNo = destListSeqNo;
 
-        // Update the sequence numbers for affected items
         for (let i = 0; i < tempBoard.length; i++) {
           const item = tempBoard[i];
           if (
@@ -215,11 +190,9 @@ export function KanbanContextComponent(props: IAppProps) {
           }
         }
       } else if (draggedListSeqNo > destListSeqNo) {
-        // Item moved up, decrement sequence numbers
         const minSeqNo = destListSeqNo;
         const maxSeqNo = draggedListSeqNo;
 
-        // Update the sequence numbers for affected items
         for (let i = 0; i < tempBoard.length; i++) {
           const item = tempBoard[i];
           if (
@@ -231,41 +204,13 @@ export function KanbanContextComponent(props: IAppProps) {
           }
         }
       }
-      // Update the sequence number of the dragged item to the destination position
-      draggedBoard.seqNo = destListSeqNo;
 
-      let action = "";
-      destListSeqNo < draggedListSeqNo ? (action = "Add") : (action = "Minus");
+      draggedBoard.seqNo = destListSeqNo;
 
       tempBoard.splice(source.index, 1);
       tempBoard.splice(destination.index, 0, draggedBoard);
       setKanbanState(tempBoard);
-
-      // //post the updates to db  for the LIST
-      // const customResponse = await useOnDragEndList(
-      //   draggedListId,
-      //   draggedListSeqNo,
-      //   destListId,
-      //   destListSeqNo,
-      //   userInfo.username,
-      //   action,
-      //   fkBoardId,
-      //   userInfo.fkpoid
-      // );
-      // if (customResponse?.status === 200) {
-      //   toast.success(` ${customResponse?.data} `, {
-      //     position: toast.POSITION.BOTTOM_LEFT,
-      //   });
-      // }
-      // if (customResponse?.status != 200 || customResponse?.data == null) {
-      //   toast.error(
-      //     `something went wrong, could not save the changes for swaped Lists` +
-      //       customResponse,
-      //     {
-      //       position: toast.POSITION.TOP_CENTER,
-      //     }
-      //   );
-      // }
+      return;
     }
 
     let SourceListId = 0;
@@ -276,7 +221,6 @@ export function KanbanContextComponent(props: IAppProps) {
 
     // Handle card reordering logic
     if (source.droppableId === destination.droppableId) {
-      // Moving within the same list
       const listIndex = kanbanState.findIndex(
         (list) => list.id === source.droppableId
       );
@@ -284,33 +228,26 @@ export function KanbanContextComponent(props: IAppProps) {
       if (listIndex !== -1) {
         const updatedList = { ...kanbanState[listIndex] };
 
-        //$$$$ set source list id
         SourceListId = updatedList.kanbanListId;
         DestinationListId = updatedList.kanbanListId;
 
         const [draggedCard] = updatedList.kanbanCards.splice(source.index, 1);
-
-        //$$$$ Get oldSeqNo
         oldSeqNo = draggedCard.seqNo;
 
         updatedList.kanbanCards.splice(destination.index, 0, draggedCard);
 
-        // Update sequence numbers for cards within the same list
         updatedList.kanbanCards.forEach((card, index) => {
           card.seqNo = index + 1;
         });
 
         const updatedKanbanState = [...kanbanState];
         updatedKanbanState[listIndex] = updatedList;
-
         setKanbanState(updatedKanbanState);
 
-        //$$$$ set draggedCard ID and  seqNo
         kanbanCardId = draggedCard.kanbanCardId;
         newSeqNo = draggedCard.seqNo;
         const cardTitle = draggedCard.title;
 
-        //Post updates to the database as needed
         const [debouncedFunc, teardown] = debounceWithCardId(
           async () => {
             updateCardPosition(
@@ -322,22 +259,15 @@ export function KanbanContextComponent(props: IAppProps) {
               newSeqNo
             );
           },
-          2000 // 2 seconds debounce delay
+          2000
         );
-        //check if the same card is moved again to abort the api call
-        if (lastCardId === kanbanCardId) {
-          teardown(); // Cancel the API call using AbortController
-        }
-        //set last card id
+
+        if (lastCardId === kanbanCardId) teardown();
         lastCardId = kanbanCardId;
-        // Call the debounced API function with the extracted data and kanbanCardId
-        debouncedFunc(
-          {},
-          kanbanCardId // Replace with the actual kanbanCardId
-        );
+
+        debouncedFunc({}, kanbanCardId);
       }
     } else {
-      // Moving from one list to another
       const sourceListIndex = kanbanState.findIndex(
         (list) => list.id === source.droppableId
       );
@@ -349,23 +279,18 @@ export function KanbanContextComponent(props: IAppProps) {
       if (sourceListIndex !== -1 && destinationListIndex !== -1) {
         const sourceList = { ...kanbanState[sourceListIndex] };
         const destinationList = { ...kanbanState[destinationListIndex] };
-        //$$$$ set source list id and destination list id
+
         SourceListId = sourceList.kanbanListId;
         DestinationListId = destinationList.kanbanListId;
 
         const [draggedCard] = sourceList.kanbanCards.splice(source.index, 1);
-
-        //$$$$ Get oldSeqNo
         oldSeqNo = draggedCard.seqNo;
 
         destinationList.kanbanCards.splice(destination.index, 0, draggedCard);
 
-        // Update sequence numbers for cards in the source list
         sourceList.kanbanCards.forEach((card, index) => {
           card.seqNo = index + 1;
         });
-
-        // Update sequence numbers for cards in the destination list
         destinationList.kanbanCards.forEach((card, index) => {
           card.seqNo = index + 1;
         });
@@ -373,15 +298,12 @@ export function KanbanContextComponent(props: IAppProps) {
         const updatedKanbanState = [...kanbanState];
         updatedKanbanState[sourceListIndex] = sourceList;
         updatedKanbanState[destinationListIndex] = destinationList;
-
         setKanbanState(updatedKanbanState);
 
-        //$$$$ set draggedCard ID and  seqNo
         kanbanCardId = draggedCard.kanbanCardId;
         newSeqNo = draggedCard.seqNo;
         const cardTitle = draggedCard.title;
 
-        //Post updates to the database as needed
         const [debouncedFunc, teardown] = debounceWithCardId(
           async () => {
             updateCardPosition(
@@ -393,35 +315,26 @@ export function KanbanContextComponent(props: IAppProps) {
               newSeqNo
             );
           },
-          2000 // 2 seconds debounce delay
+          2000
         );
-        //check if the same card is moved again to abort the api call
-        if (lastCardId === kanbanCardId) {
-          teardown(); // Cancel the API call using AbortController
-        }
-        //set last card id
+
+        if (lastCardId === kanbanCardId) teardown();
         lastCardId = kanbanCardId;
-        // Call the debounced API function with the extracted data and kanbanCardId
-        debouncedFunc(
-          {},
-          kanbanCardId // Replace with the actual kanbanCardId
-        );
+
+        debouncedFunc({}, kanbanCardId);
       }
     }
   };
 
   const handleCloseModal = () => {
-    setModalState({ type: null, isOpen: false, modalProps: null });
+    setModalState({ isOpen: false, type: null, modalProps: null });
   };
 
-  const setKanbanListState = (KanbanList: KanbanBoardState) => {
-    //setKanbanState(KanbanList);
-    setKanbanState(KanbanList);
+  const handleSetUserInfo = (user: any) => {
+    setUserInfo(user);
   };
 
-  const setSignalRConnection = (
-    SignalRConnection: HubConnection | undefined
-  ) => {
+  const setSignalRConnection = (SignalRConnection: HubConnection | undefined) => {
     setConnection(SignalRConnection);
   };
 
@@ -429,81 +342,69 @@ export function KanbanContextComponent(props: IAppProps) {
     setOnlineUsers(onlineUsesr);
   };
 
-  const handleSetUserInfo = (user: any) => {
-    setUserInfo(user);
-  };
-
-  const handleOpenModal = (props: hanbleOpenModalProps) => {
-    switch (props.type) {
-      case "DELETE_LIST": {
-        setModalState({
-          type: "DELETE_LIST",
-          isOpen: true,
-          modalProps: props.modalProps,
-        });
-        break;
-      }
-      case "UPDATE_CARD": {
-        setModalState({
-          type: "UPDATE_CARD",
-          isOpen: true,
-          modalProps: props.modalProps,
-        });
-        break;
-      }
-      case "RENAME_LIST": {
-        setModalState({
-          type: "RENAME_LIST",
-          isOpen: true,
-          modalProps: props.modalProps,
-        });
-        break;
-      }
-      default: {
-        return;
-      }
-    }
-  };
-const handleClearList = (listid: number) => {
-  const idx = kanbanState.findIndex((l) => l.kanbanListId === listid);
-
-  if (idx === -1) {
-    toast.error("List not found");
+const handleOpenModal = (payload: hanbleOpenModalProps) => {
+  if (payload.type === "DELETE_LIST") {
+    setModalState({
+      isOpen: true,
+      type: "DELETE_LIST",
+      modalProps: payload.modalProps,
+    });
     return;
   }
 
-  const copy = [...kanbanState];
-  copy[idx] = { ...copy[idx], kanbanCards: [] }; // ✅ clear cards
+  if (payload.type === "UPDATE_CARD") {
+    setModalState({
+      isOpen: true,
+      type: "UPDATE_CARD",
+      modalProps: payload.modalProps,
+    });
+    return;
+  }
 
-  setKanbanState(copy); // ✅ important: NOT functional update
-
-  toast.success("List cleared", { position: toast.POSITION.TOP_CENTER });
+  if (payload.type === "RENAME_LIST") {
+    setModalState({
+      isOpen: true,
+      type: "RENAME_LIST",
+      modalProps: payload.modalProps,
+    });
+    return;
+  }
 };
 
 
+  // ✅ لازم تقبل userInfo عشان ListMenu بمررها
+  const handleClearList = (listid: number, _userInfo: any) => {
+    const idx = kanbanState.findIndex((l) => l.kanbanListId === listid);
 
+    if (idx === -1) {
+      toast.error("List not found");
+      return;
+    }
+
+    const copy = [...kanbanState];
+    copy[idx] = { ...copy[idx], kanbanCards: [] };
+
+    setKanbanState(copy);
+
+    toast.success("List cleared", { position: toast.POSITION.TOP_CENTER });
+  };
 
   const renderModal = (state: ModalContextState) => {
-    if (state.modalProps !== null) {
-      switch (state.type) {
-        case "DELETE_LIST": {
-          return (
-            <DeleteListModal {...(state.modalProps as DeleteListModalProps)} />
-          );
-        }
-        case "UPDATE_CARD": {
-          return <CardModal {...(state.modalProps as CardModalProps)} />;
-        }
-        case "RENAME_LIST": {
-          return (
-            <RenameListModal {...(state.modalProps as RenameListModalProps)} />
-          );
-        }
-        default: {
-          return null;
-        }
-      }
+    if (!state.isOpen) return null;
+
+    if (state.type === "DELETE_LIST") {
+      return <DeleteListModal {...state.modalProps} />;
     }
+
+    if (state.type === "UPDATE_CARD") {
+      return <CardModal {...state.modalProps} />;
+    }
+
+    if (state.type === "RENAME_LIST") {
+      return <RenameListModal {...state.modalProps} />;
+    }
+
+    return null;
   };
 
   return (
@@ -535,42 +436,3 @@ const handleClearList = (listid: number) => {
     </KanbanContextProvider>
   );
 }
-
-// // set default values for the list
-// let defaultKanbanBoardState: KanbanBoardState = [];
-
-// async function setInitialData(idAsNumber: number | null): Promise<any> {
-//   defaultKanbanBoardState = await fetchKanbanList(idAsNumber);
-//   console.log("🚀 ~ file: KanbanContextComponent.tsx:50 ~ setInitialData ~ defaultKanbanBoardState:", defaultKanbanBoardState)
-// }
-
-//  //check if the last po id in the local browser is the same as the passed from the peremeter
-//  const lastSaveProjectId = localStorage.getItem(Pid_Key);
-//  const lists = localStorage.getItem("kanban-state");
-//  if (lists && lastSaveProjectId === id) {
-//    defaultKanbanBoardState = JSON.parse(lists);
-//  } else {
-//    setInitialData(idAsNumber);
-//    localStorage.setItem(Pid_Key, id);
-//  }
-
-// async function setInitialData(id: any): Promise<any> {
-//   try {
-//     const fetchUrl = `http://localhost:7260/api/ProjKanbanBoards/getkanbanlist?fkpoId=${id}`;
-//     const response = await fetch(fetchUrl);
-
-//     if (!response.ok) {
-//       throw new Error("Network response was not ok");
-//     }
-
-//     defaultKanbanBoardState = await response.json();
-//     return;
-//   } catch (error) {
-//     console.error("Error fetching data:", error);
-//     return null; // Or any appropriate error handling
-//   }
-// }
-
-// useEffect(() => {
-
-// }, []);

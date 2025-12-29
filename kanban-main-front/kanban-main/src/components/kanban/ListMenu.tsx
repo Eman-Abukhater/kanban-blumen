@@ -7,7 +7,7 @@ import { MoreHorizontal, Eraser } from "lucide-react";
 export interface IListMenuProps {
   title: string;
   listIndex: number;
-  listid: number;
+  listId: number;
   userInfo: any;
   onRename: () => void; // ✅ NEW
 }
@@ -71,7 +71,7 @@ export function ListMenu(props: IListMenuProps) {
                     ${active ? "bg-slate500_08 dark:bg-white/5" : ""}
                     text-ink dark:text-white
                   `}
-                  onClick={() => handleClearList(props.listid, props.userInfo)}
+                  onClick={() => handleClearList(props.listId, props.userInfo)}
                 >
                   <Eraser className="h-5 w-5" />
                   <span>Clear</span>
@@ -91,10 +91,11 @@ export function ListMenu(props: IListMenuProps) {
                   onClick={() =>
                     handleOpenModal({
                       type: "DELETE_LIST",
-                      modalProps: {
-                        listIndex: props.listIndex,
-                        title: props.title,
-                      },
+  modalProps: {
+    listIndex: props.listIndex,
+    title: props.title,
+    listId: props.listId,
+  },
                     })
                   }
                 >
