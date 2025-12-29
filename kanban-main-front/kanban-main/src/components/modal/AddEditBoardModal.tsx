@@ -81,7 +81,7 @@ export default function AddEditBoardModal({
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="--"
                 maxLength={25}
-                className="h-[56px] w-full rounded-[12px] border border-slate500_12 bg-white px-3 pt-3 text-[14px] text-ink outline-none transition focus:border-[#1D7BF5] focus:ring-2 focus:ring-[#1D7BF5]/20 dark:border-slate500_20 dark:bg-[#1C252E] dark:text-slate500_80"
+                className="h-[56px] w-full rounded-[12px] border border-[#919EAB33] bg-white px-3 pt-3 text-[14px] text-[#1C252E] outline-none transition focus:border-[#1D7BF5] focus:ring-2 focus:ring-[#1D7BF5]/20 dark:border-slate500_20 dark:bg-[#1C252E] dark:text-white"
               />
             </div>
           </div>
