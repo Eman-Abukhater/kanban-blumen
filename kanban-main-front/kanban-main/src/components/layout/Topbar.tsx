@@ -94,7 +94,6 @@ export default function Topbar() {
                       text-ink dark:text-white
                     `}
                   >
-                    <LogOut className="h-4 w-4 text-slate500 dark:text-slate500_80" />
                     Logout
                   </button>
                 )}
