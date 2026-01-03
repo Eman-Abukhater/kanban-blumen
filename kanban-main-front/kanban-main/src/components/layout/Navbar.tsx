@@ -46,7 +46,7 @@ export function Navbar(props: INavbarProps) {
   const router = useRouter();
 
   return (
-    <header className="contents">
+    <nav className="contents">
       <div className="fixed inset-0 top-0 z-50 flex h-14 items-center justify-center">
         <div
           className="fixed inset-x-0 top-0 z-50 flex h-14 items-center justify-between gap-12 bg-white/[var(--bg-opacity-light)] px-4 backdrop-blur-sm transition dark:bg-slate-900/[var(--bg-opacity-dark)] dark:backdrop-blur sm:px-6 lg:z-30 lg:px-8"
@@ -98,6 +98,6 @@ export function Navbar(props: INavbarProps) {
           </div>
         </div>
       </div>
-    </header>
+    </nav>
   );
 }

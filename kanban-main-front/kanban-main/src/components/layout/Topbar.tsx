@@ -1,84 +1,108 @@
 // src/components/layout/Topbar.tsx
-import { useState } from "react";
 import Image from "next/image";
-import { Search } from "lucide-react";
-import SettingsPanel from "./SettingsPanel";
+import { Fragment } from "react";
+import { Menu, Transition } from "@headlessui/react";
+import ThemeSwitch from "./ThemeSwitch";
+import { LogOut } from "lucide-react";
+import { useRouter } from "next/router";
+import { apiClient } from "@/services/kanbanApi";
 
 export default function Topbar() {
-  const [showSettings, setShowSettings] = useState(false);
+  const router = useRouter(); // ✅ inside component
+
+  const handleLogout = async () => {
+    try {
+      // optional: backend logout (doesn't invalidate JWT, but fine)
+      await apiClient.post("/auth/logout");
+    } catch (e) {
+      // ignore errors
+    } finally {
+      // ✅ clear auth
+      if (typeof window !== "undefined") {
+        window.sessionStorage.removeItem("userData");
+        localStorage.removeItem("token");
+      }
+
+      // ✅ go to auth page (replace so back button won’t return)
+      router.replace("/auth/1/1");
+    }
+  };
 
   return (
-    <header className="sticky top-0 z-30 bg-white dark:bg-[#141A21]">
+    <nav className="sticky top-0 z-30 bg-white dark:bg-[#141A21]">
       <div className="relative mx-auto flex max-w-[1120px] items-center justify-end px-0 py-4">
-        <div className="flex items-center gap-3">
-          {/* mini search chip */}
-          <div className="flex h-9 items-center rounded-full border border-slate500_20 bg-[#F9FAFB] px-3 text-[13px] text-slate600 dark:border-slate500_20 dark:bg-[#020617] dark:text-slate500_80">
-            <Search className="mr-2 h-4 w-4 text-slate500" />
-            <span className="opacity-80">⌘K</span>
-          </div>
-
-          {/* flag */}
-          <Image
-            src="/flag-uk.png"
-            width={25}
-            height={25}
-            alt="UK"
-            className="rounded-sm"
-          />
-
-          {/* bell with badge */}
-          <button className="relative rounded-full p-2 hover:bg-slate500_12">
-            <Image
-              src="/icons/notification.png"
-              alt="notifications"
-              width={25}
-              height={25}
-              className="opacity-80"
-            />
-            <span className="absolute -right-0.4 -top-0.5 inline-flex h-5 min-w-4 items-center justify-center rounded-full bg-[#FF5630] px-2 text-[10px] font-bold text-white">
-              1
-            </span>
-          </button>
-
-          {/* users icon */}
-          <button className="rounded-full p-2 hover:bg-slate500_12">
-            <Image
-              src="/icons/user-icon.svg"
-              alt="user icon"
-              width={25}
-              height={25}
-              className="opacity-80"
-            />
-          </button>
-
-          {/* settings – opens panel */}
-          <button
-            className="rounded-full p-2 hover:bg-slate500_12"
+        {/* Avatar dropdown */}
+        <Menu as="div" className="relative">
+          <Menu.Button
             type="button"
-            onClick={() => setShowSettings((prev) => !prev)}
+            className="relative h-9 w-9 rounded-full outline-none ring-2 ring-[#FFAB00]"
           >
-            <Image
-              src="/icons/settings.png"
-              alt="settings"
-              width={25}
-              height={25}
-              className="opacity-80"
-            />
-          </button>
-
-          {/* avatar */}
-          <div className="relative h-9 w-9">
             <Image
               src="/avatar.png"
               alt="profile"
               fill
-              className="rounded-full ring-2 ring-[#FFAB00]"
+              className="rounded-full object-cover"
             />
-          </div>
-        </div>
+          </Menu.Button>
 
-        {showSettings && <SettingsPanel onClose={() => setShowSettings(false)} />}
+          <Transition
+            as={Fragment}
+            enter="transition ease-out duration-150"
+            enterFrom="opacity-0 translate-y-1"
+            enterTo="opacity-100 translate-y-0"
+            leave="transition ease-in duration-100"
+            leaveFrom="opacity-100 translate-y-0"
+            leaveTo="opacity-0 translate-y-1"
+          >
+            <Menu.Items
+              className="
+                absolute right-0 mt-3 w-[220px]
+                rounded-[16px] border border-slate500_12 bg-white p-2
+                shadow-[0_18px_45px_rgba(15,23,42,0.12)]
+                focus:outline-none
+                dark:border-slate500_20 dark:bg-[#1C252E]
+                dark:shadow-[0_18px_45px_rgba(0,0,0,0.45)]
+              "
+            >
+              {/* Theme row */}
+              <div
+                className="
+                  flex items-center justify-between
+                  rounded-[12px] px-3 py-3
+                  text-[13px] font-medium text-ink
+                  dark:text-white
+                "
+              >
+                <span>Theme</span>
+                <ThemeSwitch />
+              </div>
+
+              <div className="my-1 h-px w-full bg-slate500_12 dark:bg-slate500_20" />
+
+              {/* Logout */}
+              <Menu.Item>
+                {({ active }) => (
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className={`
+                      flex w-full items-center gap-2
+                      rounded-[12px] px-3 py-3
+                      text-left text-[13px] font-medium
+                      outline-none
+                      ${active ? "bg-slate500_08 dark:bg-white/5" : ""}
+                      text-ink dark:text-white
+                    `}
+                  >
+                    <LogOut className="h-4 w-4 text-slate500 dark:text-slate500_80" />
+                    Logout
+                  </button>
+                )}
+              </Menu.Item>
+            </Menu.Items>
+          </Transition>
+        </Menu>
       </div>
-    </header>
+    </nav>
   );
 }

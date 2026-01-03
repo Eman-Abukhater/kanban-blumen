@@ -244,7 +244,7 @@ export function CardModal(props: CardModalProps) {
   };
 
   const deleteCard = () => {
-    toast.info(` Please Contact The Admin as you are not Authorized`, {
+    toast.error(` Please Contact The Admin as you are not Authorized`, {
       position: toast.POSITION.TOP_CENTER,
     });
   };
