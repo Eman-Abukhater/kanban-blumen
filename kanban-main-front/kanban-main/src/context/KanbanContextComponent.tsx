@@ -19,7 +19,6 @@ import { hanbleOpenModalProps, ModalContextState } from "./KanbanContextTypes";
 
 import { useOnDragEndCard } from "@/services/kanbanApi";
 import { toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
 import { HubConnection } from "@microsoft/signalr";
 import { debounceWithCardId } from "@/utility/debounce";
 

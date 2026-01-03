@@ -159,16 +159,7 @@ export default function KanbanCardComponent(props: IKanbanCardComponentProps) {
             {/* FOOTER: comments + attachments + assignees (Figma style) */}
             <div className="mt-3 flex items-center justify-between">
               {/* left: comments + attachments */}
-              <div className="flex items-center gap-4 text-[12px] text-slate500 dark:text-slate500_80">
-                <div className="flex items-center gap-1">
-                  <MessageCircle className="h-4 w-4" />
-                  <span>{commentCount}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Paperclip className="h-4 w-4" />
-                  <span>{attachmentCount}</span>
-                </div>
-              </div>
+             
 
               {/* right: avatars */}
               {assignees.length > 0 && (

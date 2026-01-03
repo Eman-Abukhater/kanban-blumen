@@ -79,12 +79,12 @@ export function DeleteListModal(props: DeleteListModalProps) {
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-[420px] rounded-[18px] bg-white px-6 py-4 shadow-[0_24px_80px_rgba(0,0,0,0.15)]">
-                <Dialog.Title className="text-[19px] font-semibold text-[#111827]">
+<Dialog.Panel className="w-full max-w-[420px] rounded-[18px] bg-white px-6 py-4 shadow-[0_24px_80px_rgba(0,0,0,0.15)] dark:bg-[#1C252E]">
+                <Dialog.Title className="text-[19px] font-semibold text-[#111827] dark:text-white">
                   Delete
                 </Dialog.Title>
 
-                <p className="mt-3 text-[13px] text-[#374151]">
+                <p className="mt-3 text-[13px] text-[#374151] dark:text-white">
                   Are you sure you want to delete this column?
                 </p>
 
@@ -105,7 +105,7 @@ export function DeleteListModal(props: DeleteListModalProps) {
                   <button
                     onClick={handleCloseModal}
                     type="button"
-                    className="rounded-[10px] border border-[#E5E7EB] bg-white px-3 py-2 text-[12px] font-bold text-[#111827] hover:bg-[#F9FAFB]"
+                    className="rounded-[10px] border border-[#E5E7EB] bg-white px-3 py-2 text-[12px] font-bold text-[#111827] hover:bg-[#F9FAFB] dark:bg-[#1C252E] dark:text-white dark:border-[#919EAB52] "
                   >
                     Cancel
                   </button>

@@ -1,17 +1,5 @@
-import { Dialog, RadioGroup, Transition } from "@headlessui/react";
-import { CheckIcon } from "@heroicons/react/24/outline";
-import React, { Fragment, useState } from "react";
-
-export const tagColors: string[] = [
-  "bg-red-600 text-white",
-  "bg-blue-600 text-white",
-  "bg-green-600 text-white",
-  "bg-yellow-400 text-slate-900",
-  "bg-purple-600 text-white",
-  "bg-teal-600 text-white",
-  "bg-cyan-400 text-slate-900",
-  "bg-orange-400 text-slate-900",
-];
+import { Dialog, Transition } from "@headlessui/react";
+import React, { Fragment, useMemo, useState } from "react";
 
 export interface ITagsProps {
   show: boolean;
@@ -21,99 +9,160 @@ export interface ITagsProps {
 
 export function CreateTagModal(props: ITagsProps) {
   const [name, setName] = useState<string>("");
-  const [color, setColor] = useState<number>(0);
 
-  const handleCreate = (tagName: string, colorIndex: number) => {
-    if (name === "") return;
-    props.handleSubmit(name, color);
-    setName("");
+  // ✅ inline validation
+  const [touched, setTouched] = useState(false);
+
+  const trimmed = useMemo(() => name.trim(), [name]);
+  const showError = touched && trimmed.length === 0;
+
+  // ✅ Always BLUE (based on your old tagColors list: Blue was index 1)
+  const BLUE_COLOR_INDEX = 1;
+
+  const closeAndReset = () => {
     props.handleClose(false);
+    setName("");
+    setTouched(false);
+  };
+
+  const handleCreate = () => {
+    setTouched(true);
+    if (!trimmed) return;
+
+    props.handleSubmit(trimmed, BLUE_COLOR_INDEX);
+    closeAndReset();
   };
 
   return (
-    <Transition appear show={props.show}>
+    <Transition appear show={props.show} as={Fragment}>
       <Dialog as="div" className="relative z-[70]" onClose={props.handleClose}>
+        {/* Overlay */}
         <Transition.Child
           as={Fragment}
-          enter="ease-out duration-300"
+          enter="ease-out duration-200"
           enterFrom="opacity-0"
           enterTo="opacity-100"
-          leave="ease-in duration-200"
+          leave="ease-in duration-150"
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-slate-500 bg-opacity-40"></div>
+          <div className="fixed inset-0 bg-black/40" />
         </Transition.Child>
 
         <div className="fixed inset-0 overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-4 text-center">
             <Transition.Child
               as={Fragment}
-              enter="ease-out duration-300"
+              enter="ease-out duration-200"
               enterFrom="opacity-0 scale-95"
               enterTo="opacity-100 scale-100"
-              leave="ease-in duration-200"
+              leave="ease-in duration-150"
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-sm transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all dark:bg-slate-900">
+              <Dialog.Panel
+                className="
+                  w-full max-w-[420px]
+                  transform overflow-hidden
+                  rounded-[24px]
+                  border border-[#E5EAF1]
+                  bg-white
+                  p-6
+                  text-left align-middle
+                  shadow-soft
+                  transition-all
+                  dark:border-slate500_20
+                  dark:bg-[#1C252E]
+                "
+              >
                 <Dialog.Title
                   as="h3"
-                  className="text-lg font-medium leading-6 text-slate-900 dark:text-white"
+                  className="text-[18px] font-semibold text-ink dark:text-white"
                 >
                   Create Tag
                 </Dialog.Title>
-                <div className="mt-3">
+
+                {/* Input */}
+                <div className="mt-4">
+               
                   <input
                     type="text"
-                    className="w-full rounded-lg font-semibold placeholder:font-light dark:bg-slate-900 dark:text-white dark:placeholder:text-slate-400 dark:hover:border"
-                    placeholder="Tag name...."
                     value={name}
                     onChange={(e) => setName(e.target.value)}
+                    onBlur={() => setTouched(true)}
+                    placeholder="Tag name..."
+                    className={`
+                      w-full
+                      rounded-[12px]
+                      border
+                      px-3 py-2
+                      text-[14px] font-semibold
+                      outline-none
+                      focus:outline-none focus:ring-0
+                      focus-visible:outline-none focus-visible:ring-0
+                      bg-white/70 text-ink placeholder:text-slate500
+                      dark:bg-white/5 dark:text-white dark:placeholder:text-slate500_80
+                      ${
+                        showError
+                          ? "border-red-500 focus:border-red-500 dark:border-red-500"
+                          : "border-slate500_20 focus:border-ink dark:border-slate500_20 dark:focus:border-white"
+                      }
+                    `}
                   />
+
+                  {/* ✅ redline warning */}
+                  {showError && (
+                    <p className="mt-2 text-[12px] font-medium text-red-500">
+                      Please enter a tag name.
+                    </p>
+                  )}
                 </div>
 
-                <div className="mt-3">
-                  <RadioGroup value={color} onChange={setColor}>
-                    <RadioGroup.Label className="sr-only">
-                      Tag color
-                    </RadioGroup.Label>
-                    <div className="flex flex-wrap gap-3">
-                      {tagColors.map((color, index) => (
-                        <RadioGroup.Option
-                          key={color}
-                          value={index}
-                          className={`flex h-10 w-10 items-center justify-center rounded-lg font-semibold ${color}`}
-                        >
-                          {({ active, checked }) =>
-                            checked ? (
-                              <CheckIcon className="h-7 w-7" />
-                            ) : (
-                              <p></p>
-                            )
-                          }
-                        </RadioGroup.Option>
-                      ))}
-                    </div>
-                  </RadioGroup>
-                </div>
-
-                <div className="mt-4 flex justify-end gap-3">
+                {/* Actions */}
+                <div className="mt-6 flex justify-end gap-3">
                   <button
                     type="button"
-                    className="inline-flex justify-center rounded-md border border-transparent bg-emerald-700 px-3 py-1 text-base font-medium text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 hover:bg-emerald-600"
-                    onClick={() => handleCreate(name, color)}
-                  >
-                    Create
-                  </button>
-                  <button
-                    onClick={() => props.handleClose(false)}
-                    type="button"
-                    className="inline-flex justify-center rounded-md border bg-transparent px-3 py-1 text-base font-medium transition-colors duration-150 focus:outline-none focus:ring-1 focus:ring-indigo-600 hover:border-indigo-600 hover:ring-1 hover:ring-indigo-600 dark:text-white"
+                    onClick={closeAndReset}
+                    className="
+                      inline-flex items-center justify-center
+                      rounded-[10px]
+                      border border-slate500_20
+                      bg-transparent
+                      px-4 py-2
+                      text-[13px] font-semibold
+                      text-ink
+                      hover:bg-slate500_12
+                      dark:text-white
+                      dark:hover:bg-white/5
+                      outline-none focus:outline-none focus:ring-0
+                    "
                   >
                     Cancel
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={handleCreate}
+                    className="
+                      inline-flex items-center justify-center
+                      rounded-[10px]
+                      bg-ink
+                      px-4 py-2
+                      text-[13px] font-semibold
+                      text-white
+                      hover:opacity-90
+                      dark:bg-white dark:text-ink
+                      outline-none focus:outline-none focus:ring-0
+                    "
+                  >
+                    Create
+                  </button>
                 </div>
+
+                {/* Optional: tiny hint (remove if you don’t want it) */}
+                {/* <p className="mt-3 text-[12px] text-slate500 dark:text-slate500_80">
+                  Color: Blue (default)
+                </p> */}
               </Dialog.Panel>
             </Transition.Child>
           </div>

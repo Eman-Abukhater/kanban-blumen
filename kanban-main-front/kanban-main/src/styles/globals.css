@@ -2,89 +2,123 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Global body and scrollbar setup */
-body {
-  @apply scroll-thin m-0 box-border bg-white p-0 antialiased dark:bg-[#141A21];
+
+
+:root {
+  --sb-size: 8px;
+
+  /* Light */
+  --sb-thumb: #919EAB;      /* same as your slate500 */
+  --sb-thumb-hover: #637381;/* slate600 */
+  --sb-track: transparent;  /* ✅ same as page bg (no strip) */
 }
 
+.dark {
+  /* Dark */
+  --sb-thumb: #637381;       /* slate600 */
+  --sb-thumb-hover: #919EAB; /* slate500 */
+  --sb-track: transparent;   /* ✅ same as dark bg */
+}
+
+/* Base body */
+body {
+  @apply m-0 box-border bg-white p-0 antialiased dark:bg-[#141A21];
+}
+
+/* Firefox (applies to BOTH vertical + horizontal) */
+html,
+body {
+  scrollbar-width: thin;
+  scrollbar-color: var(--sb-thumb) var(--sb-track);
+}
+
+/* ✅ Apply this class to ANY scroll container (vertical or horizontal) */
 @layer utilities {
   .scroll-thin {
-    @apply scrollbar-thin scrollbar-track-gray-200 scrollbar-thumb-gray-400 scrollbar-track-rounded-full scrollbar-thumb-rounded-full dark:scrollbar-track-slate-600 dark:scrollbar-thumb-slate-400;
+    scrollbar-width: thin;
+    scrollbar-color: var(--sb-thumb) var(--sb-track);
+  }
+
+  /* Kanban uses SAME exact style */
+  .kanban-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: var(--sb-thumb) var(--sb-track);
   }
 }
 
-/* (You can keep your contentwave and btn-shine animations here) */
-
-/* 🌼 Blumen Café Custom Utilities */
-:root {
-  --radius-card: 12px;
-}
-
-@layer utilities {
-  .text-h4 { @apply text-[20px] leading-[28px] font-semibold text-ink; }
-  .text-label { @apply text-[12px] leading-[18px] font-semibold text-ink; }
-  .text-muted { @apply text-slate500; }
-
-  .card { @apply rounded-[12px] border border-slate500_20 bg-surface shadow-soft; }
-  .divider { @apply h-px w-full bg-slate500_12; }
-
-  .btn { @apply inline-flex items-center justify-center rounded-[10px] px-4 py-2 text-[14px] font-semibold transition-all; }
-  .btn-dark { @apply btn bg-ink text-white hover:opacity-90; }
-  .btn-outline { @apply btn border border-slate500_20 text-ink hover:bg-slate500_12; }
-
-  .id-badge {
-    @apply inline-flex items-center rounded-[8px] border-2 px-2 py-[2px] text-label;
-    border-color: #8E33FF;
-    background: #F3E8FF;
-  }
-}
-/* Base scrollbar behavior (Firefox + others) */
-.kanban-scroll {
-  scrollbar-width: thin;                  /* Firefox */
-  scrollbar-color: #919EAB33 transparent; /* thumb + track (light mode) */
-}
-
-/* 🌞 Light mode scrollbar */
+/* WebKit (Chrome/Edge/Safari) — SAME size for both directions */
+.scroll-thin::-webkit-scrollbar,
 .kanban-scroll::-webkit-scrollbar {
-  height: 8px; /* horizontal scrollbar height */
+  width: var(--sb-size);
+  height: var(--sb-size);
 }
 
+.scroll-thin::-webkit-scrollbar-track,
 .kanban-scroll::-webkit-scrollbar-track {
-  background: #E4E7EC; /* light track */
+  background: var(--sb-track);      /* ✅ no strip */
   border-radius: 9999px;
 }
 
+.scroll-thin::-webkit-scrollbar-thumb,
 .kanban-scroll::-webkit-scrollbar-thumb {
-  background: #919EAB; /* light thumb */
+  background: var(--sb-thumb);
   border-radius: 9999px;
+
+  /* ✅ makes thumb look “softer” like modern UI */
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 
-/* 🌙 Dark mode scrollbar (Tailwind darkMode: "class") */
-.dark .kanban-scroll {
-  scrollbar-color: #637381 transparent; /* Firefox: thumb + track in dark */
+.scroll-thin::-webkit-scrollbar-thumb:hover,
+.kanban-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--sb-thumb-hover);
 }
 
-.dark .kanban-scroll::-webkit-scrollbar-track {
-  background: #1B232D; /* dark track, close to your dark bg */
+/* ✅ Hide scrollbar UI (but keep scrolling) for kanban content scroller */
+.kanban-scroll-hidden {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.kanban-scroll-hidden::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 
-.dark .kanban-scroll::-webkit-scrollbar-thumb {
-  background: #637381; /* dark thumb (slate600-ish) */
+.Toastify__toast {
+  border-radius: 16px;
+  border: 1px solid rgba(145, 158, 171, 0.12);
+  background: #ffffff;
+  color: #1c252e;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.06);
 }
-@layer components {
-  /* 🌼 Toast container (card) */
-  .blumen-toast {
-    @apply relative flex min-h-[48px] items-center rounded-[16px]
-      border border-slate500_12 bg-white px-4 py-3 text-[14px] text-ink
-      shadow-[0_18px_45px_rgba(15,23,42,0.06)]
-      dark:border-slate500_20 dark:bg-[#1C252E] dark:text-white dark:shadow-none;
-  }
 
-  /* Text inside toast body */
-  .blumen-toast-body {
-    @apply flex-1;
-  }
+.dark .Toastify__toast {
+  background: #1c252e; /* ✅ your dark toast bg */
+  color: #ffffff;      /* ✅ white text */
+  border: 1px solid rgba(145, 158, 171, 0.2);
+  box-shadow: none;
+}
 
+/* Toast body spacing */
+.Toastify__toast-body {
+  margin: 0;
+  padding: 0;
+}
 
+/* Close button color */
+.Toastify__close-button {
+  color: inherit;
+  opacity: 0.7;
+}
+.Toastify__close-button:hover {
+  opacity: 1;
+}
 
+/* Progress bar track transparent (so no ugly strip) */
+.Toastify__progress-bar {
+  background: #919eab !important;
+}
+.dark .Toastify__progress-bar {
+  background: #637381 !important;
 }

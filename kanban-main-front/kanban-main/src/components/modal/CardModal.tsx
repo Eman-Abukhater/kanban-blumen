@@ -7,7 +7,7 @@ import KanbanContext from "../../context/kanbanContext";
 import useAutosizeTextArea from "../../hooks/useAutosizeTextarea";
 import { KanbanCard } from "../kanban/KanbanTypes";
 import { DateValueType } from "react-tailwindcss-datepicker/dist/types";
-import { CreateTagModal, tagColors } from "./CreateTagModal";
+import { CreateTagModal } from "./CreateTagModal";
 import { AddTaskForm } from "../kanban/AddTaskForm";
 import { classNames } from "../../utility/css";
 import { useMutation } from "@tanstack/react-query";
@@ -33,6 +33,9 @@ export interface CardModalProps {
 
 type CardStatus = "To do" | "In progress" | "Ready to test" | "Done";
 const STATUS_OPTIONS: CardStatus[] = ["To do", "In progress", "Ready to test", "Done"];
+
+// ✅ Single (default) tag color — no color picking anymore
+const TAG_BLUE = "bg-blue-400 text-white";
 
 export function CardModal(props: CardModalProps) {
   const descTextAreaRef = useRef<HTMLTextAreaElement>(null);
@@ -103,7 +106,7 @@ export function CardModal(props: CardModalProps) {
   const [isDeletingTask, setIsDeletingTask] = useState<number | null>(null);
 
   const maxFileSize = 5000000;
- 
+
   const invalidateKanban = useInvalidateKanban();
 
   // keep autosize for description
@@ -234,7 +237,7 @@ export function CardModal(props: CardModalProps) {
       fkboardid: userInfo.fkboardid,
       fkpoid: userInfo.fkpoid,
       priority,
- status,
+      status,
     };
 
     mutation.mutate(cardData);
@@ -247,8 +250,11 @@ export function CardModal(props: CardModalProps) {
   };
 
   // ================= TAGS =================
-  const handleCreateTag = async (tagName: string, colorIndex: number) => {
-    if (!tagName) {
+  // ✅ IMPORTANT: keep (tagName, colorIndex) signature so your CreateTagModal doesn't break
+  // but IGNORE colorIndex and always use TAG_BLUE
+  const handleCreateTag = async (tagName: string, _colorIndex: number) => {
+    const name = (tagName || "").trim();
+    if (!name) {
       toast.error(`Tag Name is Empty`, { position: toast.POSITION.TOP_CENTER });
       return;
     }
@@ -256,8 +262,8 @@ export function CardModal(props: CardModalProps) {
     try {
       setIsCreatingTag(true);
       const customResponse = await AddTag(
-        tagName,
-        tagColors[colorIndex],
+        name,
+        TAG_BLUE,
         props.card.kanbanCardId,
         userInfo.username,
         userInfo.id
@@ -268,9 +274,9 @@ export function CardModal(props: CardModalProps) {
         newTags.push({
           kanbanTagId: customResponse?.data,
           id: "",
-          color: tagColors[colorIndex],
-          title: tagName,
-          fkKanbanCardId: 1,
+          color: TAG_BLUE,
+          title: name,
+          fkKanbanCardId: props.card.kanbanCardId, // ✅ fix: don't hardcode 1
           seqNo: 1,
           createdAt: new Date(),
           addedBy: userInfo.username,
@@ -282,7 +288,7 @@ export function CardModal(props: CardModalProps) {
           kanbanTags: newTags,
         });
 
-        toast.success(`Tag ID: ${customResponse?.data} Created Successfully`, {
+        toast.success(`Tag Created Successfully`, {
           position: toast.POSITION.TOP_CENTER,
         });
       } else {
@@ -314,7 +320,7 @@ export function CardModal(props: CardModalProps) {
           ...props.card,
           kanbanTags: newTags,
         });
-        
+
         invalidateKanban();
         toast.success(` ${customResponse?.data}`, {
           position: toast.POSITION.TOP_CENTER,
@@ -350,7 +356,7 @@ export function CardModal(props: CardModalProps) {
           kanbanTasks: tempTask,
         });
 
-      invalidateKanban();
+        invalidateKanban();
 
         toast.success(` ${customResponse?.data}`, {
           position: toast.POSITION.TOP_CENTER,
@@ -454,68 +460,63 @@ export function CardModal(props: CardModalProps) {
                 >
                   <Dialog.Panel className="pointer-events-auto w-screen max-w-[450px]">
                     <div className="flex h-full flex-col bg-white shadow-xl dark:bg-[#1B232D]">
-                     {/* ================= TOP BAR (UPDATED) ================= */}
-<div className="relative z-[80] flex items-center justify-between border-b border-slate500_12 px-6 py-4 dark:border-slate500_20">
-  {/* Status dropdown (Figma) */}
-  <Menu as="div" className="relative z-[90]">
-    <Menu.Button
-      type="button"
-      className="inline-flex h-10 items-center gap-2 rounded-md border border-slate500_20 bg-[#F4F6F8] px-4 text-[14px] font-semibold text-ink hover:bg-slate500_08 focus:outline-none dark:border-slate500_48 dark:bg-[#232C36] dark:text-white"
-    >
-      {status}
-      <ChevronDownIcon className="h-4 w-4 text-slate500 dark:text-slate500_80" />
-    </Menu.Button>
+                      {/* ================= TOP BAR (UPDATED) ================= */}
+                      <div className="relative z-[80] flex items-center justify-between border-b border-slate500_12 px-6 py-4 dark:border-slate500_20">
+                        {/* Status dropdown (Figma) */}
+                        <Menu as="div" className="relative z-[90]">
+                          <Menu.Button
+                            type="button"
+                            className="inline-flex h-10 items-center gap-2 rounded-md border border-slate500_20 bg-[#F4F6F8] px-4 text-[14px] font-semibold text-ink hover:bg-slate500_08 focus:outline-none dark:border-slate500_48 dark:bg-[#232C36] dark:text-white"
+                          >
+                            {status}
+                            <ChevronDownIcon className="h-4 w-4 text-slate500 dark:text-slate500_80" />
+                          </Menu.Button>
 
-    <Transition
-      as={Fragment}
-      enter="transition ease-out duration-150"
-      enterFrom="opacity-0 translate-y-1"
-      enterTo="opacity-100 translate-y-0"
-      leave="transition ease-in duration-100"
-      leaveFrom="opacity-100 translate-y-0"
-      leaveTo="opacity-0 translate-y-1"
-    >
-      <Menu.Items
-        className="absolute left-0 z-[999] mt-3 w-40 origin-top-left rounded-[16px] bg-white p-2 shadow-[0_24px_80px_rgba(15,23,42,0.16)] ring-1 ring-black/5 focus:outline-none pointer-events-auto dark:bg-[#1B232D]"
-      >
-        {STATUS_OPTIONS.map((opt) => (
-          <Menu.Item key={opt}>
-            {({ active }) => (
-              <button
-                type="button"
-                onClick={() => setStatus(opt)}
-                className={classNames(
-                  "flex w-full items-center rounded-[12px] px-3 py-3 text-left text-[12px] font-medium outline-none focus:outline-none focus:ring-0",
-                  active ? "bg-[#F4F6F8]/60 dark:bg-white/5" : "",
-                  opt === status
-                    ? "text-ink dark:text-white"
-                    : "text-ink/90 dark:text-white/90"
-                )}
-              >
-                {opt}
-              </button>
-            )}
-          </Menu.Item>
-        ))}
-      </Menu.Items>
-    </Transition>
-  </Menu>
+                          <Transition
+                            as={Fragment}
+                            enter="transition ease-out duration-150"
+                            enterFrom="opacity-0 translate-y-1"
+                            enterTo="opacity-100 translate-y-0"
+                            leave="transition ease-in duration-100"
+                            leaveFrom="opacity-100 translate-y-0"
+                            leaveTo="opacity-0 translate-y-1"
+                          >
+                            <Menu.Items
+                              className="absolute left-0 z-[999] mt-3 w-40 origin-top-left rounded-[16px] bg-white p-2 ring-1 ring-black/5 focus:outline-none pointer-events-auto dark:bg-[#1B232D] shadow-[0_18px_45px_rgba(15,23,42,0.12)] dark:shadow-[0_18px_45px_rgba(0,0,0,0.45)]"
+                            >
+                              {STATUS_OPTIONS.map((opt) => (
+                                <Menu.Item key={opt}>
+                                  {({ active }) => (
+                                    <button
+                                      type="button"
+                                      onClick={() => setStatus(opt)}
+                                      className={classNames(
+                                        "flex w-full items-center rounded-[12px] px-3 py-3 text-left text-[12px] font-medium outline-none focus:outline-none focus:ring-0",
+                                        active ? "bg-[#F4F6F8]/60 dark:bg-white/5" : "",
+                                        opt === status
+                                          ? "text-ink dark:text-white"
+                                          : "text-ink/90 dark:text-white/90"
+                                      )}
+                                    >
+                                      {opt}
+                                    </button>
+                                  )}
+                                </Menu.Item>
+                              ))}
+                            </Menu.Items>
+                          </Transition>
+                        </Menu>
 
-  {/* Right icon (trash only like Figma) */}
-  <button
-    onClick={deleteCard}
-    type="button"
-    className="inline-flex h-10 w-10 items-center justify-center rounded-full hover:bg-slate500_12 dark:hover:bg-slate500_12"
-    aria-label="Delete card"
-  >
-<img
-  src="/icons/trash.png"
-  alt="Delete"
-  className="h-5 w-5"
-/>
-  </button>
-</div>
-
+                        {/* Right icon (trash only like Figma) */}
+                        <button
+                          onClick={deleteCard}
+                          type="button"
+                          className="inline-flex h-10 w-10 items-center justify-center rounded-full hover:bg-slate500_12 dark:hover:bg-slate500_12"
+                          aria-label="Delete card"
+                        >
+                          <img src="/icons/trash.png" alt="Delete" className="h-5 w-5" />
+                        </button>
+                      </div>
 
                       {/* ================= TABS ================= */}
                       <div className="border-b border-slate500_12 bg-[#F4F6F8] px-3 py-1 dark:border-slate500_20 dark:bg-[#232C36]">
@@ -554,11 +555,22 @@ export function CardModal(props: CardModalProps) {
                         <div className="relative z-10">
                           {/* Title input */}
                           <input
-                            className="w-full rounded-[12px] border-2 border-ink bg-white/60 px-4 py-3 text-[18px] font-semibold text-ink outline-none dark:border-white dark:bg-white/5 dark:text-white"
                             type="text"
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
                             minLength={3}
+                            className="
+                              w-full rounded-[12px]
+                              border-2 border-transparent bg-transparent
+                              px-4 py-3 text-[18px] font-semibold text-black
+                              appearance-none
+                              outline-none
+                              focus:outline-none focus:ring-0 focus:ring-offset-0
+                              focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0
+                              focus:border-black
+                              dark:text-white
+                              dark:focus:border-white
+                            "
                           />
 
                           {/* ============= OVERVIEW TAB ============= */}
@@ -607,7 +619,7 @@ export function CardModal(props: CardModalProps) {
                                 <CreateTagModal
                                   show={openTagModal}
                                   handleClose={setOpenTagModal}
-                                  handleSubmit={handleCreateTag}
+                                  handleSubmit={handleCreateTag} // ✅ still works (2 args), but color is ignored
                                 />
                               </div>
 
@@ -753,14 +765,13 @@ export function CardModal(props: CardModalProps) {
                                     type="checkbox"
                                     className="h-4 w-4 rounded-[5px] border-1 border-[#637381]"
                                     checked={completed}
-                                   onChange={() => {
-  setCompleted((p) => {
-    const next = !p;
-    setStatus(next ? "Done" : "In progress");
-    return next;
-  });
-}}
-
+                                    onChange={() => {
+                                      setCompleted((p) => {
+                                        const next = !p;
+                                        setStatus(next ? "Done" : "In progress");
+                                        return next;
+                                      });
+                                    }}
                                   />
                                 </div>
 
@@ -919,7 +930,7 @@ export function CardModal(props: CardModalProps) {
                           <button
                             type="button"
                             onClick={handleCloseModal}
-                            className="inline-flex items-center justify-center rounded-[12px] border border-slate500_20 bg-white px-4 py-2 text-[14px] font-semibold text-ink hover:bg-slate500_08 dark:bg-transparent dark:text-white"
+                            className="inline-flex items-center justify-center rounded-[12px] border border-slate500_20 bg-white px-4 py-2 text-[14px] font-semibold text-ink hover:bg-slate500_08 dark:bg-transparent dark:text-white dark:border-[#919EAB52]"
                           >
                             Cancel
                           </button>
@@ -928,7 +939,7 @@ export function CardModal(props: CardModalProps) {
                             type="button"
                             onClick={handleSave}
                             disabled={submit || uploadingImage}
-                            className="inline-flex items-center justify-center rounded-[12px] bg-[#1C252E] px-5 py-2 text-[14px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                            className="inline-flex items-center justify-center rounded-[12px] bg-[#1C252E] px-4 py-2 text-[14px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-[#1C252E] dark:border-[#1C252E]"
                           >
                             {submit ? "Saving..." : "Save"}
                           </button>

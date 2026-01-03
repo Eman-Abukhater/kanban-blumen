@@ -4,7 +4,6 @@ import { Fragment, useContext, useEffect, useState } from "react";
 import KanbanContext from "../../context/kanbanContext";
 import { EditListName } from "@/services/kanbanApi";
 import { toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
 
 export interface RenameListModalProps {
   listIndex: number;

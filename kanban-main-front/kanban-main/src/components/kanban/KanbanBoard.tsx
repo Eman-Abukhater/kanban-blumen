@@ -1,6 +1,11 @@
 // src/components/kanban/KanbanBoard.tsx
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
-import { DragDropContext, Droppable } from "react-beautiful-dnd";
+import {
+  DragDropContext,
+  Droppable,
+  DropResult,
+  ResponderProvided,
+} from "react-beautiful-dnd";
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import KanbanContext from "../../context/kanbanContext";
 import { AddForm } from "./AddForm";
@@ -19,6 +24,7 @@ export function KanbanBoard() {
 
   const total = kanbanState.length;
 
+  // ✅ First render should show ALL columns
   const effectiveColumnsPerPage = columnsPerPage || total || 1;
 
   const startIndex = page * effectiveColumnsPerPage;
@@ -27,12 +33,29 @@ export function KanbanBoard() {
   const canPrev = page > 0;
   const canNext = endIndex < total;
 
-  // track previous total to know when a new column was added
+  // track previous total to detect new column
   const prevTotalRef = useRef(total);
 
+  // ✅ refs for sticky scrollbar sync
+  const contentScrollRef = useRef<HTMLDivElement | null>(null);
+  const stickyBarRef = useRef<HTMLDivElement | null>(null);
+
+  const [scrollWidth, setScrollWidth] = useState(0);
+  const [hasOverflow, setHasOverflow] = useState(false);
+
+  // ✅ visible slice (REAL pagination)
+  const visibleLists = useMemo(() => {
+    return kanbanState.slice(startIndex, endIndex);
+  }, [kanbanState, startIndex, endIndex]);
+
+  // ✅ when total changes:
+  // - if we were showing ALL, keep showing ALL
+  // - if user selected a smaller number and then adds a column => jump to LAST page so new column appears
   useEffect(() => {
-    // initial set: show all columns
-    if (columnsPerPage === 0 && total > 0) {
+    if (total <= 0) return;
+
+    // init: set columnsPerPage = total (show all)
+    if (columnsPerPage === 0) {
       setColumnsPerPage(total);
       setPage(0);
       prevTotalRef.current = total;
@@ -41,19 +64,37 @@ export function KanbanBoard() {
 
     const prevTotal = prevTotalRef.current;
 
-    // if a new column is added and user was viewing "all columns",
-    // expand columnsPerPage so the new column appears instantly.
-    if (total > prevTotal && columnsPerPage === prevTotal) {
-      setColumnsPerPage(total);
+    // new column added
+    if (total > prevTotal) {
+      // Case 1: user was showing ALL columns (columnsPerPage equals previous total)
+      if (columnsPerPage === prevTotal) {
+        setColumnsPerPage(total); // keep "all"
+        setPage(0);
+      } else {
+        // Case 2: user selected smaller number => jump to last page so new column is visible
+        const cpp = Math.max(1, columnsPerPage);
+        const lastPage = Math.max(0, Math.ceil(total / cpp) - 1);
+        setPage(lastPage);
+      }
     }
 
-    // clamp page if it becomes invalid
-    const cpp = columnsPerPage || total || 1;
+    // clamp page
+    const cpp = Math.max(1, columnsPerPage || total || 1);
     const maxPage = Math.max(0, Math.ceil(total / cpp) - 1);
     if (page > maxPage) setPage(maxPage);
 
     prevTotalRef.current = total;
   }, [total, columnsPerPage, page]);
+
+  // ✅ When page changes, reset horizontal scroll to start of slice
+  useEffect(() => {
+    const content = contentScrollRef.current;
+    const bar = stickyBarRef.current;
+    if (!content) return;
+
+    content.scrollLeft = 0;
+    if (bar) bar.scrollLeft = 0;
+  }, [page, effectiveColumnsPerPage]);
 
   const handlePrev = () => {
     if (canPrev) setPage((p) => p - 1);
@@ -69,40 +110,117 @@ export function KanbanBoard() {
     setRowsMenuOpen(false);
   };
 
-  const isVisible = useMemo(() => {
-    return (idx: number) => idx >= startIndex && idx < endIndex;
-  }, [startIndex, endIndex]);
+  // ✅ Measure width + detect overflow (for sticky scrollbar)
+  useEffect(() => {
+    const el = contentScrollRef.current;
+    if (!el) return;
+
+    const update = () => {
+      const sw = el.scrollWidth;
+      const cw = el.clientWidth;
+      setScrollWidth(sw);
+      setHasOverflow(sw > cw + 1);
+    };
+
+    update();
+
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+
+    window.addEventListener("resize", update);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, [visibleLists.length, dense]);
+
+  // ✅ Sync scrolling between content and sticky scrollbar
+  useEffect(() => {
+    const content = contentScrollRef.current;
+    const bar = stickyBarRef.current;
+    if (!content || !bar) return;
+
+    let syncing = false;
+
+    const onContentScroll = () => {
+      if (syncing) return;
+      syncing = true;
+      bar.scrollLeft = content.scrollLeft;
+      syncing = false;
+    };
+
+    const onBarScroll = () => {
+      if (syncing) return;
+      syncing = true;
+      content.scrollLeft = bar.scrollLeft;
+      syncing = false;
+    };
+
+    content.addEventListener("scroll", onContentScroll, { passive: true });
+    bar.addEventListener("scroll", onBarScroll, { passive: true });
+
+    return () => {
+      content.removeEventListener("scroll", onContentScroll);
+      bar.removeEventListener("scroll", onBarScroll);
+    };
+  }, [hasOverflow]);
+
+  // ✅ DnD: because we render only a SLICE, we must translate visible indexes -> global indexes
+  const onDragEnd = (result: DropResult, provided: ResponderProvided) => {
+    if (!result.destination) return;
+
+    const mapped: DropResult = {
+      ...result,
+      source: {
+        ...result.source,
+        index: startIndex + result.source.index,
+      },
+      destination: result.destination
+        ? {
+            ...result.destination,
+            index: startIndex + result.destination.index,
+          }
+        : null,
+    };
+
+    handleDragEnd(mapped);
+  };
 
   return (
     <>
-      {/* SCROLLABLE COLUMNS AREA */}
-      <div className="kanban-scroll overflow-x-auto pb-4">
-        <DragDropContext onDragEnd={handleDragEnd}>
-          <Droppable droppableId="all-lists" direction="horizontal" type="all-lists">
+      {/* =======================
+          COLUMNS (scrollable but scrollbar hidden)
+         ======================= */}
+      <div
+        ref={contentScrollRef}
+        className="kanban-scroll-hidden overflow-x-auto pb-6"
+      >
+        <DragDropContext onDragEnd={onDragEnd}>
+          <Droppable
+            droppableId="all-lists"
+            direction="horizontal"
+            type="all-lists"
+          >
             {(provided) => (
               <div
                 className="flex h-full min-w-max flex-row flex-nowrap items-start gap-6 pb-10"
                 {...provided.droppableProps}
                 ref={provided.innerRef}
               >
-                {/* Render ALL columns so scrollbar width always grows */}
-                {kanbanState.map((list, idx) => (
-                  <div
-                    key={list.id}
-                    className={
-                      isVisible(idx)
-                        ? "opacity-100"
-                        : "pointer-events-none select-none opacity-30"
-                    }
-                  >
+                {/* ✅ Render ONLY the visible slice */}
+                {visibleLists.map((list, visibleIdx) => {
+                  const globalIndex = startIndex + visibleIdx;
+
+                  return (
                     <KanbanListComponent
-                      listIndex={idx}   // global index for your handlers
-                      dragIndex={idx}   // DnD index must match kanbanState order
+                      key={list.id}
+                      listIndex={globalIndex} // ✅ global index for your handlers
+                      dragIndex={visibleIdx} // ✅ local index for DnD inside slice
                       list={list}
                       dense={dense}
                     />
-                  </div>
-                ))}
+                  );
+                })}
 
                 {provided.placeholder}
 
@@ -121,9 +239,11 @@ export function KanbanBoard() {
         </DragDropContext>
       </div>
 
-      {/* FOOTER */}
+      {/* =======================
+          FOOTER
+         ======================= */}
       {total > 0 && (
-        <div className="mx-auto flex max-w-[1120px] items-center justify-between pb-6 pt-4 text-[13px]">
+        <div className="mx-auto flex max-w-[1120px] items-center justify-between pb-3 pt-2 text-[13px]">
           {/* Dense toggle */}
           <button
             type="button"
@@ -182,7 +302,9 @@ export function KanbanBoard() {
 
             {/* Range */}
             <span className="text-[#212B36] dark:text-slate500_80">
-              {total === 0 ? "0-0 of 0" : `${startIndex + 1}-${endIndex} of ${total}`}
+              {total === 0
+                ? "0-0 of 0"
+                : `${startIndex + 1}-${endIndex} of ${total}`}
             </span>
 
             {/* Arrows */}
@@ -213,6 +335,20 @@ export function KanbanBoard() {
                 <ChevronRight className="h-4 w-4" />
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* =======================
+          STICKY HORIZONTAL SCROLLBAR
+         ======================= */}
+      {hasOverflow && (
+        <div className="fixed bottom-0 left-[280px] right-0 z-50">
+          <div
+            ref={stickyBarRef}
+            className="kanban-scroll overflow-x-auto px-2 py-2"
+          >
+            <div style={{ width: scrollWidth, height: 1 }} />
           </div>
         </div>
       )}

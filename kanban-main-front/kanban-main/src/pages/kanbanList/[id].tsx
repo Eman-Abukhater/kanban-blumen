@@ -158,11 +158,8 @@ export default function GetKanbanList() {
         )}
 
         {/* ✅ Always render board shell when not loading & not error */}
-        {!shouldShowLoading && !isError && (
-          <div className="kanban-scroll overflow-x-auto pb-4">
-            <KanbanBoard />
-          </div>
-        )}
+       {!shouldShowLoading && !isError && <KanbanBoard />}
+
       </section>
 
     
