@@ -1,5 +1,5 @@
 // src/components/kanban/DueDateModal.tsx
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import dayjs, { Dayjs } from "dayjs";
 import { DateValueType } from "react-tailwindcss-datepicker/dist/types";
@@ -45,6 +45,8 @@ function buildMonthGrid(month: Dayjs) {
 }
 
 export function DueDateModal({ open, value, onClose, onApply }: Props) {
+  const panelRef = useRef<HTMLDivElement | null>(null);
+
   const [leftMonth, setLeftMonth] = useState(() => dayjs().startOf("month"));
 
   const [start, setStart] = useState<Dayjs | null>(null);
@@ -62,6 +64,36 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
 
   // temp selected inside picker (only commits on OK)
   const [tempPick, setTempPick] = useState<Dayjs | null>(null);
+
+  const closeAll = () => {
+    setMobileStep("form");
+    onClose();
+  };
+
+  // ✅ hard “outside click” close (works 100% even if Dialog outside detection fails)
+  useEffect(() => {
+    if (!open) return;
+
+    const handler = (e: MouseEvent | TouchEvent) => {
+      const el = panelRef.current;
+      if (!el) return;
+
+      const target = e.target as Node | null;
+      if (target && !el.contains(target)) {
+        closeAll();
+      }
+    };
+
+    // capture = true so it runs before anything stops propagation
+    document.addEventListener("mousedown", handler, true);
+    document.addEventListener("touchstart", handler, true);
+
+    return () => {
+      document.removeEventListener("mousedown", handler, true);
+      document.removeEventListener("touchstart", handler, true);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -180,12 +212,7 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
         <div className="mb-4 flex items-center justify-between">
           <div className="inline-flex items-center gap-2 text-[18px] font-semibold text-[#1C252E] dark:text-white">
             {month.format("MMMM YYYY")}
-            <svg
-              className="h-4 w-4 opacity-70"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              aria-hidden="true"
-            >
+            <svg className="h-4 w-4 opacity-70" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
               <path
                 fillRule="evenodd"
                 d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.94a.75.75 0 111.08 1.04l-4.24 4.5a.75.75 0 01-1.08 0l-4.24-4.5a.75.75 0 01.02-1.06z"
@@ -250,8 +277,7 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
             const isStart = sameDay(d, start);
             const isEnd = sameDay(d, end);
             const hasRange = !!start && !!end;
-            const inRange =
-              hasRange && start && end ? isBetweenInclusive(d, start, end) : false;
+            const inRange = hasRange && start && end ? isBetweenInclusive(d, start, end) : false;
 
             const isToday = sameDay(d, today);
             const showTodayRing = isToday && !(isStart || isEnd);
@@ -293,8 +319,9 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
 
   return (
     <Transition appear show={open} as={Fragment}>
-      <Dialog as="div" className="relative z-[9999]" onClose={onClose}>
-        {/* Overlay */}
+      {/* onClose should still work on ESC */}
+      <Dialog as="div" className="relative z-[9999]" onClose={closeAll}>
+        {/* Overlay (also closes on click) */}
         <Transition.Child
           as={Fragment}
           enter="ease-out duration-150"
@@ -304,7 +331,7 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-black/50" />
+          <div className="fixed inset-0 bg-black/50" onClick={closeAll} />
         </Transition.Child>
 
         {/* Panel */}
@@ -319,6 +346,7 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
             leaveTo="opacity-0 scale-[0.98]"
           >
             <Dialog.Panel
+              ref={panelRef}
               className="
                 w-full max-w-[920px] rounded-[24px] p-6
                 bg-white shadow-[0_30px_80px_rgba(0,0,0,0.18)]
@@ -355,15 +383,8 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
                         "
                       >
                         <span>{start ? start.format("MM/DD/YYYY") : "—"}</span>
-
                         <span className="opacity-70">
-                          <svg
-                            width="22"
-                            height="22"
-                            viewBox="0 0 24 24"
-                            fill="currentColor"
-                            aria-hidden="true"
-                          >
+                          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                             <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1.5A2.5 2.5 0 0 1 22 6.5v13A2.5 2.5 0 0 1 19.5 22h-15A2.5 2.5 0 0 1 2 19.5v-13A2.5 2.5 0 0 1 4.5 4H6V3a1 1 0 0 1 1-1Zm12.5 6h-15a.5.5 0 0 0-.5.5v11a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-11a.5.5 0 0 0-.5-.5Z" />
                           </svg>
                         </span>
@@ -386,15 +407,8 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
                         "
                       >
                         <span>{end ? end.format("MM/DD/YYYY") : "—"}</span>
-
                         <span className="opacity-70">
-                          <svg
-                            width="22"
-                            height="22"
-                            viewBox="0 0 24 24"
-                            fill="currentColor"
-                            aria-hidden="true"
-                          >
+                          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                             <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1.5A2.5 2.5 0 0 1 22 6.5v13A2.5 2.5 0 0 1 19.5 22h-15A2.5 2.5 0 0 1 2 19.5v-13A2.5 2.5 0 0 1 4.5 4H6V3a1 1 0 0 1 1-1Zm12.5 6h-15a.5.5 0 0 0-.5.5v11a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-11a.5.5 0 0 0-.5-.5Z" />
                           </svg>
                         </span>
@@ -414,12 +428,7 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
                     <div className="mt-6 mb-2 flex items-center justify-between">
                       <div className="inline-flex items-center gap-2 text-[18px] font-semibold text-[#1C252E] dark:text-white">
                         {pickMonth.format("MMMM YYYY")}
-                        <svg
-                          className="h-4 w-4 opacity-70"
-                          viewBox="0 0 20 20"
-                          fill="currentColor"
-                          aria-hidden="true"
-                        >
+                        <svg className="h-4 w-4 opacity-70" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                           <path
                             fillRule="evenodd"
                             d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.94a.75.75 0 111.08 1.04l-4.24 4.5a.75.75 0 01-1.08 0l-4.24-4.5a.75.75 0 01.02-1.06z"
@@ -432,11 +441,7 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
                         <button
                           type="button"
                           onClick={() => setPickMonth((m) => m.subtract(1, "month"))}
-                          className="
-                            h-9 w-9 rounded-full
-                            text-[#637381] hover:bg-slate500_08
-                            dark:text-white/70 dark:hover:bg-white/10
-                          "
+                          className="h-9 w-9 rounded-full text-[#637381] hover:bg-slate500_08 dark:text-white/70 dark:hover:bg-white/10"
                         >
                           ‹
                         </button>
@@ -444,11 +449,7 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
                         <button
                           type="button"
                           onClick={() => setPickMonth((m) => m.add(1, "month"))}
-                          className="
-                            h-9 w-9 rounded-full
-                            text-[#637381] hover:bg-slate500_08
-                            dark:text-white/70 dark:hover:bg-white/10
-                          "
+                          className="h-9 w-9 rounded-full text-[#637381] hover:bg-slate500_08 dark:text-white/70 dark:hover:bg-white/10"
                         >
                           ›
                         </button>
@@ -527,11 +528,11 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
               <div className="mt-6 hidden items-center justify-end gap-3 md:flex">
                 <button
                   type="button"
-                  onClick={onClose}
+                  onClick={closeAll}
                   className="
                     rounded-[12px] px-5 py-2 text-[14px] font-semibold
                     border border-slate500_20 text-[#1C252E] hover:bg-slate500_08
-                    dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10
+                    dark:border-white/10 dark:bg-[#1C252E] dark:text-white dark:hover:bg-white/10
                   "
                 >
                   Cancel
