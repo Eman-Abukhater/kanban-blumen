@@ -133,7 +133,7 @@ export default function GetKanbanList() {
       {/* Header always visible */}
       <SectionHeader />
 
-      <section className="mx-auto max-w-[1120px] px-0 py-6">
+<section className="mx-auto w-full  px-4 py-6">
         {/* ⏳ Skeleton only after 150ms */}
         {showSkeleton && <KanbanBoardSkeleton />}
 

@@ -11,20 +11,26 @@ import KanbanContext from "../../context/kanbanContext";
 import { AddForm } from "./AddForm";
 import KanbanListComponent from "./KanbanListComponent";
 
+type PageLock = {
+  htmlOverflowY: string;
+  bodyOverflowY: string;
+  htmlOverscroll: string;
+  bodyOverscroll: string;
+};
+
 export function KanbanBoard() {
   const { kanbanState, handleDragEnd, handleCreateList, userInfo } =
     useContext(KanbanContext);
 
+  // Dense = fixed columns height, only cards scroll inside
   const [dense, setDense] = useState(false);
 
-  // 0 means "not decided yet"
+  // pagination
   const [columnsPerPage, setColumnsPerPage] = useState(0);
   const [page, setPage] = useState(0);
   const [rowsMenuOpen, setRowsMenuOpen] = useState(false);
 
   const total = kanbanState.length;
-
-  // ✅ First render should show ALL columns
   const effectiveColumnsPerPage = columnsPerPage || total || 1;
 
   const startIndex = page * effectiveColumnsPerPage;
@@ -33,28 +39,29 @@ export function KanbanBoard() {
   const canPrev = page > 0;
   const canNext = endIndex < total;
 
-  // track previous total to detect new column
   const prevTotalRef = useRef(total);
 
-  // ✅ refs for sticky scrollbar sync
   const contentScrollRef = useRef<HTMLDivElement | null>(null);
   const stickyBarRef = useRef<HTMLDivElement | null>(null);
+  const footerRef = useRef<HTMLDivElement | null>(null);
 
   const [scrollWidth, setScrollWidth] = useState(0);
   const [hasOverflow, setHasOverflow] = useState(false);
 
-  // ✅ visible slice (REAL pagination)
+  // measured height for dense
+  const [columnHeight, setColumnHeight] = useState<number>(0);
+
+  // lock page scroll in dense (only html/body to avoid breaking inner scroll)
+  const pageLockRef = useRef<PageLock | null>(null);
+
   const visibleLists = useMemo(() => {
     return kanbanState.slice(startIndex, endIndex);
   }, [kanbanState, startIndex, endIndex]);
 
-  // ✅ when total changes:
-  // - if we were showing ALL, keep showing ALL
-  // - if user selected a smaller number and then adds a column => jump to LAST page so new column appears
+  // keep pagination behavior
   useEffect(() => {
     if (total <= 0) return;
 
-    // init: set columnsPerPage = total (show all)
     if (columnsPerPage === 0) {
       setColumnsPerPage(total);
       setPage(0);
@@ -64,21 +71,17 @@ export function KanbanBoard() {
 
     const prevTotal = prevTotalRef.current;
 
-    // new column added
     if (total > prevTotal) {
-      // Case 1: user was showing ALL columns (columnsPerPage equals previous total)
       if (columnsPerPage === prevTotal) {
-        setColumnsPerPage(total); // keep "all"
+        setColumnsPerPage(total);
         setPage(0);
       } else {
-        // Case 2: user selected smaller number => jump to last page so new column is visible
         const cpp = Math.max(1, columnsPerPage);
         const lastPage = Math.max(0, Math.ceil(total / cpp) - 1);
         setPage(lastPage);
       }
     }
 
-    // clamp page
     const cpp = Math.max(1, columnsPerPage || total || 1);
     const maxPage = Math.max(0, Math.ceil(total / cpp) - 1);
     if (page > maxPage) setPage(maxPage);
@@ -86,7 +89,7 @@ export function KanbanBoard() {
     prevTotalRef.current = total;
   }, [total, columnsPerPage, page]);
 
-  // ✅ When page changes, reset horizontal scroll to start of slice
+  // reset horizontal scroll on page change
   useEffect(() => {
     const content = contentScrollRef.current;
     const bar = stickyBarRef.current;
@@ -110,7 +113,7 @@ export function KanbanBoard() {
     setRowsMenuOpen(false);
   };
 
-  // ✅ Measure width + detect overflow (for sticky scrollbar)
+  // measure overflow for sticky bar
   useEffect(() => {
     const el = contentScrollRef.current;
     if (!el) return;
@@ -132,9 +135,9 @@ export function KanbanBoard() {
       ro.disconnect();
       window.removeEventListener("resize", update);
     };
-  }, [visibleLists.length, dense]);
+  }, [visibleLists.length, dense, columnHeight]);
 
-  // ✅ Sync scrolling between content and sticky scrollbar
+  // sync sticky scrollbar
   useEffect(() => {
     const content = contentScrollRef.current;
     const bar = stickyBarRef.current;
@@ -165,8 +168,8 @@ export function KanbanBoard() {
     };
   }, [hasOverflow]);
 
-  // ✅ DnD: because we render only a SLICE, we must translate visible indexes -> global indexes
-  const onDragEnd = (result: DropResult, provided: ResponderProvided) => {
+  // DnD index mapping
+  const onDragEnd = (result: DropResult, _provided: ResponderProvided) => {
     if (!result.destination) return;
 
     const mapped: DropResult = {
@@ -186,52 +189,150 @@ export function KanbanBoard() {
     handleDragEnd(mapped);
   };
 
+  // ✅ Dense: compute available height for columns (fit viewport)
+  useEffect(() => {
+    const updateHeight = () => {
+      if (!dense) {
+        setColumnHeight(0);
+        return;
+      }
+
+      const content = contentScrollRef.current;
+      if (!content) return;
+
+      const viewportH = window.visualViewport?.height ?? window.innerHeight;
+      const top = content.getBoundingClientRect().top;
+      const footerH = footerRef.current?.getBoundingClientRect().height ?? 0;
+
+      // if you have any fixed bottom bars (chat widget etc) add here:
+      const bottomSafety = 12;
+
+      const h = Math.floor(viewportH - top - footerH - bottomSafety);
+      setColumnHeight(Math.max(280, h));
+    };
+
+    // run after layout settles
+    const raf = requestAnimationFrame(updateHeight);
+
+    window.addEventListener("resize", updateHeight);
+    window.visualViewport?.addEventListener("resize", updateHeight);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", updateHeight);
+      window.visualViewport?.removeEventListener("resize", updateHeight);
+    };
+  }, [dense, rowsMenuOpen, total, page, effectiveColumnsPerPage]);
+
+  // ✅ Dense: lock PAGE vertical scroll (but keep list scroll working)
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+
+    const restore = () => {
+      const prev = pageLockRef.current;
+      if (!prev) return;
+
+      html.style.overflowY = prev.htmlOverflowY;
+      body.style.overflowY = prev.bodyOverflowY;
+      (html.style as any).overscrollBehaviorY = prev.htmlOverscroll;
+      (body.style as any).overscrollBehaviorY = prev.bodyOverscroll;
+
+      pageLockRef.current = null;
+    };
+
+    if (!dense) {
+      restore();
+      return;
+    }
+
+    // save
+    pageLockRef.current = {
+      htmlOverflowY: html.style.overflowY,
+      bodyOverflowY: body.style.overflowY,
+      htmlOverscroll: (html.style as any).overscrollBehaviorY ?? "",
+      bodyOverscroll: (body.style as any).overscrollBehaviorY ?? "",
+    };
+
+    // lock
+    html.style.overflowY = "hidden";
+    body.style.overflowY = "hidden";
+    (html.style as any).overscrollBehaviorY = "none";
+    (body.style as any).overscrollBehaviorY = "none";
+
+    return () => restore();
+  }, [dense]);
+
+  // ✅ IMPORTANT: never pass 0 height to lists in dense
+  const denseHeight = dense ? Math.max(280, columnHeight || 0) : 0;
+
+  // column width:
+  const columnShellClass =
+    "shrink-0 w-[calc(100vw-32px)] max-w-[340px] sm:w-[340px]";
+
   return (
     <>
       {/* =======================
-          COLUMNS (scrollable but scrollbar hidden)
+          COLUMNS
          ======================= */}
       <div
         ref={contentScrollRef}
-        className="kanban-scroll-hidden overflow-x-auto pb-6"
+        className={[
+          "w-full min-w-0",
+          "overflow-x-auto kanban-scroll-hidden",
+          dense ? "overflow-y-hidden" : "",
+          "px-4",
+          dense ? "pb-0" : "pb-6",
+        ].join(" ")}
+        style={dense ? { height: denseHeight } : undefined}
       >
         <DragDropContext onDragEnd={onDragEnd}>
-          <Droppable
-            droppableId="all-lists"
-            direction="horizontal"
-            type="all-lists"
-          >
+          <Droppable droppableId="all-lists" direction="horizontal" type="all-lists">
             {(provided) => (
               <div
-                className="flex h-full min-w-max flex-row flex-nowrap items-start gap-6 pb-10"
+                className={[
+                  "flex min-w-max flex-nowrap",
+                  "gap-4 sm:gap-6",
+                  // ✅ stretch so columns fill the available height
+                  dense ? "h-full items-stretch" : "items-start",
+                ].join(" ")}
                 {...provided.droppableProps}
                 ref={provided.innerRef}
               >
-                {/* ✅ Render ONLY the visible slice */}
                 {visibleLists.map((list, visibleIdx) => {
                   const globalIndex = startIndex + visibleIdx;
 
                   return (
-                    <KanbanListComponent
+                    <div
                       key={list.id}
-                      listIndex={globalIndex} // ✅ global index for your handlers
-                      dragIndex={visibleIdx} // ✅ local index for DnD inside slice
-                      list={list}
-                      dense={dense}
-                    />
+                      className={[columnShellClass, dense ? "h-full" : ""].join(" ")}
+                    >
+                      <KanbanListComponent
+                        listIndex={globalIndex}
+                        dragIndex={visibleIdx}
+                        list={list}
+                        dense={dense}
+                        // ✅ always give it a real height in dense
+                        columnHeight={dense ? denseHeight : undefined}
+                      />
+                    </div>
                   );
                 })}
 
                 {provided.placeholder}
 
-                {/* ✅ Add column ALWAYS visible */}
-                <div className="w-[340px]">
-                  <AddForm
-                    text="Add column"
-                    placeholder="Untitled"
-                    onSubmit={handleCreateList}
-                    userInfo={userInfo}
-                  />
+                {/* Add column */}
+                <div className={[columnShellClass, dense ? "h-full" : ""].join(" ")}>
+                 
+                    <div className="shrink-0 p-4">
+                      <AddForm
+                        text="Add column"
+                        placeholder="Untitled"
+                        onSubmit={handleCreateList}
+                        userInfo={userInfo}
+                      />
+                    <div className="flex-1 min-h-0" />
+                  </div>
                 </div>
               </div>
             )}
@@ -243,107 +344,126 @@ export function KanbanBoard() {
           FOOTER
          ======================= */}
       {total > 0 && (
-        <div className="mx-auto flex max-w-[1120px] items-center justify-between pb-3 pt-2 text-[13px]">
-          {/* Dense toggle */}
+        <div
+          ref={footerRef}
+          className="
+            mx-auto flex w-full items-center justify-between gap-3
+            px-4 pb-6 pt-4 text-[13px]
+            text-[#212B36] dark:text-slate500_80
+          "
+        >
+          {/* LEFT */}
           <button
             type="button"
             onClick={() => setDense((d) => !d)}
-            className="flex items-center gap-2 text-ink dark:text-slate500_80"
+            className="flex shrink-0 items-center gap-2"
           >
             <span
-              className={`relative flex h-5 w-9 items-center rounded-full ${
-                dense ? "bg-[#111827]" : "bg-slate500_20"
-              } transition`}
+              className={`
+                relative inline-flex h-5 w-9 items-center rounded-full transition-colors
+                ${dense ? "bg-ink dark:bg-ink" : "bg-slate500_20 dark:bg-[#919EAB7A]"}
+              `}
             >
               <span
-                className={`absolute h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
-                  dense ? "translate-x-[18px]" : "translate-x-[2px]"
-                }`}
+                className={`
+                  inline-block h-4 w-4 rounded-full bg-white shadow-soft transform transition-transform
+                  ${dense ? "translate-x-[18px]" : "translate-x-[2px]"}
+                `}
               />
             </span>
-            <span className="text-[#212B36] dark:text-slate500_80">Dense</span>
+
+            <span className="whitespace-nowrap text-[#212B36] dark:text-[#E5EAF1]">
+              Dense
+            </span>
           </button>
 
-          <div className="flex items-center gap-5 text-black dark:text-slate500_80">
-            {/* Columns per page */}
-            <div className="flex items-center gap-2">
-              <span>Columns per page:</span>
+          {/* RIGHT */}
+          <div className="flex min-w-0 flex-1 items-center justify-end gap-5">
+            <div className="flex min-w-0 flex-wrap items-center justify-end gap-x-5 gap-y-2">
+              {/* Columns per page */}
+              <div className="flex items-center gap-2">
+                <span className="hidden whitespace-nowrap text-[#637381] dark:text-slate500_80 sm:inline">
+                  Columns per page:
+                </span>
 
-              <div className="relative">
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setRowsMenuOpen((o) => !o)}
+                    className="flex items-center gap-1 whitespace-nowrap text-[13px] text-[#111827] dark:text-[#F9FAFB]"
+                  >
+                    {effectiveColumnsPerPage}
+                    <ChevronDown className="h-4 w-4 text-slate500 dark:text-slate500_80" />
+                  </button>
+
+                  {rowsMenuOpen && (
+                    <div className="absolute right-0 mt-1 w-20 rounded-[12px] border border-slate500_20 bg-white/98 shadow-[0_18px_45px_rgba(145,158,171,0.24)] dark:border-[#1F2937] dark:bg-[#050B14]">
+                      {[2, 3, 4, 5].map((option) => (
+                        <button
+                          key={option}
+                          type="button"
+                          onClick={() => handleChangeColumnsPerPage(option)}
+                          className={`
+                            flex w-full items-center justify-between px-3 py-1 text-left text-[13px]
+                            hover:bg-slate500_12 dark:hover:bg-white/5
+                            ${
+                              effectiveColumnsPerPage === option
+                                ? "font-semibold text-[#111827] dark:text-white"
+                                : "text-[#637381] dark:text-slate500_80"
+                            }
+                          `}
+                        >
+                          <span>{option}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Range */}
+              <span className="whitespace-nowrap text-[#212B36] dark:text-slate500_80">
+                {total === 0
+                  ? "0-0 of 0"
+                  : `${startIndex + 1}-${endIndex} of ${total}`}
+              </span>
+
+              {/* Pagination */}
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setRowsMenuOpen((o) => !o)}
-                  className="flex items-center gap-1 text-[13px] text-[#111827] dark:text-slate500_80"
+                  onClick={handlePrev}
+                  disabled={!canPrev}
+                  className={`flex h-5 w-5 items-center justify-center ${
+                    !canPrev
+                      ? "cursor-default text-slate300 dark:text-slate600"
+                      : "text-slate500 hover:text-slate900 dark:text-slate500_80 dark:hover:text-white"
+                  }`}
                 >
-                  {effectiveColumnsPerPage}
-                  <ChevronDown className="h-4 w-4 text-slate500 dark:text-slate500_80" />
+                  <ChevronLeft className="h-4 w-4" />
                 </button>
 
-                {rowsMenuOpen && (
-                  <div className="absolute right-0 mt-1 w-20 rounded-[10px] border border-slate500_20 bg-white py-1 shadow-lg dark:border-slate500_20 dark:bg-[#1B232D]">
-                    {[2, 3, 4, 5].map((option) => (
-                      <button
-                        key={option}
-                        type="button"
-                        onClick={() => handleChangeColumnsPerPage(option)}
-                        className={`flex w-full items-center justify-between px-3 py-1 text-left text-[13px] hover:bg-slate500_08 dark:hover:bg-slate500_20 ${
-                          effectiveColumnsPerPage === option
-                            ? "font-semibold text-[#111827] dark:text-white"
-                            : "text-[#637381] dark:text-slate500_80"
-                        }`}
-                      >
-                        <span>{option}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
+                <button
+                  type="button"
+                  onClick={handleNext}
+                  disabled={!canNext}
+                  className={`flex h-5 w-5 items-center justify-center ${
+                    !canNext
+                      ? "cursor-default text-slate300 dark:text-slate600"
+                      : "text-slate500 hover:text-slate900 dark:text-slate500_80 dark:hover:text-white"
+                  }`}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
               </div>
-            </div>
-
-            {/* Range */}
-            <span className="text-[#212B36] dark:text-slate500_80">
-              {total === 0
-                ? "0-0 of 0"
-                : `${startIndex + 1}-${endIndex} of ${total}`}
-            </span>
-
-            {/* Arrows */}
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handlePrev}
-                disabled={!canPrev}
-                className={`flex h-5 w-5 items-center justify-center ${
-                  !canPrev
-                    ? "cursor-default text-slate300 dark:text-slate600"
-                    : "text-slate500 hover:text-slate900 dark:text-slate500_80 dark:hover:text-white"
-                }`}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-
-              <button
-                type="button"
-                onClick={handleNext}
-                disabled={!canNext}
-                className={`flex h-5 w-5 items-center justify-center ${
-                  !canNext
-                    ? "cursor-default text-slate300 dark:text-slate600"
-                    : "text-slate500 hover:text-slate900 dark:text-slate500_80 dark:hover:text-white"
-                }`}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* =======================
-          STICKY HORIZONTAL SCROLLBAR
-         ======================= */}
+      {/* Sticky horizontal scrollbar (desktop only) */}
       {hasOverflow && (
-        <div className="fixed bottom-0 left-[280px] right-0 z-50">
+        <div className="fixed bottom-0 left-0 right-0 z-50 hidden sm:block">
           <div
             ref={stickyBarRef}
             className="kanban-scroll overflow-x-auto px-2 py-2"

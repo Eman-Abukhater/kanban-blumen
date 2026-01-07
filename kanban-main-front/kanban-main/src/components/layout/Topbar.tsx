@@ -3,34 +3,41 @@ import Image from "next/image";
 import { Fragment } from "react";
 import { Menu, Transition } from "@headlessui/react";
 import ThemeSwitch from "./ThemeSwitch";
-import { LogOut } from "lucide-react";
+import { LogOut, Sun } from "lucide-react";
 import { useRouter } from "next/router";
 import { apiClient } from "@/services/kanbanApi";
 
 export default function Topbar() {
-  const router = useRouter(); // ✅ inside component
+  const router = useRouter();
 
   const handleLogout = async () => {
     try {
-      // optional: backend logout (doesn't invalidate JWT, but fine)
       await apiClient.post("/auth/logout");
     } catch (e) {
       // ignore errors
     } finally {
-      // ✅ clear auth
       if (typeof window !== "undefined") {
         window.sessionStorage.removeItem("userData");
         localStorage.removeItem("token");
       }
-
-      // ✅ go to auth page (replace so back button won’t return)
       router.replace("/auth/1/1");
     }
   };
 
   return (
-    <nav className="sticky top-0 z-30 bg-white dark:bg-[#141A21]">
-      <div className="relative mx-auto flex max-w-[1120px] items-center justify-end px-0 py-4">
+<nav className="fixed left-0 right-0 top-0 z-30 bg-white dark:bg-[#141A21]">
+<div className="relative flex w-full items-center justify-between px-4 py-4">
+        {/* Logo */}
+        <div className="flex items-center">
+          <Image
+            src="/Logo.png"
+            alt="Blumen Cafe"
+            width={170}
+            height={70}
+            priority
+          />
+        </div>
+
         {/* Avatar dropdown */}
         <Menu as="div" className="relative">
           <Menu.Button
@@ -73,7 +80,13 @@ export default function Topbar() {
                   dark:text-white
                 "
               >
-                <span>Theme</span>
+                <div className="flex items-center gap-2">
+                  <span className="grid h-8 w-8 place-items-center rounded-[10px] bg-slate500_12 dark:bg-slate500_20">
+                    <Sun size={16} />
+                  </span>
+                  <span>Theme</span>
+                </div>
+
                 <ThemeSwitch />
               </div>
 
@@ -90,10 +103,13 @@ export default function Topbar() {
                       rounded-[12px] px-3 py-3
                       text-left text-[13px] font-medium
                       outline-none
-                      ${active ? "bg-slate500_08 dark:bg-white/5" : ""}
+                      ${active ? "bg-slate500_12 dark:bg-white/5" : ""}
                       text-ink dark:text-white
                     `}
                   >
+                    <span className="grid h-8 w-8 place-items-center rounded-[10px] bg-slate500_12 dark:bg-slate500_20">
+                      <LogOut size={16} />
+                    </span>
                     Logout
                   </button>
                 )}

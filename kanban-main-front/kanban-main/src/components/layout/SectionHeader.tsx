@@ -60,7 +60,7 @@ export default function SectionHeader({
   const isBoardListPage = path[0] === "boardList";
 
   return (
-    <div className="mx-auto max-w-[1120px] bg-white px-3 pt-8 dark:bg-[#141A21]">
+<div className=" w-full bg-white px-5 pt-8 dark:bg-[#141A21]">
       {/* Top Row: Title + Button */}
       <div className="flex items-center justify-between">
         <div>

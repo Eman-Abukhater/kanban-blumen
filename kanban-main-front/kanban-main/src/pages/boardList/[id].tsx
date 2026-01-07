@@ -556,11 +556,15 @@ export default function BoardListPage() {
           onChangeViewMode={(mode) => setIsTableView(mode === "table")}
         />
 
-        <section className="mx-auto max-w-[1120px] px-0 py-6">
+<section className="mx-auto w-full px-4 py-6">
           {/* If userInfo or route params not ready, show skeleton (no blank screen) */}
           {!userInfo || fkpoid == null || isNavigating ? (
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              <BoardCardSkeleton count={4} />
+<div
+  className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 ${
+    dense ? "gap-4" : "gap-5"
+  }`}
+>
+              <BoardCardSkeleton count={6} />
             </div>
           ) : (
             <>
@@ -568,8 +572,12 @@ export default function BoardListPage() {
               {!isTableView && (
                 <>
                   {showSkeleton ? (
-                    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                      <BoardCardSkeleton count={4} />
+<div
+  className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 ${
+    dense ? "gap-4" : "gap-5"
+  }`}
+>
+                      <BoardCardSkeleton count={6} />
                     </div>
                   ) : total === 0 ? (
                     <div className="rounded-[16px] border border-slate500_12 bg-white p-10 text-center dark:border-slate500_20 dark:bg-[#1B232D]">
@@ -589,10 +597,11 @@ export default function BoardListPage() {
                     </div>
                   ) : (
                     <div
-                      className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 ${
-                        dense ? "gap-4" : "gap-5"
-                      }`}
-                    >
+  className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 ${
+    dense ? "gap-4" : "gap-5"
+  }`}
+>
+
                       {isCreatingBoard && <BoardCardSkeleton count={1} />}
                       {paginatedBoards.map((board) => (
                         <BoardCard
@@ -834,113 +843,115 @@ export default function BoardListPage() {
             </>
           )}
         </section>
+{!isLoading && total > 0 && (
+  <div className="mx-auto flex w-full items-center justify-between gap-3 px-4 pb-6 pt-4 text-[13px] text-[#212B36] dark:text-slate500_80">
+    {/* LEFT */}
+    <button
+      type="button"
+      onClick={() => setDense((d) => !d)}
+      className="flex shrink-0 items-center gap-2"
+    >
+      <span
+        className={`
+          relative inline-flex h-5 w-9 items-center rounded-full transition-colors
+          ${dense ? "bg-ink dark:bg-ink" : "bg-slate500_20 dark:bg-[#919EAB7A]"}
+        `}
+      >
+        <span
+          className={`
+            inline-block h-4 w-4 rounded-full bg-white shadow-soft transform transition-transform
+            ${dense ? "translate-x-[18px]" : "translate-x-[2px]"}
+          `}
+        />
+      </span>
 
-        {/* Footer */}
-        {!isLoading && total > 0 && (
-          <div className="mx-auto flex max-w-[1120px] items-center justify-between pb-6 pt-4 text-[13px] text-[#212B36] dark:text-slate500_80">
+      <span className="whitespace-nowrap text-[#212B36] dark:text-[#E5EAF1]">
+        Dense
+      </span>
+    </button>
+
+    {/* RIGHT */}
+    <div className="flex min-w-0 flex-1 items-center justify-end gap-5">
+      <div className="flex min-w-0 flex-wrap items-center justify-end gap-x-5 gap-y-2">
+        {/* Rows per page */}
+        <div className="flex items-center gap-2">
+          <span className="hidden whitespace-nowrap text-[#637381] dark:text-slate500_80 sm:inline">
+            Rows per page:
+          </span>
+
+          <div className="relative">
             <button
               type="button"
-              onClick={() => setDense((d) => !d)}
-              className="flex items-center gap-2"
+              onClick={() => setRowsMenuOpen((o) => !o)}
+              className="flex items-center gap-1 whitespace-nowrap text-[13px] text-[#111827] dark:text-[#F9FAFB]"
             >
-              <span
-                className={`
-                  relative inline-flex h-5 w-9 items-center rounded-full transition-colors
-                  ${
-                    dense
-                      ? "bg-ink dark:bg-ink"
-                      : "bg-slate500_20 dark:bg-[#919EAB7A]"
-                  }
-                `}
-              >
-                <span
-                  className={`
-                    inline-block h-4 w-4 rounded-full bg-white shadow-soft transform transition-transform
-                    ${dense ? "translate-x-[18px]" : "translate-x-[2px]"}
-                  `}
-                />
-              </span>
-
-              <span className="text-[#212B36] dark:text-[#E5EAF1]">Dense</span>
+              {rowsPerPage}
+              <ChevronDown className="h-4 w-4 text-slate500 dark:text-slate500_80" />
             </button>
 
-            <div className="flex items-center gap-5">
-              <div className="flex items-center gap-2">
-                <span className="text-[#637381] dark:text-slate500_80">
-                  Rows per page:
-                </span>
-
-                <div className="relative">
+            {rowsMenuOpen && (
+              <div className="absolute right-0 mt-1 w-20 rounded-[12px] border border-slate500_20 bg-white/98 shadow-[0_18px_45px_rgba(145,158,171,0.24)] dark:border-[#1F2937] dark:bg-[#050B14]">
+                {[3, 5, 6, 9].map((option) => (
                   <button
+                    key={option}
                     type="button"
-                    onClick={() => setRowsMenuOpen((o) => !o)}
-                    className="flex items-center gap-1 text-[13px] text-[#111827] dark:text-[#F9FAFB]"
+                    onClick={() => handleChangeRowsPerPage(option)}
+                    className={`
+                      flex w-full items-center justify-between px-3 py-1 text-left text-[13px]
+                      hover:bg-slate500_08 dark:hover:bg-white/5
+                      ${
+                        rowsPerPage === option
+                          ? "font-semibold text-[#111827] dark:text-white"
+                          : "text-[#637381] dark:text-slate500_80"
+                      }
+                    `}
                   >
-                    {rowsPerPage}
-                    <ChevronDown className="h-4 w-4 text-slate500 dark:text-slate500_80" />
+                    <span>{option}</span>
                   </button>
-
-                  {rowsMenuOpen && (
-                    <div className="absolute right-0 mt-1 w-20 rounded-[12px] border border-slate500_20 bg-white/98 shadow-[0_18px_45px_rgba(145,158,171,0.24)] dark:border-[#1F2937] dark:bg-[#050B14]">
-                      {[3, 5, 6, 9].map((option) => (
-                        <button
-                          key={option}
-                          type="button"
-                          onClick={() => handleChangeRowsPerPage(option)}
-                          className={`
-                            flex w-full items-center justify-between px-3 py-1 text-left text-[13px]
-                            hover:bg-slate500_08 dark:hover:bg-white/5
-                            ${
-                              rowsPerPage === option
-                                ? "font-semibold text-[#111827] dark:text-white"
-                                : "text-[#637381] dark:text-slate500_80"
-                            }
-                          `}
-                        >
-                          <span>{option}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                ))}
               </div>
-
-              <span className="text-[#212B36] dark:text-slate500_80">
-                {total === 0
-                  ? "0-0 of 0"
-                  : `${startIndex + 1}-${endIndex} of ${total}`}
-              </span>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handlePrev}
-                  disabled={!canPrev}
-                  className={`flex h-5 w-5 items-center justify-center ${
-                    !canPrev
-                      ? "cursor-default text-slate300 dark:text-slate600"
-                      : "text-slate500 hover:text-slate900 dark:text-slate500_80 dark:hover:text-white"
-                  }`}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleNext}
-                  disabled={!canNext}
-                  className={`flex h-5 w-5 items-center justify-center ${
-                    !canNext
-                      ? "cursor-default text-slate300 dark:text-slate600"
-                      : "text-slate500 hover:text-slate900 dark:text-slate500_80 dark:hover:text-white"
-                  }`}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
+            )}
           </div>
-        )}
+        </div>
+
+        {/* Range */}
+        <span className="whitespace-nowrap text-[#212B36] dark:text-slate500_80">
+          {total === 0 ? "0-0 of 0" : `${startIndex + 1}-${endIndex} of ${total}`}
+        </span>
+
+        {/* Pagination */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handlePrev}
+            disabled={!canPrev}
+            className={`flex h-5 w-5 items-center justify-center ${
+              !canPrev
+                ? "cursor-default text-slate300 dark:text-slate600"
+                : "text-slate500 hover:text-slate900 dark:text-slate500_80 dark:hover:text-white"
+            }`}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+
+          <button
+            type="button"
+            onClick={handleNext}
+            disabled={!canNext}
+            className={`flex h-5 w-5 items-center justify-center ${
+              !canNext
+                ? "cursor-default text-slate300 dark:text-slate600"
+                : "text-slate500 hover:text-slate900 dark:text-slate500_80 dark:hover:text-white"
+            }`}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
+
 
         <AddEditBoardModal
           isOpen={isModalOpen}

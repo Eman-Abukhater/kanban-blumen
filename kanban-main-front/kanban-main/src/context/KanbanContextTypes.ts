@@ -62,7 +62,7 @@ export type KanbanContext = {
   handleOpenModal: (props: hanbleOpenModalProps) => void;
   handleCloseModal: () => void;
 
-  // ✅ خليها تقبل userInfo لأنه ListMenu بمررها
+
   handleClearList: (listid: number, userInfo: any) => void;
 
   setKanbanListState: (KanbanList: KanbanBoardState) => void;

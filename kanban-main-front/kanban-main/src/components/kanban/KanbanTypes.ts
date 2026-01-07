@@ -39,6 +39,10 @@ export type KanbanCard = {
   date: DateValueType;
   startDate: Date;
   endDate: Date;
+  status?: string;
+  assignedTo?: string;
+  priority?: "low" | "medium" | "high";
+
   //mine
   fkKanbanListId: number;
   seqNo: number;

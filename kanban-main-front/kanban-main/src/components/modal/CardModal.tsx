@@ -1,5 +1,5 @@
 // src/components/modal/CardModal.tsx
-import { Fragment, useContext, useEffect, useRef, useState } from "react";
+import { Fragment, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Dialog, Transition, Disclosure, Menu } from "@headlessui/react";
 import { PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { ChevronDownIcon, ChevronUpIcon } from "@heroicons/react/20/solid";
@@ -22,7 +22,7 @@ import {
 import { toast } from "react-toastify";
 import { GetCardImagePath } from "@/utility/baseUrl";
 import dayjs from "dayjs";
-import { DueDateModal } from "../kanban/DueDateModal";
+import { DueDateModal } from "./DueDateModal";
 import { useInvalidateKanban } from "@/hooks/useKanbanMutations";
 
 export interface CardModalProps {
@@ -31,14 +31,50 @@ export interface CardModalProps {
   card: KanbanCard;
 }
 
-type CardStatus = "To do" | "In progress" | "Ready to test" | "Done";
-const STATUS_OPTIONS: CardStatus[] = ["To do", "In progress", "Ready to test", "Done"];
-
 // ✅ Single (default) tag color — no color picking anymore
 const TAG_BLUE = "bg-blue-400 text-white";
 
 export function CardModal(props: CardModalProps) {
   const descTextAreaRef = useRef<HTMLTextAreaElement>(null);
+
+  const invalidateKanban = useInvalidateKanban();
+
+  const {
+    handleUpdateCard,
+    handleCloseModal,
+    modalState,
+    userInfo,
+    kanbanState,
+    handleDragEnd,
+  } = useContext(KanbanContext);
+
+  const normalize = (s: string) => (s || "").trim().toLowerCase();
+
+  // ✅ Status options = ALL columns titles (dynamic)
+  const statusOptions = useMemo(() => {
+    const titles = (kanbanState as any[])
+      .map((l) => (l?.title ?? "").trim())
+      .filter(Boolean);
+
+    // keep order, remove duplicates
+    const seen = new Set<string>();
+    return titles.filter((t) => {
+      const key = normalize(t);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [kanbanState]);
+
+  // ✅ remember last non-done status (so when uncheck we can go back)
+const lastNonDoneStatusRef = useRef<string>("");
+
+// ✅ find the real "Done" column title from your board (case-insensitive)
+const doneTitle = useMemo(() => {
+  const found = statusOptions.find((t) => normalize(t) === "done");
+  return found || "Done"; // fallback
+}, [statusOptions]);
+
 
   const [title, setTitle] = useState<string>(props.card.title);
   const [desc, setDesc] = useState(props.card.desc);
@@ -50,22 +86,101 @@ export function CardModal(props: CardModalProps) {
 
   const [completed, setCompleted] = useState(props.card.completed);
 
-  // ✅ Status dropdown (Figma)
-  const [status, setStatus] = useState<CardStatus>(() => {
-    const raw = (props.card as any)?.status as CardStatus | undefined;
-    if (raw && STATUS_OPTIONS.includes(raw)) return raw;
+  // ✅ Local position (because card can move while modal is open)
+  const [currentListIndex, setCurrentListIndex] = useState(props.listIndex);
+  const [currentCardIndex, setCurrentCardIndex] = useState(props.cardIndex);
+
+  // ✅ Status shown in the dropdown button
+  const [status, setStatus] = useState<string>(() => {
+    const raw = ((props.card as any)?.status as string | undefined)?.trim();
+    if (raw) return raw;
     return props.card.completed ? "Done" : "In progress";
   });
 
+  // ✅ If user drags the card to another column while modal is open,
+  // we detect it from kanbanState and update the status + indices immediately.
   useEffect(() => {
-    setCompleted(status === "Done");
+    const cardKey =
+      (props.card as any)?.kanbanCardId ?? (props.card as any)?.id ?? props.card.id;
+
+    let foundListIndex = -1;
+    let foundCardIndex = -1;
+    let foundListTitle = "";
+
+    const lists = kanbanState as any[];
+
+    for (let li = 0; li < lists.length; li++) {
+      const cards = lists[li]?.kanbanCards ?? [];
+      const ci = cards.findIndex((c: any) => {
+        const k = c?.kanbanCardId ?? c?.id;
+        return k === cardKey;
+      });
+
+      if (ci !== -1) {
+        foundListIndex = li;
+        foundCardIndex = ci;
+        foundListTitle = (lists[li]?.title ?? "").trim();
+        break;
+      }
+    }
+
+    if (foundListIndex !== -1) {
+      setCurrentListIndex(foundListIndex);
+      setCurrentCardIndex(foundCardIndex);
+
+      if (foundListTitle && normalize(foundListTitle) !== normalize(status)) {
+        setStatus(foundListTitle); // ✅ updates the button text (like your screenshot)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kanbanState, props.card.kanbanCardId, props.card.id]);
+
+  // keep completed in sync (ONLY if you literally have a column called "Done")
+  useEffect(() => {
+    setCompleted(normalize(status) === "done");
   }, [status]);
+
+  const getTargetListIndexByTitle = (titleStr: string) => {
+    const t = normalize(titleStr);
+    return (kanbanState as any[]).findIndex((l) => normalize(l?.title) === t);
+  };
+
+  // ✅ IMMEDIATE UI MOVE when status selected from dropdown
+  const moveCardOptimistic = (nextStatus: string) => {
+    const targetListIndex = getTargetListIndexByTitle(nextStatus);
+    if (targetListIndex < 0) return;
+
+    // same list -> nothing to move
+    if (targetListIndex === currentListIndex) return;
+
+    const fromList: any = (kanbanState as any[])[currentListIndex];
+    const toList: any = (kanbanState as any[])[targetListIndex];
+
+    if (!fromList?.id || !toList?.id) return;
+
+    // place at end (you can change to 0 to move to top)
+    const destinationIndex = (toList?.kanbanCards?.length ?? 0);
+
+    // Call your existing board logic (updates state immediately)
+    handleDragEnd({
+      draggableId: props.card.id,
+      type: "DEFAULT", // must NOT be "all-lists"
+      reason: "DROP",
+      mode: "FLUID",
+      source: { droppableId: fromList.id, index: currentCardIndex },
+      destination: { droppableId: toList.id, index: destinationIndex },
+      combine: null,
+    } as any);
+
+    // update local indices immediately
+    setCurrentListIndex(targetListIndex);
+    setCurrentCardIndex(destinationIndex);
+  };
 
   const CardImagePath = GetCardImagePath();
 
   // tabs: "overview" | "subtasks"
   const [activeTab, setActiveTab] = useState<"overview" | "subtasks">("overview");
-
   const [isDueDateModalOpen, setIsDueDateModalOpen] = useState(false);
 
   // local priority (still saved)
@@ -73,7 +188,11 @@ export function CardModal(props: CardModalProps) {
     ((props.card as any).priority as "low" | "medium" | "high") || "low"
   );
 
-  const assigneeAvatars = ["/icons/Avatar_1.png", "/icons/Avatar_2.png", "/icons/Avatar_3.png"];
+  const assigneeAvatars = [
+    "/icons/Avatar_1.png",
+    "/icons/Avatar_2.png",
+    "/icons/Avatar_3.png",
+  ];
 
   const isCloudinaryUrl = (url: string) =>
     url && (url.startsWith("http://") || url.startsWith("https://"));
@@ -107,12 +226,8 @@ export function CardModal(props: CardModalProps) {
 
   const maxFileSize = 5000000;
 
-  const invalidateKanban = useInvalidateKanban();
-
   // keep autosize for description
   useAutosizeTextArea(descTextAreaRef, desc);
-
-  const { handleUpdateCard, handleCloseModal, modalState, userInfo } = useContext(KanbanContext);
 
   // ================= DATE LABEL =================
   const formatDateRange = (d: DateValueType | null) => {
@@ -125,16 +240,13 @@ export function CardModal(props: CardModalProps) {
     const sameMonth = s.month() === e.month();
 
     if (sameYear && sameMonth) {
-      // 28 - 29 Dec 2025
       return `${s.format("DD")} - ${e.format("DD")} ${s.format("MMM YYYY")}`;
     }
 
     if (sameYear && !sameMonth) {
-      // 28 Dec - 02 Jan 2025
       return `${s.format("DD MMM")} - ${e.format("DD MMM YYYY")}`;
     }
 
-    // 22 Jun 2025 - 23 Jun 2026
     return `${s.format("DD MMM YYYY")} - ${e.format("DD MMM YYYY")}`;
   };
 
@@ -170,31 +282,36 @@ export function CardModal(props: CardModalProps) {
         const customResponse = await EditCard(cardData);
 
         if (customResponse?.status === 200) {
-          handleUpdateCard(props.listIndex, props.cardIndex, {
+          // ✅ update using CURRENT indices (after drag/status move)
+          handleUpdateCard(currentListIndex, currentCardIndex, {
             ...props.card,
             title,
             desc,
-            completed: status === "Done",
+            completed: normalize(status) === "done",
+            status, // ✅ requires KanbanCard.status?: string
             imageUrl: cardData.imageUrl || props.card.imageUrl || "",
             kanbanTags,
             kanbanTasks,
             date,
             startDate: date?.startDate as Date,
             endDate: date?.endDate as Date,
+            priority,
           });
 
           handleCloseModal();
           setSubmit(false);
           invalidateKanban();
+
           toast.success(`Card updated successfully!`, {
             position: toast.POSITION.TOP_CENTER,
           });
         }
 
-        if (customResponse?.status != 200 || customResponse?.data == null) {
-          toast.error(`something went wrong could not Edit the Card, please try again later`, {
-            position: toast.POSITION.TOP_CENTER,
-          });
+        if (customResponse?.status !== 200 || customResponse?.data == null) {
+          toast.error(
+            `something went wrong could not Edit the Card, please try again later`,
+            { position: toast.POSITION.TOP_CENTER }
+          );
           setSubmit(false);
         }
       } catch (err: any) {
@@ -224,6 +341,11 @@ export function CardModal(props: CardModalProps) {
 
     const finalImageUrl = cloudinaryUrl || props.card.imageUrl || "";
 
+    // send fkKanbanListId for the selected status (if backend supports it)
+    const targetListIndex = getTargetListIndexByTitle(status);
+    const targetList: any =
+      targetListIndex >= 0 ? (kanbanState as any[])[targetListIndex] : null;
+
     const cardData = {
       title,
       kanbanCardId: props.card.kanbanCardId,
@@ -231,13 +353,14 @@ export function CardModal(props: CardModalProps) {
       desc: desc || "....",
       imageUrl: finalImageUrl,
       imagePublicId: cloudinaryPublicId,
-      completed: status === "Done",
+      completed: normalize(status) === "done",
       startDate: date?.startDate ? date.startDate.toString() : undefined,
       endDate: date?.endDate ? date.endDate.toString() : undefined,
       fkboardid: userInfo.fkboardid,
       fkpoid: userInfo.fkpoid,
       priority,
       status,
+      fkKanbanListId: targetList?.kanbanListId, // safe if your API ignores unknown fields
     };
 
     mutation.mutate(cardData);
@@ -250,8 +373,6 @@ export function CardModal(props: CardModalProps) {
   };
 
   // ================= TAGS =================
-  // ✅ IMPORTANT: keep (tagName, colorIndex) signature so your CreateTagModal doesn't break
-  // but IGNORE colorIndex and always use TAG_BLUE
   const handleCreateTag = async (tagName: string, _colorIndex: number) => {
     const name = (tagName || "").trim();
     if (!name) {
@@ -276,14 +397,15 @@ export function CardModal(props: CardModalProps) {
           id: "",
           color: TAG_BLUE,
           title: name,
-          fkKanbanCardId: props.card.kanbanCardId, // ✅ fix: don't hardcode 1
+          fkKanbanCardId: props.card.kanbanCardId,
           seqNo: 1,
           createdAt: new Date(),
           addedBy: userInfo.username,
         });
 
         setTags(newTags);
-        handleUpdateCard(props.listIndex, props.cardIndex, {
+
+        handleUpdateCard(currentListIndex, currentCardIndex, {
           ...props.card,
           kanbanTags: newTags,
         });
@@ -292,9 +414,10 @@ export function CardModal(props: CardModalProps) {
           position: toast.POSITION.TOP_CENTER,
         });
       } else {
-        toast.error(`something went wrong could not add the Tag, please try again later`, {
-          position: toast.POSITION.TOP_CENTER,
-        });
+        toast.error(
+          `something went wrong could not add the Tag, please try again later`,
+          { position: toast.POSITION.TOP_CENTER }
+        );
       }
     } finally {
       setIsCreatingTag(false);
@@ -316,7 +439,8 @@ export function CardModal(props: CardModalProps) {
         newTags.splice(tagIndex, 1);
 
         setTags(newTags);
-        handleUpdateCard(props.listIndex, props.cardIndex, {
+
+        handleUpdateCard(currentListIndex, currentCardIndex, {
           ...props.card,
           kanbanTags: newTags,
         });
@@ -326,9 +450,10 @@ export function CardModal(props: CardModalProps) {
           position: toast.POSITION.TOP_CENTER,
         });
       } else {
-        toast.error(`something went wrong could not Remove the Tag, please try again later`, {
-          position: toast.POSITION.TOP_CENTER,
-        });
+        toast.error(
+          `something went wrong could not Remove the Tag, please try again later`,
+          { position: toast.POSITION.TOP_CENTER }
+        );
       }
     } finally {
       setIsDeletingTag(null);
@@ -351,7 +476,8 @@ export function CardModal(props: CardModalProps) {
         tempTask.splice(taskIndex, 1);
 
         setTasks(tempTask);
-        handleUpdateCard(props.listIndex, props.cardIndex, {
+
+        handleUpdateCard(currentListIndex, currentCardIndex, {
           ...props.card,
           kanbanTasks: tempTask,
         });
@@ -362,9 +488,10 @@ export function CardModal(props: CardModalProps) {
           position: toast.POSITION.TOP_CENTER,
         });
       } else {
-        toast.error(`something went wrong could not Remove the Task, please try again later`, {
-          position: toast.POSITION.TOP_CENTER,
-        });
+        toast.error(
+          `something went wrong could not Remove the Task, please try again later`,
+          { position: toast.POSITION.TOP_CENTER }
+        );
       }
     } finally {
       setIsDeletingTask(null);
@@ -380,7 +507,9 @@ export function CardModal(props: CardModalProps) {
     try {
       setIsCreatingTask(true);
 
-      const assignToJoin = selectedOptions.map((option) => `${option.value}`).join(" - ");
+      const assignToJoin = selectedOptions
+        .map((option) => `${option.value}`)
+        .join(" - ");
 
       const customResponse = await AddTask(
         taskTitle,
@@ -409,7 +538,8 @@ export function CardModal(props: CardModalProps) {
         });
 
         setTasks(tempTask);
-        handleUpdateCard(props.listIndex, props.cardIndex, {
+
+        handleUpdateCard(currentListIndex, currentCardIndex, {
           ...props.card,
           kanbanTasks: tempTask,
         });
@@ -419,9 +549,10 @@ export function CardModal(props: CardModalProps) {
           position: toast.POSITION.TOP_CENTER,
         });
       } else {
-        toast.error(`something went wrong could not add the Task, please try again later`, {
-          position: toast.POSITION.TOP_CENTER,
-        });
+        toast.error(
+          `something went wrong could not add the Task, please try again later`,
+          { position: toast.POSITION.TOP_CENTER }
+        );
       }
     } finally {
       setIsCreatingTask(false);
@@ -432,7 +563,14 @@ export function CardModal(props: CardModalProps) {
   return (
     <>
       <Transition appear show={modalState.isOpen} as={Fragment}>
-        <Dialog as="div" className="relative z-[60]" onClose={handleCloseModal}>
+<Dialog
+  as="div"
+  className="relative z-[60]"
+  onClose={() => {
+    if (isDueDateModalOpen) return; // ✅ prevent CardModal from closing while DueDateModal is open
+    handleCloseModal();
+  }}
+>
           {/* Overlay */}
           <Transition.Child
             as={Fragment}
@@ -460,9 +598,9 @@ export function CardModal(props: CardModalProps) {
                 >
                   <Dialog.Panel className="pointer-events-auto w-screen max-w-[450px]">
                     <div className="flex h-full flex-col bg-white shadow-xl dark:bg-[#1B232D]">
-                      {/* ================= TOP BAR (UPDATED) ================= */}
+                      {/* ================= TOP BAR ================= */}
                       <div className="relative z-[80] flex items-center justify-between border-b border-slate500_12 px-6 py-4 dark:border-slate500_20">
-                        {/* Status dropdown (Figma) */}
+                        {/* Status dropdown */}
                         <Menu as="div" className="relative z-[90]">
                           <Menu.Button
                             type="button"
@@ -481,19 +619,24 @@ export function CardModal(props: CardModalProps) {
                             leaveFrom="opacity-100 translate-y-0"
                             leaveTo="opacity-0 translate-y-1"
                           >
-                            <Menu.Items
-                              className="absolute left-0 z-[999] mt-3 w-40 origin-top-left rounded-[16px] bg-white p-2 ring-1 ring-black/5 focus:outline-none pointer-events-auto dark:bg-[#1B232D] shadow-[0_18px_45px_rgba(15,23,42,0.12)] dark:shadow-[0_18px_45px_rgba(0,0,0,0.45)]"
-                            >
-                              {STATUS_OPTIONS.map((opt) => (
+                            <Menu.Items className="absolute left-0 z-[999] mt-3 w-44 origin-top-left rounded-[16px] bg-white p-2 ring-1 ring-black/5 focus:outline-none pointer-events-auto dark:bg-[#1B232D] shadow-[0_18px_45px_rgba(15,23,42,0.12)] dark:shadow-[0_18px_45px_rgba(0,0,0,0.45)]">
+                              {statusOptions.map((opt) => (
                                 <Menu.Item key={opt}>
                                   {({ active }) => (
                                     <button
                                       type="button"
-                                      onClick={() => setStatus(opt)}
+                                    onClick={() => {
+  // ✅ keep last non-done status so checkbox can return back
+  if (normalize(opt) !== "done") lastNonDoneStatusRef.current = opt;
+
+  setStatus(opt);           // ✅ update button text immediately
+  moveCardOptimistic(opt);  // ✅ move card immediately
+}}
+
                                       className={classNames(
                                         "flex w-full items-center rounded-[12px] px-3 py-3 text-left text-[12px] font-medium outline-none focus:outline-none focus:ring-0",
                                         active ? "bg-[#F4F6F8]/60 dark:bg-white/5" : "",
-                                        opt === status
+                                        normalize(opt) === normalize(status)
                                           ? "text-ink dark:text-white"
                                           : "text-ink/90 dark:text-white/90"
                                       )}
@@ -595,7 +738,11 @@ export function CardModal(props: CardModalProps) {
                                       disabled={isDeletingTag === tag.kanbanTagId}
                                       aria-label="Delete tag"
                                     >
-                                      <img src="/icons/tag-delete-icon.png" alt="" className="h-4 w-4" />
+                                      <img
+                                        src="/icons/tag-delete-icon.png"
+                                        alt=""
+                                        className="h-4 w-4"
+                                      />
                                     </button>
                                   </div>
                                 ))}
@@ -619,7 +766,7 @@ export function CardModal(props: CardModalProps) {
                                 <CreateTagModal
                                   show={openTagModal}
                                   handleClose={setOpenTagModal}
-                                  handleSubmit={handleCreateTag} // ✅ still works (2 args), but color is ignored
+                                  handleSubmit={handleCreateTag}
                                 />
                               </div>
 
@@ -694,7 +841,6 @@ export function CardModal(props: CardModalProps) {
                                 </label>
 
                                 {(displayImage || cloudinaryUrl) && (
-                                  // eslint-disable-next-line @next/next/no-img-element
                                   <img
                                     src={cloudinaryUrl || displayImage}
                                     alt="Card image"
@@ -739,7 +885,6 @@ export function CardModal(props: CardModalProps) {
                                       key={index}
                                       className="h-9 w-9 overflow-hidden rounded-full ring-2 ring-white dark:ring-[#141A21]"
                                     >
-                                      {/* eslint-disable-next-line @next/next/no-img-element */}
                                       <img
                                         src={src}
                                         alt={`Assignee ${index + 1}`}
@@ -756,23 +901,44 @@ export function CardModal(props: CardModalProps) {
                                   </button>
                                 </div>
 
-                                {/* Completed (kept) */}
+                                {/* Completed */}
                                 <div className="pt-2 text-[13px] font-medium text-[#637381] dark:text-slate500_80">
                                   Completed
                                 </div>
                                 <div className="flex items-center">
-                                  <input
-                                    type="checkbox"
-                                    className="h-4 w-4 rounded-[5px] border-1 border-[#637381]"
-                                    checked={completed}
-                                    onChange={() => {
-                                      setCompleted((p) => {
-                                        const next = !p;
-                                        setStatus(next ? "Done" : "In progress");
-                                        return next;
-                                      });
-                                    }}
-                                  />
+                           <input
+  type="checkbox"
+  className="h-4 w-4 rounded-[5px] border-1 border-[#637381]"
+  checked={completed}
+  onChange={() => {
+    setCompleted((prev) => {
+      const next = !prev;
+
+      if (next) {
+        // ✅ going to Done
+        if (normalize(status) !== "done") lastNonDoneStatusRef.current = status;
+
+        setStatus(doneTitle);           // update dropdown text
+        moveCardOptimistic(doneTitle);  // move card to Done column immediately
+      } else {
+        // ✅ going back from Done -> last non-done status (or fallback)
+        const fallback =
+          lastNonDoneStatusRef.current &&
+          normalize(lastNonDoneStatusRef.current) !== "done"
+            ? lastNonDoneStatusRef.current
+            : statusOptions.find((s) => normalize(s) !== "done") || "In progress";
+
+        if (normalize(fallback) !== "done") lastNonDoneStatusRef.current = fallback;
+
+        setStatus(fallback);           // update dropdown text
+        moveCardOptimistic(fallback);  // move card back immediately
+      }
+
+      return next;
+    });
+  }}
+/>
+
                                 </div>
 
                                 {/* Description */}
@@ -831,7 +997,6 @@ export function CardModal(props: CardModalProps) {
                                   </label>
 
                                   {(displayImage || cloudinaryUrl) && (
-                                    // eslint-disable-next-line @next/next/no-img-element
                                     <img
                                       src={cloudinaryUrl || displayImage}
                                       alt="Card image"
@@ -954,13 +1119,16 @@ export function CardModal(props: CardModalProps) {
         </Dialog>
       </Transition>
 
-      <DueDateModal
-        open={isDueDateModalOpen}
-        value={date}
-        onChange={(newValue) => setDate(newValue)}
-        onClose={() => setIsDueDateModalOpen(false)}
-        onApply={() => setIsDueDateModalOpen(false)}
-      />
+     <DueDateModal
+  open={isDueDateModalOpen}
+  value={date}
+  onClose={() => setIsDueDateModalOpen(false)}
+  onApply={(newValue) => {
+    setDate(newValue);
+    setIsDueDateModalOpen(false);
+  }}
+/>
+
     </>
   );
 }

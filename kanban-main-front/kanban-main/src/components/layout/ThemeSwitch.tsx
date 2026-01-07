@@ -51,9 +51,14 @@ export default function ThemeSwitch({ buttonClass }: ThemeSwitchProps) {
     return (
       <button
         type="button"
-        className={`relative inline-flex h-6 w-11 items-center rounded-full bg-slate500_20 ${buttonClass ?? ""}`}
+        className={`
+          relative inline-flex h-6 w-11 items-center rounded-full
+          border border-slate500_12 bg-slate500_12
+          dark:border-slate500_20 dark:bg-slate500_20
+          ${buttonClass ?? ""}
+        `}
       >
-        <span className="inline-block h-5 w-5 rounded-full bg-white shadow-soft" />
+        <span className="inline-block h-5 w-5 translate-x-1 rounded-full bg-white shadow-soft" />
       </button>
     );
   }
@@ -63,15 +68,23 @@ export default function ThemeSwitch({ buttonClass }: ThemeSwitchProps) {
       type="button"
       aria-label="toggle dark mode"
       onClick={toggleTheme}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-        isDark ? "bg-ink" : "bg-slate500_20"
-      } ${buttonClass ?? ""}`}
+    className={`
+  relative inline-flex h-6 w-11 items-center rounded-full
+  border transition-colors
+  bg-slate500_12 border-slate500_12
+  dark:bg-slate500_20 dark:border-slate500_20
+  ${buttonClass ?? ""}
+`}
+
     >
       <span className="sr-only">Toggle dark mode</span>
+
       <span
-        className={`inline-block h-5 w-5 rounded-full bg-white shadow-soft transform transition-transform ${
-          isDark ? "translate-x-5" : "translate-x-0"
-        }`}
+        className={`
+          inline-block h-5 w-5 rounded-full bg-white shadow-soft
+          transform transition-transform
+          ${isDark ? "translate-x-5" : "translate-x-1"}
+        `}
       />
     </button>
   );

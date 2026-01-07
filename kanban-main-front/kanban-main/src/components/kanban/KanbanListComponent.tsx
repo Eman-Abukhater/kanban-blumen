@@ -17,10 +17,13 @@ import { EditListName } from "@/services/kanbanApi";
 import { useInvalidateKanban } from "@/hooks/useKanbanMutations";
 
 export interface IKanbanListComponentProps {
-  listIndex: number; // ✅ global index in your kanban state
-  dragIndex: number; // ✅ visible index for DnD
+  listIndex: number;
+  dragIndex: number;
   list: KanbanList;
   dense: boolean;
+
+  // ✅ height passed from board in Dense ON
+  columnHeight?: number;
 }
 
 function KanbanListComponent(props: IKanbanListComponentProps) {
@@ -32,19 +35,16 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
   const cardCount = props.list.kanbanCards?.length ?? 0;
   const [showAddCard, setShowAddCard] = useState(false);
 
-  // ✅ Inline rename state
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState(props.list.title);
   const renameInputRef = useRef<HTMLInputElement>(null);
 
-  // keep input synced when list title changes (but not while editing)
   useEffect(() => {
     if (!isRenaming) setRenameValue(props.list.title);
   }, [props.list.title, isRenaming]);
 
   const startRename = () => {
     setIsRenaming(true);
-    // focus & select
     setTimeout(() => {
       renameInputRef.current?.focus();
       renameInputRef.current?.select();
@@ -56,7 +56,6 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
     setRenameValue(props.list.title);
   };
 
-  // ✅ IMPORTANT: this persists rename to backend + keeps UI consistent
   const commitRename = async () => {
     const next = renameValue.trim();
     const prev = props.list.title;
@@ -74,11 +73,9 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
       return;
     }
 
-    // 1) optimistic local update
     handleRenameList(props.listIndex, next);
     setIsRenaming(false);
 
-    // 2) persist to backend
     try {
       const res = await EditListName(
         next,
@@ -90,15 +87,13 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
 
       if (res?.status === 200) {
         toast.success("List renamed", { position: toast.POSITION.TOP_CENTER });
-        invalidateKanban(); // ✅ no await (no UI delay)
+        invalidateKanban();
         return;
       }
 
-      // rollback
       handleRenameList(props.listIndex, prev);
       toast.error("Rename failed", { position: toast.POSITION.TOP_CENTER });
     } catch (e: any) {
-      // rollback
       handleRenameList(props.listIndex, prev);
       toast.error(e?.message || "Rename failed", {
         position: toast.POSITION.TOP_CENTER,
@@ -111,21 +106,28 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
       {(provided) => (
         <div
           className={classNames(
-            "flex w-[340px] flex-col rounded-[24px] border border-[#E5EAF1] bg-[#F4F6F8] shadow-soft",
-            "dark:border-slate500_20 dark:bg-[#1B232D]"
+            "flex w-full flex-col rounded-[24px] border border-[#E5EAF1] bg-[#F4F6F8] shadow-soft",
+            "dark:border-slate500_20 dark:bg-[#1B232D]",
+            "min-h-0"
           )}
           ref={provided.innerRef}
           {...provided.draggableProps}
-          style={provided.draggableProps.style} // ✅ important for smooth drag
+          style={{
+            ...provided.draggableProps.style,
+            ...(props.dense && props.columnHeight
+              ? { height: props.columnHeight }
+              : {}),
+          }}
         >
-          <div className="flex touch-manipulation flex-col">
-            <div className="flex items-center justify-between rounded-t-[24px] px-5 py-4">
+          {/* ✅ IMPORTANT: h-full + min-h-0 so only the cards area scrolls */}
+          <div className="flex h-full min-h-0 flex-col touch-manipulation">
+            {/* HEADER fixed */}
+            <div className="shrink-0 flex items-center justify-between rounded-t-[24px] px-5 py-4">
               <div className="flex items-center gap-3">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#DFE3E8] text-[11px] font-bold">
                   {cardCount}
                 </span>
 
-                {/* ✅ Title / Inline rename */}
                 {!isRenaming ? (
                   <div className="text-[17px] font-semibold text-ink dark:text-white">
                     {props.list.title}
@@ -135,10 +137,7 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
                     ref={renameInputRef}
                     value={renameValue}
                     onChange={(e) => setRenameValue(e.target.value)}
-                    onBlur={() => {
-                      // onBlur triggers rename commit
-                      void commitRename();
-                    }}
+                    onBlur={() => void commitRename()}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
@@ -174,10 +173,7 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
                         `add-card-${props.list.kanbanListId}`
                       );
                       if (el) {
-                        el.scrollIntoView({
-                          behavior: "smooth",
-                          block: "start",
-                        });
+                        el.scrollIntoView({ behavior: "smooth", block: "start" });
                         const input = el.querySelector("input");
                         if (input) (input as HTMLInputElement).focus();
                       }
@@ -188,7 +184,6 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
                   <Plus className="h-3 w-3" />
                 </button>
 
-                {/* ✅ Menu: rename is inline */}
                 <ListMenu
                   listId={props.list.kanbanListId}
                   listIndex={props.listIndex}
@@ -197,7 +192,6 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
                   onRename={startRename}
                 />
 
-                {/* ✅ drag handle only */}
                 <div
                   className="cursor-grab active:cursor-grabbing"
                   {...provided.dragHandleProps}
@@ -214,14 +208,19 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
               </div>
             </div>
 
+            {/* ✅ Cards area: ONLY this scrolls in Dense mode */}
             <Droppable droppableId={props.list.id}>
               {(dropProvided) => (
                 <div
-                  className="flex min-h-[50px] flex-col"
                   {...dropProvided.droppableProps}
                   ref={dropProvided.innerRef}
+                  className={classNames(
+                    "flex-1 min-h-0",
+                    props.dense ? "overflow-y-auto kanban-scroll" : "",
+                    "px-4 pb-4 pt-3"
+                  )}
                 >
-                  <div className="space-y-3 px-4 pb-4 pt-3">
+                  <div className="space-y-3">
                     <div id={`add-card-${props.list.kanbanListId}`}>
                       {showAddCard && (
                         <AddCardForm

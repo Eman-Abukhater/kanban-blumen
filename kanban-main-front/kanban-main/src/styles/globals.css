@@ -30,7 +30,10 @@ html,
 body {
   scrollbar-width: thin;
   scrollbar-color: var(--sb-thumb) var(--sb-track);
+
+
 }
+
 
 /* ✅ Apply this class to ANY scroll container (vertical or horizontal) */
 @layer utilities {

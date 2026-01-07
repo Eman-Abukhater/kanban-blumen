@@ -23,6 +23,7 @@ export default function Document() {
     <Html lang="en" className="dark">
       <Head>
         <script dangerouslySetInnerHTML={{ __html: setInitialTheme }} />
+
       </Head>
       <body>
         <Main />
