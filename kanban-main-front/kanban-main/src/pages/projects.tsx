@@ -839,7 +839,7 @@ export default function ProjectsList() {
                 </button>
                 <button
                   onClick={handleDeleteProject}
-                  className="btn bg-red-600 text-white hover:bg-red-700"
+                  className="btn bg-red-600 text-white hover:bg-red-700 rounded-[10px] px-2 py-2 text-sm font-semibold hover:opacity-95"
                 >
                   Delete
                 </button>

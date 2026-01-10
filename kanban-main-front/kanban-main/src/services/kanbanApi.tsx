@@ -139,19 +139,17 @@ export async function deleteProject(
   projectId: number
 ): Promise<AddCustomResponse<any> | null> {
   try {
-    const response = await apiClient.delete(`/projects/${projectId}`);
+    const response = await apiClient.delete(`/projects/${projectId}`, {
+      timeout: 30000, // ✅ 30s just for delete
+    });
 
-    const customResponse: AddCustomResponse<any> = {
-      status: response.status,
-      data: response.data,
-    };
-
-    return customResponse;
+    return { status: response.status, data: response.data };
   } catch (error: any) {
     console.error("Error deleting project:", error);
     return null;
   }
 }
+
 // ✅ Delete List (admin)
 export async function deleteList(listId: number): Promise<AddCustomResponse<any> | null> {
   try {

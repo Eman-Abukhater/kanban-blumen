@@ -42,6 +42,14 @@ type SortField = "id" | "title" | "task";
 
 const BOARDS_CACHE_PREFIX = "blumen-boards-cache-";
 
+// ✅ Delete confirm modal state
+type DeleteBoardModalState = {
+  isOpen: boolean;
+  boardId: number | null;
+  boardTitle: string;
+  isLoading: boolean;
+};
+
 export default function BoardListPage() {
   const {
     userInfo,
@@ -89,6 +97,46 @@ export default function BoardListPage() {
 
   // 🔹 did we hydrate from cache?
   const [hasCachedBoards, setHasCachedBoards] = useState(false);
+
+  // ✅ delete confirm modal
+  const [deleteBoardModal, setDeleteBoardModal] =
+    useState<DeleteBoardModalState>({
+      isOpen: false,
+      boardId: null,
+      boardTitle: "",
+      isLoading: false,
+    });
+
+  const openDeleteBoardConfirm = (board: ApiBoard) => {
+    setDeleteBoardModal({
+      isOpen: true,
+      boardId: board.boardId,
+      boardTitle: board.title,
+      isLoading: false,
+    });
+  };
+
+  const closeDeleteBoardConfirm = () => {
+    setDeleteBoardModal((prev) => ({
+      ...prev,
+      isOpen: false,
+      boardId: null,
+      boardTitle: "",
+      isLoading: false,
+    }));
+  };
+
+  // ✅ close delete modal on ESC
+  useEffect(() => {
+    if (!deleteBoardModal.isOpen) return;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeDeleteBoardConfirm();
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [deleteBoardModal.isOpen]);
 
   // ───────────────────────
   // Route change tracking
@@ -416,15 +464,16 @@ export default function BoardListPage() {
     }
   };
 
-  const handleDeleteBoard = async (boardId: number) => {
+  // ✅ Confirm delete board (called from modal)
+  const handleConfirmDeleteBoard = async () => {
     if (!userInfo) return;
 
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this board?"
-    );
-    if (!confirmed) return;
+    const boardId = deleteBoardModal.boardId;
+    if (!boardId) return;
 
     try {
+      setDeleteBoardModal((prev) => ({ ...prev, isLoading: true }));
+
       const res = await DeleteBoard(boardId);
 
       if (!res || res.status !== 200) {
@@ -446,6 +495,7 @@ export default function BoardListPage() {
           setBoards((prev) => prev.filter((b) => b.boardId !== boardId));
         }
 
+        setDeleteBoardModal((prev) => ({ ...prev, isLoading: false }));
         return;
       }
 
@@ -457,10 +507,12 @@ export default function BoardListPage() {
           : (res.data as any)?.message || "Board deleted successfully";
 
       toast.success(successMsg, { position: toast.POSITION.TOP_CENTER });
+      closeDeleteBoardConfirm();
     } catch (e: any) {
       toast.error(e?.message || "Failed to delete board.", {
         position: toast.POSITION.TOP_CENTER,
       });
+      setDeleteBoardModal((prev) => ({ ...prev, isLoading: false }));
     }
   };
 
@@ -556,14 +608,14 @@ export default function BoardListPage() {
           onChangeViewMode={(mode) => setIsTableView(mode === "table")}
         />
 
-<section className="mx-auto w-full px-4 py-6">
+        <section className="mx-auto w-full px-4 py-6">
           {/* If userInfo or route params not ready, show skeleton (no blank screen) */}
           {!userInfo || fkpoid == null || isNavigating ? (
-<div
-  className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 ${
-    dense ? "gap-4" : "gap-5"
-  }`}
->
+            <div
+              className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 ${
+                dense ? "gap-4" : "gap-5"
+              }`}
+            >
               <BoardCardSkeleton count={6} />
             </div>
           ) : (
@@ -572,11 +624,11 @@ export default function BoardListPage() {
               {!isTableView && (
                 <>
                   {showSkeleton ? (
-<div
-  className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 ${
-    dense ? "gap-4" : "gap-5"
-  }`}
->
+                    <div
+                      className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 ${
+                        dense ? "gap-4" : "gap-5"
+                      }`}
+                    >
                       <BoardCardSkeleton count={6} />
                     </div>
                   ) : total === 0 ? (
@@ -597,12 +649,12 @@ export default function BoardListPage() {
                     </div>
                   ) : (
                     <div
-  className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 ${
-    dense ? "gap-4" : "gap-5"
-  }`}
->
-
+                      className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 ${
+                        dense ? "gap-4" : "gap-5"
+                      }`}
+                    >
                       {isCreatingBoard && <BoardCardSkeleton count={1} />}
+
                       {paginatedBoards.map((board) => (
                         <BoardCard
                           key={board.boardId}
@@ -616,7 +668,7 @@ export default function BoardListPage() {
                           ]}
                           onAdd={() => handleAddClick(board)}
                           onEdit={() => openEditModal(board)}
-                          onDelete={() => handleDeleteBoard(board.boardId)}
+                          onDelete={() => openDeleteBoardConfirm(board)} // ✅ modal instead of window.confirm
                         />
                       ))}
                     </div>
@@ -800,7 +852,9 @@ export default function BoardListPage() {
                             {String(board.boardId).padStart(3, "0")}
                           </div>
 
-                          <div className="flex-1">{board.title || "Board title"}</div>
+                          <div className="flex-1">
+                            {board.title || "Board title"}
+                          </div>
 
                           <div className="w-24 text-slate600 dark:text-slate500_80">
                             20+
@@ -827,8 +881,8 @@ export default function BoardListPage() {
 
                             <button
                               type="button"
-                              title="More"
-                              onClick={() => openEditModal(board)}
+                              title="Delete board"
+                              onClick={() => openDeleteBoardConfirm(board)} // ✅ delete modal in table view too
                               className="rounded-full p-1.5 hover:bg-slate500_08 dark:hover:bg-slate500_20"
                             >
                               <MoreVertical className="h-4 w-4 text-slate600 dark:text-slate500_80" />
@@ -843,115 +897,164 @@ export default function BoardListPage() {
             </>
           )}
         </section>
-{!isLoading && total > 0 && (
-  <div className="mx-auto flex w-full items-center justify-between gap-3 px-4 pb-6 pt-4 text-[13px] text-[#212B36] dark:text-slate500_80">
-    {/* LEFT */}
-    <button
-      type="button"
-      onClick={() => setDense((d) => !d)}
-      className="flex shrink-0 items-center gap-2"
-    >
-      <span
-        className={`
-          relative inline-flex h-5 w-9 items-center rounded-full transition-colors
-          ${dense ? "bg-ink dark:bg-ink" : "bg-slate500_20 dark:bg-[#919EAB7A]"}
-        `}
-      >
-        <span
-          className={`
-            inline-block h-4 w-4 rounded-full bg-white shadow-soft transform transition-transform
-            ${dense ? "translate-x-[18px]" : "translate-x-[2px]"}
-          `}
-        />
-      </span>
 
-      <span className="whitespace-nowrap text-[#212B36] dark:text-[#E5EAF1]">
-        Dense
-      </span>
-    </button>
-
-    {/* RIGHT */}
-    <div className="flex min-w-0 flex-1 items-center justify-end gap-5">
-      <div className="flex min-w-0 flex-wrap items-center justify-end gap-x-5 gap-y-2">
-        {/* Rows per page */}
-        <div className="flex items-center gap-2">
-          <span className="hidden whitespace-nowrap text-[#637381] dark:text-slate500_80 sm:inline">
-            Rows per page:
-          </span>
-
-          <div className="relative">
+        {!isLoading && total > 0 && (
+          <div className="mx-auto flex w-full items-center justify-between gap-3 px-4 pb-6 pt-4 text-[13px] text-[#212B36] dark:text-slate500_80">
+            {/* LEFT */}
             <button
               type="button"
-              onClick={() => setRowsMenuOpen((o) => !o)}
-              className="flex items-center gap-1 whitespace-nowrap text-[13px] text-[#111827] dark:text-[#F9FAFB]"
+              onClick={() => setDense((d) => !d)}
+              className="flex shrink-0 items-center gap-2"
             >
-              {rowsPerPage}
-              <ChevronDown className="h-4 w-4 text-slate500 dark:text-slate500_80" />
+              <span
+                className={`
+                  relative inline-flex h-5 w-9 items-center rounded-full transition-colors
+                  ${
+                    dense
+                      ? "bg-ink dark:bg-ink"
+                      : "bg-slate500_20 dark:bg-[#919EAB7A]"
+                  }
+                `}
+              >
+                <span
+                  className={`
+                    inline-block h-4 w-4 rounded-full bg-white shadow-soft transform transition-transform
+                    ${dense ? "translate-x-[18px]" : "translate-x-[2px]"}
+                  `}
+                />
+              </span>
+
+              <span className="whitespace-nowrap text-[#212B36] dark:text-[#E5EAF1]">
+                Dense
+              </span>
             </button>
 
-            {rowsMenuOpen && (
-              <div className="absolute right-0 mt-1 w-20 rounded-[12px] border border-slate500_20 bg-white/98 shadow-[0_18px_45px_rgba(145,158,171,0.24)] dark:border-[#1F2937] dark:bg-[#050B14]">
-                {[3, 5, 6, 9].map((option) => (
+            {/* RIGHT */}
+            <div className="flex min-w-0 flex-1 items-center justify-end gap-5">
+              <div className="flex min-w-0 flex-wrap items-center justify-end gap-x-5 gap-y-2">
+                {/* Rows per page */}
+                <div className="flex items-center gap-2">
+                  <span className="hidden whitespace-nowrap text-[#637381] dark:text-slate500_80 sm:inline">
+                    Rows per page:
+                  </span>
+
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setRowsMenuOpen((o) => !o)}
+                      className="flex items-center gap-1 whitespace-nowrap text-[13px] text-[#111827] dark:text-[#F9FAFB]"
+                    >
+                      {rowsPerPage}
+                      <ChevronDown className="h-4 w-4 text-slate500 dark:text-slate500_80" />
+                    </button>
+
+                    {rowsMenuOpen && (
+                      <div className="absolute right-0 mt-1 w-20 rounded-[12px] border border-slate500_20 bg-white/98 shadow-[0_18px_45px_rgba(145,158,171,0.24)] dark:border-[#1F2937] dark:bg-[#050B14]">
+                        {[3, 5, 6, 9].map((option) => (
+                          <button
+                            key={option}
+                            type="button"
+                            onClick={() => handleChangeRowsPerPage(option)}
+                            className={`
+                              flex w-full items-center justify-between px-3 py-1 text-left text-[13px]
+                              hover:bg-slate500_08 dark:hover:bg-white/5
+                              ${
+                                rowsPerPage === option
+                                  ? "font-semibold text-[#111827] dark:text-white"
+                                  : "text-[#637381] dark:text-slate500_80"
+                              }
+                            `}
+                          >
+                            <span>{option}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Range */}
+                <span className="whitespace-nowrap text-[#212B36] dark:text-slate500_80">
+                  {total === 0
+                    ? "0-0 of 0"
+                    : `${startIndex + 1}-${endIndex} of ${total}`}
+                </span>
+
+                {/* Pagination */}
+                <div className="flex items-center gap-2">
                   <button
-                    key={option}
                     type="button"
-                    onClick={() => handleChangeRowsPerPage(option)}
-                    className={`
-                      flex w-full items-center justify-between px-3 py-1 text-left text-[13px]
-                      hover:bg-slate500_08 dark:hover:bg-white/5
-                      ${
-                        rowsPerPage === option
-                          ? "font-semibold text-[#111827] dark:text-white"
-                          : "text-[#637381] dark:text-slate500_80"
-                      }
-                    `}
+                    onClick={handlePrev}
+                    disabled={!canPrev}
+                    className={`flex h-5 w-5 items-center justify-center ${
+                      !canPrev
+                        ? "cursor-default text-slate300 dark:text-slate600"
+                        : "text-slate500 hover:text-slate900 dark:text-slate500_80 dark:hover:text-white"
+                    }`}
                   >
-                    <span>{option}</span>
+                    <ChevronLeft className="h-4 w-4" />
                   </button>
-                ))}
+
+                  <button
+                    type="button"
+                    onClick={handleNext}
+                    disabled={!canNext}
+                    className={`flex h-5 w-5 items-center justify-center ${
+                      !canNext
+                        ? "cursor-default text-slate300 dark:text-slate600"
+                        : "text-slate500 hover:text-slate900 dark:text-slate500_80 dark:hover:text-white"
+                    }`}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
-            )}
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Range */}
-        <span className="whitespace-nowrap text-[#212B36] dark:text-slate500_80">
-          {total === 0 ? "0-0 of 0" : `${startIndex + 1}-${endIndex} of ${total}`}
-        </span>
-
-        {/* Pagination */}
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handlePrev}
-            disabled={!canPrev}
-            className={`flex h-5 w-5 items-center justify-center ${
-              !canPrev
-                ? "cursor-default text-slate300 dark:text-slate600"
-                : "text-slate500 hover:text-slate900 dark:text-slate500_80 dark:hover:text-white"
-            }`}
+        {/* ✅ Delete Board Confirm Modal */}
+        {deleteBoardModal.isOpen && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+            onMouseDown={(e) => {
+              // click outside closes
+              if (e.target === e.currentTarget) closeDeleteBoardConfirm();
+            }}
           >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
+            <div className="w-full max-w-md rounded-[12px] border border-slate500_20 bg-surface p-6 shadow-soft dark:border-slate500_20 dark:bg-[#1B232D]">
+              <h3 className="text-xl font-bold text-ink dark:text-white">
+                Delete Board?
+              </h3>
 
-          <button
-            type="button"
-            onClick={handleNext}
-            disabled={!canNext}
-            className={`flex h-5 w-5 items-center justify-center ${
-              !canNext
-                ? "cursor-default text-slate300 dark:text-slate600"
-                : "text-slate500 hover:text-slate900 dark:text-slate500_80 dark:hover:text-white"
-            }`}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
+              <p className="mt-2 text-slate600 dark:text-slate500_80">
+                Are you sure you want to delete{" "}
+                <span className="font-semibold">
+                  &ldquo;{deleteBoardModal.boardTitle}&rdquo;
+                </span>
+                ? This action cannot be undone.
+              </p>
 
+              <div className="mt-6 flex justify-end gap-2">
+                <button
+                  onClick={closeDeleteBoardConfirm}
+                  className="btn btn-outline"
+                  disabled={deleteBoardModal.isLoading}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  onClick={handleConfirmDeleteBoard}
+                  disabled={deleteBoardModal.isLoading}
+                  className="btn rounded-[10px] bg-red-600 px-2 py-2 text-sm font-semibold text-white hover:bg-red-700 hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {deleteBoardModal.isLoading ? "Deleting..." : "Delete"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <AddEditBoardModal
           isOpen={isModalOpen}
@@ -960,8 +1063,6 @@ export default function BoardListPage() {
           handleAddBoardClick={handleAddBoardClick}
           board={selectedBoard}
         />
-
-       
       </Shell>
     </>
   );
