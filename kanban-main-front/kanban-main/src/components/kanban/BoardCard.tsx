@@ -127,7 +127,7 @@ export default function BoardCard({
             </div>
           </div>
 
-          <h3 className="mb-3 text-[16px] font-semibold leading-[24px] text-ink dark:text-white">
+<h3 className="mb-3 min-w-0 whitespace-normal break-all text-[16px] font-semibold leading-[24px] text-ink dark:text-white">
             {title}
           </h3>
 

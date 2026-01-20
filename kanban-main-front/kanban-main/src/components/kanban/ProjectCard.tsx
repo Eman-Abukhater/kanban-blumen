@@ -138,9 +138,9 @@ export default function ProjectCard({ project, onView, onEdit, onDelete }: Props
         </div>
 
         {/* Title */}
-        <h3 className="mt-1 text-[16px] font-semibold leading-[24px] text-ink dark:text-white">
-          {project?.title || "Need to collect all employee NID"}
-        </h3>
+<h3 className="mt-1 min-w-0 text-[16px] font-semibold leading-[24px] text-ink dark:text-white whitespace-normal break-all">
+  {project?.title || "Need to collect all employee NID"}
+</h3>
 
         {/* Meta rows */}
         <div className="mt-3 space-y-2.5 text-[13px] leading-[18px]">

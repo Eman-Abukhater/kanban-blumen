@@ -32,7 +32,7 @@ export interface CardModalProps {
 }
 
 // ✅ Single (default) tag color — no color picking anymore
-const TAG_BLUE = "bg-blue-400 text-white";
+const TAG_BLUE = "bg-[#FFAB00] text-white";
 
 export function CardModal(props: CardModalProps) {
   const descTextAreaRef = useRef<HTMLTextAreaElement>(null);
@@ -693,7 +693,7 @@ const doneTitle = useMemo(() => {
                       </div>
 
                       {/* ================= CONTENT ================= */}
-                      <div className="relative flex-1 overflow-y-auto px-6 py-6">
+<div className="card-modal-scroll relative flex-1 overflow-y-auto px-6 py-6">
                         <div className="pointer-events-none absolute inset-0" />
                         <div className="relative z-10">
                           {/* Title input */}
@@ -719,56 +719,80 @@ const doneTitle = useMemo(() => {
                           {/* ============= OVERVIEW TAB ============= */}
                           {activeTab === "overview" && (
                             <div className="mt-6 grid grid-cols-[110px,1fr] items-start gap-x-8 gap-y-6">
-                              {/* Tag */}
-                              <div className="pt-2 text-[13px] font-medium text-[#637381] dark:text-slate500_80">
-                                Tag
-                              </div>
+{/* Tag */}
+<div className="pt-2 text-[13px] font-medium text-[#637381] dark:text-slate500_80">
+  Tag
+</div>
 
-                              <div className="flex flex-wrap items-center gap-2">
-                                {kanbanTags.map((tag, index) => (
-                                  <div
-                                    key={tag.kanbanTagId ?? index}
-                                    className="inline-flex items-center gap-2 rounded-[10px] bg-[#D0F2FF] px-2 py-1 text-[11px] font-semibold text-[#006C9C]"
-                                  >
-                                    <span className="leading-none">{tag.title}</span>
+<div className="flex flex-wrap items-center gap-2">
+  {kanbanTags.map((tag, index) => (
+    <div
+      key={tag.kanbanTagId ?? index}
+      className="
+        inline-flex items-center gap-2
+        rounded-[18px]
+        px-3 py-2
+        text-[13px] font-semibold
+        bg-[#FFAB00]/10 text-[#FFAB00]
+        dark:bg-[#FFAB00]/18 dark:text-[#FFAB00]
+      "
+    >
+      <span className="leading-none">{tag.title}</span>
 
-                                    <button
-                                      type="button"
-                                      onClick={() => handleDeleteTag(index, tag.kanbanTagId)}
-                                      disabled={isDeletingTag === tag.kanbanTagId}
-                                      aria-label="Delete tag"
-                                    >
-                                      <img
-                                        src="/icons/tag-delete-icon.png"
-                                        alt=""
-                                        className="h-4 w-4"
-                                      />
-                                    </button>
-                                  </div>
-                                ))}
+<button
+  type="button"
+  onClick={() => handleDeleteTag(index, tag.kanbanTagId)}
+  disabled={isDeletingTag === tag.kanbanTagId}
+  aria-label="Delete tag"
+  className="
+    inline-flex h-5 w-5 items-center justify-center
+    rounded-full
+    bg-[#FFAB00]/30 text-[#637381]
+    hover:bg-[#FFAB00]/40
+    disabled:opacity-50
+    dark:bg-[#FFAB00]/30 dark:text-[#141A21]
+  "
+>
+  <svg
+    viewBox="0 0 24 24"
+    className="h-3 w-3"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.5"
+    strokeLinecap="round"
+  >
+    <path d="M7 7l10 10M17 7L7 17" />
+  </svg>
+</button>
 
-                                {isCreatingTag && (
-                                  <div className="h-8 w-24 animate-pulse rounded-md bg-slate500_12 dark:bg-slate500_20" />
-                                )}
 
-                                {kanbanTags.length < 6 && (
-                                  <button
-                                    type="button"
-                                    onClick={() => setOpenTagModal(true)}
-                                    disabled={isCreatingTag}
-                                    className="inline-flex h-8 items-center justify-center rounded-md border border-dashed border-slate500_20 px-3 text-[13px] font-medium text-slate500 hover:bg-slate500_12 dark:border-slate500_48 dark:text-slate500_80"
-                                  >
-                                    <PlusIcon className="mr-1 h-4 w-4" />
-                                    Add tag
-                                  </button>
-                                )}
+    </div>
+  ))}
 
-                                <CreateTagModal
-                                  show={openTagModal}
-                                  handleClose={setOpenTagModal}
-                                  handleSubmit={handleCreateTag}
-                                />
-                              </div>
+  {isCreatingTag && (
+    <div className="h-8 w-24 animate-pulse rounded-md bg-slate500_12 dark:bg-slate500_20" />
+  )}
+
+  {kanbanTags.length < 6 && (
+    <button
+      type="button"
+      onClick={() => setOpenTagModal(true)}
+      disabled={isCreatingTag}
+      className="inline-flex h-8 items-center justify-center rounded-md border border-dashed border-slate500_20 px-3 text-[13px] font-medium text-slate500 hover:bg-slate500_12 dark:border-slate500_48 dark:text-slate500_80"
+    >
+      <PlusIcon className="mr-1 h-4 w-4" />
+      Add tag
+    </button>
+  )}
+
+  <CreateTagModal
+    show={openTagModal}
+    handleClose={setOpenTagModal}
+    handleSubmit={handleCreateTag}
+  />
+</div>
+
+
 
                               {/* Due date */}
                               <div className="pt-2 text-[13px] font-medium text-[#637381] dark:text-slate500_80">
@@ -791,7 +815,8 @@ const doneTitle = useMemo(() => {
                               </div>
                               <textarea
                                 ref={descTextAreaRef}
-                                className="min-h-[96px] w-full resize-none rounded-[12px] border border-slate500_12 bg-white/60 px-4 py-3 text-[15px] text-ink outline-none dark:border-slate500_20 dark:bg-white/5 dark:text-white"
+                                className="card-desc-scroll
+ min-h-[96px] w-full resize-none rounded-[12px] border border-slate500_12 bg-white/60 px-4 py-3 text-[15px] text-ink outline-none dark:border-slate500_20 dark:bg-white/5 dark:text-white "
                                 placeholder="Add a short description..."
                                 value={desc}
                                 onChange={(e) => setDesc(e.target.value)}
@@ -875,53 +900,25 @@ const doneTitle = useMemo(() => {
                                   </button>
                                 </div>
 
-                                {/* Assignee */}
-                                <div className="pt-2 text-[13px] font-medium text-[#637381] dark:text-slate500_80">
-                                  Assignee
-                                </div>
-                                <div className="flex flex-wrap items-center gap-2">
-                                  {assigneeAvatars.map((src, index) => (
-                                    <div
-                                      key={index}
-                                      className="h-9 w-9 overflow-hidden rounded-full ring-2 ring-white dark:ring-[#141A21]"
-                                    >
-                                      <img
-                                        src={src}
-                                        alt={`Assignee ${index + 1}`}
-                                        className="h-full w-full object-cover"
-                                      />
-                                    </div>
-                                  ))}
-
-                                  <button
-                                    type="button"
-                                    className="flex h-9 w-9 items-center justify-center rounded-full border border-dashed border-slate500_20 text-slate500 hover:bg-slate500_08 dark:border-slate500_48 dark:text-slate500_80"
-                                  >
-                                    <PlusIcon className="h-4 w-4" />
-                                  </button>
-                                </div>
+                               
+                              
 
                                 {/* Completed */}
                                 <div className="pt-2 text-[13px] font-medium text-[#637381] dark:text-slate500_80">
                                   Completed
                                 </div>
                                 <div className="flex items-center">
-                           <input
-  type="checkbox"
-  className="h-4 w-4 rounded-[5px] border-1 border-[#637381]"
-  checked={completed}
-  onChange={() => {
+<button
+  type="button"
+  onClick={() => {
     setCompleted((prev) => {
       const next = !prev;
 
       if (next) {
-        // ✅ going to Done
         if (normalize(status) !== "done") lastNonDoneStatusRef.current = status;
-
-        setStatus(doneTitle);           // update dropdown text
-        moveCardOptimistic(doneTitle);  // move card to Done column immediately
+        setStatus(doneTitle);
+        moveCardOptimistic(doneTitle);
       } else {
-        // ✅ going back from Done -> last non-done status (or fallback)
         const fallback =
           lastNonDoneStatusRef.current &&
           normalize(lastNonDoneStatusRef.current) !== "done"
@@ -929,15 +926,37 @@ const doneTitle = useMemo(() => {
             : statusOptions.find((s) => normalize(s) !== "done") || "In progress";
 
         if (normalize(fallback) !== "done") lastNonDoneStatusRef.current = fallback;
-
-        setStatus(fallback);           // update dropdown text
-        moveCardOptimistic(fallback);  // move card back immediately
+        setStatus(fallback);
+        moveCardOptimistic(fallback);
       }
 
       return next;
     });
   }}
-/>
+  aria-pressed={completed}
+  className={[
+    "flex h-5 w-5 items-center justify-center rounded-[6px] border transition",
+    completed
+      ? "border-[#FFAB00] bg-[#FFAB00]"
+      : "border-[#637381] bg-transparent",
+  ].join(" ")}
+>
+  {/* check icon */}
+  <svg
+    className={completed ? "h-4 w-4 text-white" : "hidden"}
+    viewBox="0 0 20 20"
+    fill="currentColor"
+  >
+    <path
+      fillRule="evenodd"
+      d="M16.707 5.293a1 1 0 010 1.414l-7.5 7.5a1 1 0 01-1.414 0l-3.5-3.5a1 1 0 011.414-1.414l2.793 2.793 6.793-6.793a1 1 0 011.414 0z"
+      clipRule="evenodd"
+    />
+  </svg>
+</button>
+
+
+
 
                                 </div>
 

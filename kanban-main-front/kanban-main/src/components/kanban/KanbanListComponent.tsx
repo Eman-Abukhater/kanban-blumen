@@ -122,9 +122,9 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
           {/* ✅ IMPORTANT: h-full + min-h-0 so only the cards area scrolls */}
           <div className="flex h-full min-h-0 flex-col touch-manipulation">
             {/* HEADER fixed */}
-            <div className="shrink-0 flex items-center justify-between rounded-t-[24px] px-5 py-4">
+<div className="relative z-20 shrink-0 flex items-center justify-between rounded-t-[24px] px-5 py-4 overflow-visible">
               <div className="flex items-center gap-3">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#DFE3E8] text-[11px] font-bold">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#DFE3E8] text-[11px] font-bold text-[#637381]">
                   {cardCount}
                 </span>
 
@@ -214,11 +214,12 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
                 <div
                   {...dropProvided.droppableProps}
                   ref={dropProvided.innerRef}
-                  className={classNames(
-                    "flex-1 min-h-0",
-                    props.dense ? "overflow-y-auto kanban-scroll" : "",
-                    "px-4 pb-4 pt-3"
-                  )}
+                className={classNames(
+  "relative z-0 flex-1 min-h-0",
+  props.dense ? "overflow-y-auto kanban-scroll" : "",
+  "px-4 pb-4 pt-3"
+)}
+
                 >
                   <div className="space-y-3">
                     <div id={`add-card-${props.list.kanbanListId}`}>

@@ -1,6 +1,6 @@
 // src/components/kanban/DueDateModal.tsx
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { Dialog, Transition } from "@headlessui/react";
+import { Dialog, Transition, Menu } from "@headlessui/react";
 import dayjs, { Dayjs } from "dayjs";
 import { DateValueType } from "react-tailwindcss-datepicker/dist/types";
 
@@ -12,6 +12,9 @@ type Props = {
 };
 
 const WEEK = ["S", "M", "T", "W", "T", "F", "S"];
+
+// Brand
+const BRAND_YELLOW = "#FFAB00";
 
 const toDay = (d: any): Dayjs | null => {
   if (!d) return null;
@@ -191,6 +194,116 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
     setMobileStep("form");
   };
 
+  // ===== Month dropdown (functional arrow) =====
+  const MONTHS = useMemo(
+    () => Array.from({ length: 12 }, (_, i) => dayjs().month(i).format("MMMM")),
+    []
+  );
+
+  const setMonthForSide = (side: "left" | "right", monthIndex: number) => {
+    if (side === "left") {
+      setLeftMonth((m) => m.month(monthIndex).startOf("month"));
+    } else {
+      // rightMonth is leftMonth + 1
+      // if user chooses month for right calendar => set leftMonth = chosenMonth - 1
+      setLeftMonth((m) =>
+        m
+          .add(1, "month")
+          .month(monthIndex)
+          .startOf("month")
+          .subtract(1, "month")
+      );
+    }
+  };
+
+  const setYearForSide = (side: "left" | "right", year: number) => {
+    if (side === "left") {
+      setLeftMonth((m) => m.year(year).startOf("month"));
+    } else {
+      setLeftMonth((m) =>
+        m.add(1, "month").year(year).startOf("month").subtract(1, "month")
+      );
+    }
+  };
+
+  const renderMonthTitle = (month: Dayjs, side: "left" | "right") => {
+    return (
+      <Menu as="div" className="relative">
+        <Menu.Button
+          type="button"
+          className="
+            inline-flex items-center gap-2
+            text-[18px] font-semibold text-[#1C252E]
+            dark:text-white
+            hover:opacity-90
+          "
+        >
+          {month.format("MMMM YYYY")}
+       
+        </Menu.Button>
+
+        <Menu.Items
+          className="
+            absolute left-0 z-[9999] mt-2 w-56
+            rounded-[16px] border border-slate500_12 bg-white p-2
+            shadow-[0_18px_45px_rgba(15,23,42,0.12)]
+            dark:border-white/10 dark:bg-[#1B232D]
+            dark:shadow-[0_18px_45px_rgba(0,0,0,0.45)]
+          "
+        >
+          {/* Months */}
+          <div className="grid grid-cols-2 gap-1">
+            {MONTHS.map((mName, idx) => (
+              <Menu.Item key={mName}>
+                {({ active }) => (
+                  <button
+                    type="button"
+                    onClick={() => setMonthForSide(side, idx)}
+                    className={[
+                      "rounded-[12px] px-3 py-2 text-left text-[13px] font-semibold",
+                      active ? "bg-slate500_08 dark:bg-white/10" : "",
+                      idx === month.month()
+                        ? `text-[${BRAND_YELLOW}]`
+                        : "text-[#1C252E] dark:text-white",
+                    ].join(" ")}
+                    style={idx === month.month() ? { color: BRAND_YELLOW } : undefined}
+                  >
+                    {mName}
+                  </button>
+                )}
+              </Menu.Item>
+            ))}
+          </div>
+
+          {/* Year controls */}
+          <div className="mt-3 flex items-center justify-between rounded-[12px] border border-slate500_12 px-3 py-2 dark:border-white/10">
+            <button
+              type="button"
+              onClick={() => setYearForSide(side, month.year() - 1)}
+              className="h-8 w-8 rounded-full text-[#637381] hover:bg-slate500_08 dark:text-white/70 dark:hover:bg-white/10"
+              aria-label="Previous year"
+            >
+              ‹
+            </button>
+
+            <div className="text-[13px] font-bold text-[#1C252E] dark:text-white">
+              {month.year()}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setYearForSide(side, month.year() + 1)}
+              className="h-8 w-8 rounded-full text-[#637381] hover:bg-slate500_08 dark:text-white/70 dark:hover:bg-white/10"
+              aria-label="Next year"
+            >
+              ›
+            </button>
+          </div>
+        </Menu.Items>
+      </Menu>
+    );
+  };
+
   const renderCalendar = (
     month: Dayjs,
     weeks: Array<Array<Dayjs | null>>,
@@ -210,16 +323,7 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
       >
         {/* Header */}
         <div className="mb-4 flex items-center justify-between">
-          <div className="inline-flex items-center gap-2 text-[18px] font-semibold text-[#1C252E] dark:text-white">
-            {month.format("MMMM YYYY")}
-            <svg className="h-4 w-4 opacity-70" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path
-                fillRule="evenodd"
-                d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.94a.75.75 0 111.08 1.04l-4.24 4.5a.75.75 0 01-1.08 0l-4.24-4.5a.75.75 0 01.02-1.06z"
-                clipRule="evenodd"
-              />
-            </svg>
-          </div>
+          {renderMonthTitle(month, side)}
 
           <div className="flex items-center gap-2">
             {showPrev ? (
@@ -277,7 +381,8 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
             const isStart = sameDay(d, start);
             const isEnd = sameDay(d, end);
             const hasRange = !!start && !!end;
-            const inRange = hasRange && start && end ? isBetweenInclusive(d, start, end) : false;
+            const inRange =
+              hasRange && start && end ? isBetweenInclusive(d, start, end) : false;
 
             const isToday = sameDay(d, today);
             const showTodayRing = isToday && !(isStart || isEnd);
@@ -289,13 +394,16 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
               "text-slate700 hover:bg-slate500_08 " +
               "dark:text-white dark:hover:bg-white/10";
 
+            // ✅ Range = Yellow 40%
             if (inRange)
               styles =
-                "bg-emerald-500/10 text-slate700 " +
-                "dark:bg-emerald-500/15 dark:text-white";
+                `bg-[${BRAND_YELLOW}]/40 text-[#1C252E] ` +
+                `dark:bg-[${BRAND_YELLOW}]/40 dark:text-white`;
 
-            if (isStart || isEnd) styles = "bg-emerald-500 text-white";
+            // ✅ Start/End = Yellow 100%
+            if (isStart || isEnd) styles = `bg-[${BRAND_YELLOW}] text-white`;
 
+            // Today ring (keep as-is)
             if (showTodayRing)
               styles =
                 "ring-1 ring-slate500 text-slate700 " +
@@ -442,6 +550,7 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
                           type="button"
                           onClick={() => setPickMonth((m) => m.subtract(1, "month"))}
                           className="h-9 w-9 rounded-full text-[#637381] hover:bg-slate500_08 dark:text-white/70 dark:hover:bg-white/10"
+                          aria-label="Prev month"
                         >
                           ‹
                         </button>
@@ -450,6 +559,7 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
                           type="button"
                           onClick={() => setPickMonth((m) => m.add(1, "month"))}
                           className="h-9 w-9 rounded-full text-[#637381] hover:bg-slate500_08 dark:text-white/70 dark:hover:bg-white/10"
+                          aria-label="Next month"
                         >
                           ›
                         </button>
@@ -480,7 +590,8 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
                         let styles =
                           "text-slate700 hover:bg-slate500_08 dark:text-white/85 dark:hover:bg-white/10";
 
-                        if (isSelected) styles = "bg-emerald-500 text-white";
+                        // ✅ Mobile selected = Yellow 100%
+                        if (isSelected) styles = `bg-[${BRAND_YELLOW}] text-white`;
 
                         if (showTodayRing)
                           styles =

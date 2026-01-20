@@ -25,18 +25,19 @@ export default function Topbar() {
   };
 
   return (
-<nav className="fixed left-0 right-0 top-0 z-30 bg-white dark:bg-[#141A21]">
-<div className="relative flex w-full items-center justify-between px-4 py-4">
-        {/* Logo */}
-        <div className="flex items-center">
-          <Image
-            src="/Logo.png"
-            alt="Blumen Cafe"
-            width={170}
-            height={70}
-            priority
-          />
-        </div>
+  <nav className="fixed left-0 right-0 top-0 z-30 bg-white dark:bg-[#141A21]">
+      <div className="mx-auto w-full max-w-[1320px] px-6">
+        <div className="relative flex h-[88px] items-center justify-between">
+          {/* Logo */}
+          <div className="flex items-center">
+            <Image
+              src="/Logo.png"
+              alt="Blumen Cafe"
+              width={170}
+              height={70}
+              priority
+            />
+          </div>
 
         {/* Avatar dropdown */}
         <Menu as="div" className="relative">
@@ -117,6 +118,7 @@ export default function Topbar() {
             </Menu.Items>
           </Transition>
         </Menu>
+        </div>
       </div>
     </nav>
   );

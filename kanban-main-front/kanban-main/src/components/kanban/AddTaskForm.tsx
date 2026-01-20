@@ -1,5 +1,5 @@
 import { CheckIcon, PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import CreatableSelect from "react-select/creatable";
 import type { StylesConfig } from "react-select";
@@ -21,14 +21,24 @@ type MemberOption = {
 
 export function AddTaskForm(props: IAddFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
+
   const [name, setName] = useState<string>("");
   const [showForm, setShowForm] = useState<boolean>(false);
 
   const [fetchedOptions, setFetchedOptions] = useState<MemberOption[]>([]);
   const [selectedOptions, setSelectedOptions] = useState<MemberOption[]>([]);
 
+  // ✅ validation states
+  const [nameTouched, setNameTouched] = useState(false);
+  const [assigneeTouched, setAssigneeTouched] = useState(false);
+
+  const nameError = nameTouched && !name.trim();
+  const assigneeError =
+    assigneeTouched && (!selectedOptions || selectedOptions.length === 0);
+
   const handleOnChange = (option: any) => {
     setSelectedOptions(option || []);
+    if ((option || []).length > 0) setAssigneeTouched(true);
   };
 
   useEffect(() => {
@@ -54,6 +64,8 @@ export function AddTaskForm(props: IAddFormProps) {
         setShowForm(false);
         setName("");
         setSelectedOptions([]);
+        setNameTouched(false);
+        setAssigneeTouched(false);
       }
     };
 
@@ -62,28 +74,48 @@ export function AddTaskForm(props: IAddFormProps) {
     return () => el?.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  const handleSubmit = async (event: FormEvent) => {
-    event.preventDefault();
-
-    if (!name.trim()) return;
-    if (!selectedOptions || selectedOptions.length === 0) return;
-
-    props.onSubmit(name.trim(), selectedOptions);
+  const resetAndClose = () => {
     setName("");
     setSelectedOptions([]);
+    setNameTouched(false);
+    setAssigneeTouched(false);
     setShowForm(false);
   };
 
-  /**
-   * ✅ react-select styles aligned to Kanban theme (no new colors)
-   */
-  const selectStyles: StylesConfig<MemberOption, true> = {
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+
+    setNameTouched(true);
+    setAssigneeTouched(true);
+
+    const trimmed = name.trim();
+    if (!trimmed) {
+      toast.error("Task name is required", { position: toast.POSITION.TOP_CENTER });
+      return;
+    }
+    if (!selectedOptions || selectedOptions.length === 0) {
+      toast.error("Assigned To is required", { position: toast.POSITION.TOP_CENTER });
+      return;
+    }
+
+    props.onSubmit(trimmed, selectedOptions);
+    resetAndClose();
+  };
+
+  const isDark =
+    typeof document !== "undefined" &&
+    document.documentElement.classList.contains("dark");
+
+  const ERROR = "#FF5630";
+
+  // ✅ Base select styles (same as yours)
+  const baseSelectStyles: StylesConfig<MemberOption, true> = {
     control: (base, state) => ({
       ...base,
       minHeight: 40,
       borderRadius: 12,
       borderWidth: 1,
-      borderColor: state.isFocused ? "#1C252E" : "rgba(145, 158, 171, 0.2)", // ink on focus, slate500_20 normal
+      borderColor: state.isFocused ? "#1C252E" : "rgba(145, 158, 171, 0.2)",
       boxShadow: "none",
       backgroundColor: "rgba(255,255,255,0.7)",
       cursor: "text",
@@ -91,16 +123,8 @@ export function AddTaskForm(props: IAddFormProps) {
         borderColor: state.isFocused ? "#1C252E" : "rgba(145, 158, 171, 0.48)",
       },
     }),
-    valueContainer: (base) => ({
-      ...base,
-      padding: "2px 10px",
-    }),
-    input: (base) => ({
-      ...base,
-      margin: 0,
-      padding: 0,
-      color: "#1C252E",
-    }),
+    valueContainer: (base) => ({ ...base, padding: "2px 10px" }),
+    input: (base) => ({ ...base, margin: 0, padding: 0, color: "#1C252E" }),
     placeholder: (base) => ({
       ...base,
       color: "#919EAB",
@@ -116,6 +140,8 @@ export function AddTaskForm(props: IAddFormProps) {
       backgroundColor: "#FFFFFF",
       zIndex: 9999,
     }),
+    // ✅ IMPORTANT: portal fixes clipping inside modal
+    menuPortal: (base) => ({ ...base, zIndex: 99999 }),
     option: (base, state) => ({
       ...base,
       fontSize: 13,
@@ -131,7 +157,7 @@ export function AddTaskForm(props: IAddFormProps) {
     multiValue: (base) => ({
       ...base,
       borderRadius: 9999,
-      backgroundColor: "rgba(145, 158, 171, 0.12)", // slate500_12
+      backgroundColor: "rgba(145, 158, 171, 0.12)",
     }),
     multiValueLabel: (base) => ({
       ...base,
@@ -142,67 +168,124 @@ export function AddTaskForm(props: IAddFormProps) {
     multiValueRemove: (base) => ({
       ...base,
       color: "#637381",
-      ":hover": {
-        backgroundColor: "rgba(145, 158, 171, 0.12)",
-        color: "#1C252E",
-      },
+      ":hover": { backgroundColor: "rgba(145, 158, 171, 0.12)", color: "#1C252E" },
     }),
   };
 
-  /**
-   * ✅ dark mode overrides for react-select
-   * We apply via classNamePrefix + global "dark" selector below (best),
-   * but for safety we also detect dark class and adjust minimal colors inline:
-   */
-  const isDark =
-    typeof document !== "undefined" &&
-    document.documentElement.classList.contains("dark");
+  // ✅ dark overrides + error border support
+  const selectStyles: StylesConfig<MemberOption, true> = {
+    ...baseSelectStyles,
+    control: (base, state) => {
+      const hasError = assigneeError;
+      const normalBorder = isDark
+        ? state.isFocused
+          ? "#FFFFFF"
+          : "rgba(145, 158, 171, 0.2)"
+        : state.isFocused
+        ? "#1C252E"
+        : "rgba(145, 158, 171, 0.2)";
 
-  const selectStylesDark: StylesConfig<MemberOption, true> = {
-    ...selectStyles,
-    control: (base, state) => ({
-      ...selectStyles.control!(base, state),
-      backgroundColor: "rgba(28, 37, 46, 0.6)", // ink-ish
-      borderColor: state.isFocused ? "#FFFFFF" : "rgba(145, 158, 171, 0.2)",
-    }),
-    input: (base) => ({
-      ...base,
-      color: "#FFFFFF",
-    }),
+      return {
+        ...(baseSelectStyles.control as any)(base, state),
+        backgroundColor: isDark ? "rgba(28, 37, 46, 0.6)" : "rgba(255,255,255,0.7)",
+        borderColor: hasError ? ERROR : normalBorder,
+        borderWidth: hasError ? 2 : 1,
+        ":hover": {
+          borderColor: hasError ? ERROR : normalBorder,
+        },
+      };
+    },
+    input: (base) => ({ ...base, color: isDark ? "#FFFFFF" : "#1C252E" }),
     placeholder: (base) => ({
       ...base,
-      color: "rgba(145, 158, 171, 0.8)",
+      color: isDark ? "rgba(145, 158, 171, 0.8)" : "#919EAB",
     }),
     menu: (base) => ({
       ...base,
-      backgroundColor: "#1B232D",
+      backgroundColor: isDark ? "#1B232D" : "#FFFFFF",
       border: "1px solid rgba(145, 158, 171, 0.2)",
-      boxShadow: "0 18px 45px rgba(0,0,0,0.45)",
+      boxShadow: isDark
+        ? "0 18px 45px rgba(0,0,0,0.45)"
+        : "0 18px 45px rgba(15,23,42,0.12)",
+      zIndex: 9999,
     }),
     option: (base, state) => ({
       ...base,
-      color: "#FFFFFF",
+      color: isDark ? "#FFFFFF" : "#1C252E",
       backgroundColor: state.isSelected
-        ? "rgba(255,255,255,0.06)"
+        ? isDark
+          ? "rgba(255,255,255,0.06)"
+          : "rgba(145, 158, 171, 0.12)"
         : state.isFocused
-        ? "rgba(255,255,255,0.06)"
+        ? isDark
+          ? "rgba(255,255,255,0.06)"
+          : "rgba(145, 158, 171, 0.12)"
         : "transparent",
     }),
     multiValue: (base) => ({
       ...base,
-      backgroundColor: "rgba(255,255,255,0.06)",
+      backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(145, 158, 171, 0.12)",
     }),
-    multiValueLabel: (base) => ({
-      ...base,
-      color: "#FFFFFF",
-    }),
+    multiValueLabel: (base) => ({ ...base, color: isDark ? "#FFFFFF" : "#1C252E" }),
+    menuPortal: (base) => ({ ...base, zIndex: 99999 }),
   };
+
+  /* =========================================================
+     ✅ NEW: Dynamic menu sizing (auto sizes based on available space)
+     - Works with portal + fixed position
+     - Recomputes on open + resize + scroll
+  ========================================================= */
+  const selectWrapRef = useRef<HTMLDivElement | null>(null);
+  const [menuMaxHeight, setMenuMaxHeight] = useState<number>(240);
+
+  const computeMenuMaxHeight = () => {
+    const wrap = selectWrapRef.current;
+    if (!wrap) return;
+
+    const control = wrap.querySelector(".assignTo__control") as HTMLElement | null;
+    if (!control) return;
+
+    const r = control.getBoundingClientRect();
+    const viewportH = window.innerHeight;
+
+    const spaceBelow = viewportH - r.bottom;
+    const spaceAbove = r.top;
+
+    // we allow auto flip; just cap height to the best available side
+    const bestSpace = Math.max(spaceBelow, spaceAbove);
+
+    // padding so it never touches edges
+    const pad = 16;
+
+    // clamp between 120 and 320 (tweak if you want)
+    const next = Math.max(120, Math.min(320, bestSpace - pad));
+    setMenuMaxHeight(next);
+  };
+
+  // When menu opens, compute
+  const handleMenuOpen = () => {
+    computeMenuMaxHeight();
+  };
+
+  // While open, keep it responsive to viewport changes
+  useEffect(() => {
+    if (!showForm) return;
+
+    const onWin = () => computeMenuMaxHeight();
+    window.addEventListener("resize", onWin);
+    window.addEventListener("scroll", onWin, true);
+
+    return () => {
+      window.removeEventListener("resize", onWin);
+      window.removeEventListener("scroll", onWin, true);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showForm]);
 
   return (
     <div>
       {showForm ? (
         <form ref={formRef} autoComplete="off" onSubmit={handleSubmit}>
-          {/* ✅ Card matches Kanban UI */}
           <div
             className="
               w-[340px]
@@ -215,35 +298,32 @@ export function AddTaskForm(props: IAddFormProps) {
               dark:bg-[#1B232D]
             "
           >
-            {/* ✅ Input matches your theme (no blue ring) */}
             <input
-              className="
-                w-full
-                rounded-[12px]
-                border border-slate500_20
-                bg-white/70
-                px-3 py-2
-                text-[14px] font-semibold text-ink
-                placeholder:text-slate500
-                outline-none
-                focus:border-ink focus:outline-none focus:ring-0
-                focus-visible:outline-none focus-visible:ring-0
-                dark:bg-[#1C252E]/60
-                dark:text-white
-                dark:placeholder:text-slate500_80
-                dark:focus:border-white
-              "
+              className={[
+                "w-full rounded-[12px] bg-white/70 px-3 py-2 text-[14px] font-semibold text-ink placeholder:text-slate500 outline-none",
+                "border",
+                nameError ? "border-2 border-[#FF5630]" : "border-slate500_20",
+                "focus:outline-none focus:ring-0",
+                "dark:bg-[#1C252E]/60 dark:text-white dark:placeholder:text-slate500_80",
+                nameError ? "dark:border-2 dark:border-[#FF5630]" : "dark:border-slate500_20",
+              ].join(" ")}
               placeholder={props.placeholder}
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              onBlur={() => setNameTouched(true)}
               maxLength={50}
               minLength={3}
               autoFocus
             />
 
-            {/* ✅ Select matches theme */}
-            <div className="mt-3">
+            {nameError && (
+              <div className="mt-2 text-[12px] font-semibold text-[#FF5630]">
+                Task name is required
+              </div>
+            )}
+
+            <div className="mt-3" ref={selectWrapRef}>
               <CreatableSelect
                 isClearable
                 closeMenuOnSelect={false}
@@ -251,11 +331,26 @@ export function AddTaskForm(props: IAddFormProps) {
                 placeholder="Assigned To"
                 options={fetchedOptions}
                 onChange={handleOnChange}
-                styles={isDark ? selectStylesDark : selectStyles}
+                onBlur={() => setAssigneeTouched(true)}
+                styles={selectStyles}
+                classNamePrefix="assignTo"
+                // ✅ THIS IS THE CORE OF “dynamic” behavior:
+                menuPlacement="auto"          // flips up/down automatically
+                menuPosition="fixed"          // shifts correctly in viewport/modals
+                maxMenuHeight={menuMaxHeight} // sizes based on available space
+                onMenuOpen={handleMenuOpen}   // recalc when opening
+                menuShouldBlockScroll={false}
+                // ✅ fixes cropping inside modal / scroll containers
+                menuPortalTarget={typeof document !== "undefined" ? document.body : null}
               />
             </div>
 
-            {/* ✅ Actions (theme buttons, no emerald/red) */}
+            {assigneeError && (
+              <div className="mt-2 text-[12px] font-semibold text-[#FF5630]">
+                Assigned To is required
+              </div>
+            )}
+
             <div className="mt-4 flex items-center justify-between">
               <button
                 className="
@@ -274,11 +369,7 @@ export function AddTaskForm(props: IAddFormProps) {
 
               <button
                 type="button"
-                onClick={() => {
-                  setName("");
-                  setSelectedOptions([]);
-                  setShowForm(false);
-                }}
+                onClick={resetAndClose}
                 className="
                   inline-flex h-9 w-9 items-center justify-center
                   rounded-[10px]
@@ -298,25 +389,24 @@ export function AddTaskForm(props: IAddFormProps) {
           </div>
         </form>
       ) : (
-  <button
-  type="button"
-  onClick={() => setShowForm(true)}
-  className="
-    inline-flex items-center gap-3
-    h-[30px] px-3
-    rounded-[6px]
-    border border-slate500_20
-    bg-white
-    text-[14px] font-semibold text-black
-    hover:bg-slate500_08
-    transition
-    dark:bg-transparent dark:text-white dark:border-slate500_48 dark:hover:bg-slate500_12
-  "
->
-  <PlusIcon className="h-5 w-5 font-bold" />
-  {props.text}
-</button>
-
+        <button
+          type="button"
+          onClick={() => setShowForm(true)}
+          className="
+            inline-flex items-center gap-3
+            h-[30px] px-3
+            rounded-[6px]
+            border border-slate500_20
+            bg-white
+            text-[14px] font-semibold text-black
+            hover:bg-slate500_08
+            transition
+            dark:bg-transparent dark:text-white dark:border-slate500_48 dark:hover:bg-slate500_12
+          "
+        >
+          <PlusIcon className="h-5 w-5 font-bold" />
+          {props.text}
+        </button>
       )}
     </div>
   );
