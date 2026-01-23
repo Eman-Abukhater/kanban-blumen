@@ -96,6 +96,13 @@ const doneTitle = useMemo(() => {
     if (raw) return raw;
     return props.card.completed ? "Done" : "In progress";
   });
+useEffect(() => {
+  // Only sync from props if we don't already have a new uploaded url
+  if (!cloudinaryUrl) {
+    setImageUrl(getImageUrl(props.card.imageUrl || null));
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [props.card.imageUrl]);
 
   // ✅ If user drags the card to another column while modal is open,
   // we detect it from kanbanState and update the status + indices immediately.
@@ -251,29 +258,45 @@ const doneTitle = useMemo(() => {
   };
 
   // ================= IMAGE UPLOAD =================
-  const handleImageUpload = async (f: File) => {
-    try {
-      setUploadingImage(true);
-      setFileSizeExceeded(false);
+const handleImageUpload = async (f: File) => {
+  try {
+    setUploadingImage(true);
+    setFileSizeExceeded(false);
 
-      const uploadResult = await uploadImageToCloudinary(f);
+    const uploadResult = await uploadImageToCloudinary(f);
 
-      if (uploadResult && uploadResult.data) {
-        setCloudinaryUrl(uploadResult.data.url);
-        setCloudinaryPublicId(uploadResult.data.publicId);
-        setImageUrl(uploadResult.data.url);
-        toast.success("Image uploaded successfully!", {
-          position: toast.POSITION.TOP_CENTER,
-        });
-      }
-    } catch (error: any) {
-      toast.error(error.message || "Failed to upload image", {
+    if (uploadResult?.data?.url) {
+      const url = uploadResult.data.url;
+      const publicId = uploadResult.data.publicId;
+
+      // 1) keep it in modal states
+      setCloudinaryUrl(url);
+      setCloudinaryPublicId(publicId);
+      setImageUrl(url);
+
+      // 2) ✅ IMPORTANT: update the card in kanban context immediately
+      handleUpdateCard(currentListIndex, currentCardIndex, {
+        ...props.card,
+        imageUrl: url,
+        imagePublicId: publicId, // (we'll fix typing below)
+      });
+
+      toast.success("Image uploaded successfully!", {
         position: toast.POSITION.TOP_CENTER,
       });
-    } finally {
-      setUploadingImage(false);
+
+      // optional: you can invalidate after save only, not here
+      // await invalidateKanban();
     }
-  };
+  } catch (error: any) {
+    toast.error(error.message || "Failed to upload image", {
+      position: toast.POSITION.TOP_CENTER,
+    });
+  } finally {
+    setUploadingImage(false);
+  }
+};
+
 
   // ================= SAVE CARD (EDIT) =================
   const mutation = useMutation({
@@ -834,28 +857,29 @@ const doneTitle = useMemo(() => {
                                     type="file"
                                     accept="image/*"
                                     disabled={uploadingImage}
-                                    onChange={(e) => {
-                                      const selectedFile = e.target.files?.[0];
+                                  onChange={(e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
 
-                                      if (selectedFile) {
-                                        if (selectedFile.size > maxFileSize) {
-                                          setFileSizeExceeded(true);
-                                          toast.error("File size must be less than 5MB", {
-                                            position: toast.POSITION.TOP_CENTER,
-                                          });
-                                          return;
-                                        }
+  if (file.size > maxFileSize) {
+    setFileSizeExceeded(true);
+    toast.error("File size must be less than 5MB", { position: toast.POSITION.TOP_CENTER });
+    return;
+  }
 
-                                        setFileSizeExceeded(false);
-                                        handleImageUpload(selectedFile);
+  setFileSizeExceeded(false);
 
-                                        const imageURL = URL.createObjectURL(selectedFile);
-                                        setImageUrl(imageURL);
-                                      } else {
-                                        setImageUrl("");
-                                        setFileSizeExceeded(false);
-                                      }
-                                    }}
+  // show preview immediately
+  const previewUrl = URL.createObjectURL(file);
+  setImageUrl(previewUrl);
+
+  // upload to cloudinary, then it will replace preview with real url
+  handleImageUpload(file);
+
+  // ✅ allow selecting same file again
+  e.currentTarget.value = "";
+}}
+
                                   />
 
                                   <img
@@ -984,28 +1008,29 @@ const doneTitle = useMemo(() => {
                                       type="file"
                                       accept="image/*"
                                       disabled={uploadingImage}
-                                      onChange={(e) => {
-                                        const selectedFile = e.target.files?.[0];
+                                    onChange={(e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
 
-                                        if (selectedFile) {
-                                          if (selectedFile.size > maxFileSize) {
-                                            setFileSizeExceeded(true);
-                                            toast.error("File size must be less than 5MB", {
-                                              position: toast.POSITION.TOP_CENTER,
-                                            });
-                                            return;
-                                          }
+  if (file.size > maxFileSize) {
+    setFileSizeExceeded(true);
+    toast.error("File size must be less than 5MB", { position: toast.POSITION.TOP_CENTER });
+    return;
+  }
 
-                                          setFileSizeExceeded(false);
-                                          handleImageUpload(selectedFile);
+  setFileSizeExceeded(false);
 
-                                          const imageURL = URL.createObjectURL(selectedFile);
-                                          setImageUrl(imageURL);
-                                        } else {
-                                          setImageUrl("");
-                                          setFileSizeExceeded(false);
-                                        }
-                                      }}
+  // show preview immediately
+  const previewUrl = URL.createObjectURL(file);
+  setImageUrl(previewUrl);
+
+  // upload to cloudinary, then it will replace preview with real url
+  handleImageUpload(file);
+
+  // ✅ allow selecting same file again
+  e.currentTarget.value = "";
+}}
+
                                     />
 
                                     <img

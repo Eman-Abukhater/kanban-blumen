@@ -81,25 +81,26 @@ export default function KanbanCardComponent(props: IKanbanCardComponentProps) {
             })
           }
         >
-          {/* Banner image */}
-          {props.card.imageUrl && (
-            <div
-              className={classNames(
-                props.card.completed ? "opacity-50" : "opacity-100",
-                "h-40 overflow-hidden rounded-t-[16px]"
-              )}
-            >
-              <img
-                src={getImageUrl()}
-                alt="task banner"
-                className="h-full w-full object-cover"
-                onError={({ currentTarget }) => {
-                  currentTarget.onerror = null;
-                  currentTarget.src = `/static/kanbanDefaultBanner.jpg`;
-                }}
-              />
-            </div>
-          )}
+        {props.card.imageUrl && (
+  <div
+    className={classNames(
+      props.card.completed ? "opacity-50" : "opacity-100",
+      "p-2 " 
+    )}
+  >
+    <div className="h-50 overflow-hidden rounded-[16px] border border-slate500_12 bg-white dark:border-slate500_20 dark:bg-[#1B232D]">
+      <img
+        src={getImageUrl()}
+        alt="task banner"
+        className="h-full w-full object-cover"
+        onError={({ currentTarget }) => {
+          currentTarget.onerror = null;
+          currentTarget.src = `/static/kanbanDefaultBanner.jpg`;
+        }}
+      />
+    </div>
+  </div>
+)}
 
           {/* Card body */}
           <div className="px-4 py-3">
