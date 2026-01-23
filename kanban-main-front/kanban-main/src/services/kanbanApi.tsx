@@ -226,72 +226,34 @@ interface AddCustomResponse<T> {
   data: T;
 }
 
-// Upload image to Cloudinary
-export async function uploadImageToCloudinary(
-  file: File
-): Promise<AddCustomResponse<any> | null> {
-  try {
-    // File validation
-    if (!file) {
-      throw new Error("No file selected");
-    }
+// Upload image  -> backend: POST /api/upload/image  | field: "image"
+export async function uploadImageToCloudinary(file: File) {
+  if (!file) throw new Error("No file selected");
 
-    // Check file size (5MB limit)
-    const maxSize = 5 * 1024 * 1024;
-    if (file.size > maxSize) {
-      throw new Error("File size must be less than 5MB");
-    }
+  const maxSize = 5 * 1024 * 1024;
+  if (file.size > maxSize) throw new Error("File size must be less than 5MB");
+  if (!file.type.startsWith("image/")) throw new Error("Please select an image file");
 
-    // Check file type
-    if (!file.type.startsWith("image/")) {
-      throw new Error("Please select an image file");
-    }
+  const formData = new FormData();
+  formData.append("image", file); // ✅ must match upload.single("image")
 
-    const formData = new FormData();
-    formData.append("image", file);
+  const response = await apiClient.post("/upload/image", formData, {
+    headers: {
+      Accept: "application/json",
+      // ✅ IMPORTANT: override the apiClient default JSON header
+      "Content-Type": undefined as any,
+    },
+    timeout: 30000,
+  });
 
-    console.log("Uploading image to Cloudinary:", {
-      name: file.name,
-      size: file.size,
-      type: file.type,
-    });
-
-    const response = await axios.post(`${Base_URL}/upload/image`, formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-      timeout: 30000, // 30 second timeout for uploads
-    });
-
-    console.log("Image upload response:", response.data);
-
-    if (response.data.status === "success") {
-      return {
-        status: response.status,
-        data: response.data.data, // Contains url, publicId, width, height
-      };
-    } else {
-      throw new Error(response.data.message || "Upload failed");
-    }
-  } catch (error: any) {
-    console.error("Error uploading image:", error);
-
-    // More specific error messages
-    let errorMessage = "Failed to upload image. Please try again.";
-
-    if (error.response?.data?.message) {
-      errorMessage = error.response.data.message;
-    } else if (error.message) {
-      errorMessage = error.message;
-    } else if (error.code === "ERR_NETWORK") {
-      errorMessage = "Network error. Please check your connection.";
-    } else if (error.code === "ECONNABORTED") {
-      errorMessage = "Upload timeout. Please try again.";
-    }
-
-    throw new Error(errorMessage);
+  // ✅ backend returns { success: true, data: {...} }
+  if (response.data?.success) {
+    return { status: response.status, data: response.data.data };
   }
+
+  throw new Error(response.data?.error || "Upload failed");
 }
+
 // authentication and authorization by passing the userId
 export async function authTheUserId(
   fkpoid: number | null,

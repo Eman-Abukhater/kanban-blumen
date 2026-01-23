@@ -41,7 +41,7 @@ const OnlineUsersButton = () => {
   };
 
   const UserImagePath = GetUserImagePath();
-  console.log("👥 Online users:", onlineUsers);
+  //console.log("👥 Online users:", onlineUsers);
   return (
     <>
       <div

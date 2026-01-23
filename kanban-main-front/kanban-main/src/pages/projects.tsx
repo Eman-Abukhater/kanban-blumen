@@ -180,7 +180,7 @@ function RowsPerPageDropdown({
             z-[9999]
             rounded-[12px]
             border border-slate500_20
-            bg-white/98
+            bg-white
             shadow-[0_18px_45px_rgba(145,158,171,0.24)]
             dark:border-[#1F2937]
             dark:bg-[#050B14]

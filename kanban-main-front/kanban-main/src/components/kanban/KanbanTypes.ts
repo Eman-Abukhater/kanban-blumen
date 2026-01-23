@@ -42,6 +42,7 @@ export type KanbanCard = {
   status?: string;
   assignedTo?: string;
   priority?: "low" | "medium" | "high";
+  imagePublicId?: string | null;
 
   //mine
   fkKanbanListId: number;
