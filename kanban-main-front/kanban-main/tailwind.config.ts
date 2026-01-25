@@ -7,6 +7,14 @@ module.exports = {
     "./node_modules/react-tailwindcss-datepicker/dist/index.esm.js",
   ],
   theme: {
+
+      screens: {
+      xs: "480px",
+      sm: "767px",
+      md: "979px",
+      lg: "1200px",
+      xl: "1536px",
+    },
     extend: {
       /* 🎨 1) Colors — from  Figma palette */
       colors: {

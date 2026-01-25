@@ -125,6 +125,15 @@ body {
 .dark .Toastify__progress-bar {
   background: #637381 !important;
 }
+.dark .Toastify__close-button {
+  color: #fff !important;
+  opacity: 0.9;
+}
+
+.dark .Toastify__close-button > svg {
+  fill: #fff !important;
+  stroke: #fff !important;
+}
 
 /* ===== Description scrollbar (Light) ===== */
 .card-desc-scroll {

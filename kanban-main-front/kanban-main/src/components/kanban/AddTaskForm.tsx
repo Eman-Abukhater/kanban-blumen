@@ -5,6 +5,10 @@ import CreatableSelect from "react-select/creatable";
 import type { StylesConfig } from "react-select";
 
 import { fetchAllMembers } from "@/services/kanbanApi";
+const YELLOW_HOVER_LIGHT = "rgba(255, 171, 0, 0.20)"; // hover
+const YELLOW_HOVER_DARK  = "rgba(255, 171, 0, 0.20)"; // hover
+const YELLOW_SELECTED_LIGHT = "rgba(255, 171, 0, 0.28)";
+const YELLOW_SELECTED_DARK  = "rgba(255, 171, 0, 0.28)";
 
 export interface IAddFormProps {
   text: string;
@@ -209,19 +213,20 @@ export function AddTaskForm(props: IAddFormProps) {
         : "0 18px 45px rgba(15,23,42,0.12)",
       zIndex: 9999,
     }),
-    option: (base, state) => ({
-      ...base,
-      color: isDark ? "#FFFFFF" : "#1C252E",
-      backgroundColor: state.isSelected
-        ? isDark
-          ? "rgba(255,255,255,0.06)"
-          : "rgba(145, 158, 171, 0.12)"
-        : state.isFocused
-        ? isDark
-          ? "rgba(255,255,255,0.06)"
-          : "rgba(145, 158, 171, 0.12)"
-        : "transparent",
-    }),
+   option: (base, state) => ({
+  ...base,
+  fontSize: 13,
+  fontWeight: 600,
+  cursor: "pointer",
+  color: isDark ? "#FFFFFF" : "#1C252E",
+
+  backgroundColor: state.isSelected
+    ? (isDark ? YELLOW_SELECTED_DARK : YELLOW_SELECTED_LIGHT)
+    : state.isFocused
+    ? (isDark ? YELLOW_HOVER_DARK : YELLOW_HOVER_LIGHT)
+    : "transparent",
+}),
+
     multiValue: (base) => ({
       ...base,
       backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(145, 158, 171, 0.12)",

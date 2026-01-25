@@ -1,5 +1,6 @@
 // src/components/modal/AddEditBoardModal.tsx
 import { useEffect, useState, FormEvent } from "react";
+import { toast } from "react-toastify";
 
 type Board = {
   boardId: number;
@@ -37,24 +38,34 @@ export default function AddEditBoardModal({
   }, [isOpen, board]);
 
   if (!isOpen) return null;
+const onSubmit = async (e: FormEvent) => {
+  e.preventDefault();
+  const trimmed = title.trim();
+  if (!trimmed) return;
 
-  const onSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    const trimmed = title.trim();
-    if (!trimmed) return;
+  try {
+    setSubmitting(true);
 
-    try {
-      setSubmitting(true);
-      if (isEditMode && board) {
-        // parent decides when to close on success
-        await handleEditTitle(trimmed, board.boardId);
-      } else {
-        await handleAddBoardClick(trimmed);
-      }
-    } finally {
-      setSubmitting(false);
+    if (isEditMode && board) {
+      await handleEditTitle(trimmed, board.boardId);
+    } else {
+      await handleAddBoardClick(trimmed);
     }
-  };
+
+    onClose(); // close only if no error thrown
+  } catch (err: any) {
+    // show ONE error toast here only if parent doesn't toast
+    const msg =
+      err?.response?.data?.message ||
+      err?.message ||
+      "Failed to save board";
+    toast.error(msg);
+  } finally {
+    setSubmitting(false);
+  }
+};
+
+
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">

@@ -988,14 +988,15 @@ const handleImageUpload = async (f: File) => {
                                 <div className="pt-2 text-[13px] font-medium text-[#637381] dark:text-slate500_80">
                                   Description
                                 </div>
-                                <textarea
-                                  ref={descTextAreaRef}
-                                  className="min-h-[96px] w-full resize-none rounded-[12px] border border-slate500_12 bg-white/60 px-4 py-3 text-[15px] text-ink outline-none dark:border-slate500_20 dark:bg-white/5 dark:text-white"
-                                  placeholder="Add a short description..."
-                                  value={desc}
-                                  onChange={(e) => setDesc(e.target.value)}
-                                  minLength={3}
-                                />
+                                  <textarea
+                                ref={descTextAreaRef}
+                                className="card-desc-scroll
+ min-h-[96px] w-full resize-none rounded-[12px] border border-slate500_12 bg-white/60 px-4 py-3 text-[15px] text-ink outline-none dark:border-slate500_20 dark:bg-white/5 dark:text-white "
+                                placeholder="Add a short description..."
+                                value={desc}
+                                onChange={(e) => setDesc(e.target.value)}
+                                minLength={3}
+                              />
 
                                 {/* Image */}
                                 <div className="pt-2 text-[13px] font-medium text-[#637381] dark:text-slate500_80">

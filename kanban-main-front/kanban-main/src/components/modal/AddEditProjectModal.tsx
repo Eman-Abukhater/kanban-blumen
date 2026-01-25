@@ -96,7 +96,7 @@ export default function AddEditProjectModal({
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="--"
                 rows={4}
-                className="w-full rounded-[12px] border border-[#919EAB33] bg-white px-3 pt-3 text-[14px] text-[#1C252E] outline-none transition focus:border-[#1D7BF5] focus:ring-2 focus:ring-[#1D7BF5]/20 dark:border-slate500_20 dark:bg-[#1C252E] dark:text-white"
+  className="scroll-thin w-full rounded-[12px] border border-[#919EAB33] bg-white px-3 pt-3 text-[14px] text-[#1C252E] outline-none transition focus:border-[#1D7BF5] focus:ring-2 focus:ring-[#1D7BF5]/20 dark:border-slate500_20 dark:bg-[#1C252E] dark:text-white"
               />
             </div>
           </div>

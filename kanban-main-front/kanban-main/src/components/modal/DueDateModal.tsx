@@ -16,6 +16,9 @@ const WEEK = ["S", "M", "T", "W", "T", "F", "S"];
 // Brand
 const BRAND_YELLOW = "#FFAB00";
 
+// ✅ in-between color (simple, like review screen)
+const RANGE_BG = "rgba(255, 171, 0, 0.40)";
+
 const toDay = (d: any): Dayjs | null => {
   if (!d) return null;
   const x = dayjs(d);
@@ -25,6 +28,7 @@ const toDay = (d: any): Dayjs | null => {
 const sameDay = (a: Dayjs | null, b: Dayjs | null) =>
   !!a && !!b && a.isSame(b, "day");
 
+// (inclusive util kept, but we will use "between only" in styling)
 const isBetweenInclusive = (d: Dayjs, start: Dayjs, end: Dayjs) =>
   (d.isAfter(start, "day") && d.isBefore(end, "day")) ||
   sameDay(d, start) ||
@@ -87,7 +91,6 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
       }
     };
 
-    // capture = true so it runs before anything stops propagation
     document.addEventListener("mousedown", handler, true);
     document.addEventListener("touchstart", handler, true);
 
@@ -207,11 +210,7 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
       // rightMonth is leftMonth + 1
       // if user chooses month for right calendar => set leftMonth = chosenMonth - 1
       setLeftMonth((m) =>
-        m
-          .add(1, "month")
-          .month(monthIndex)
-          .startOf("month")
-          .subtract(1, "month")
+        m.add(1, "month").month(monthIndex).startOf("month").subtract(1, "month")
       );
     }
   };
@@ -239,7 +238,6 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
           "
         >
           {month.format("MMMM YYYY")}
-       
         </Menu.Button>
 
         <Menu.Items
@@ -263,10 +261,9 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
                       "rounded-[12px] px-3 py-2 text-left text-[13px] font-semibold",
                       active ? "bg-slate500_08 dark:bg-white/10" : "",
                       idx === month.month()
-                        ? `text-[${BRAND_YELLOW}]`
+                        ? "text-[#FFAB00]"
                         : "text-[#1C252E] dark:text-white",
                     ].join(" ")}
-                    style={idx === month.month() ? { color: BRAND_YELLOW } : undefined}
                   >
                     {mName}
                   </button>
@@ -381,8 +378,12 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
             const isStart = sameDay(d, start);
             const isEnd = sameDay(d, end);
             const hasRange = !!start && !!end;
-            const inRange =
-              hasRange && start && end ? isBetweenInclusive(d, start, end) : false;
+
+            // ✅ IMPORTANT: ONLY BETWEEN (exclude start/end)
+            const inBetween =
+              hasRange && start && end
+                ? d.isAfter(start, "day") && d.isBefore(end, "day")
+                : false;
 
             const isToday = sameDay(d, today);
             const showTodayRing = isToday && !(isStart || isEnd);
@@ -390,31 +391,38 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
             const base =
               "mx-auto flex h-10 w-10 items-center justify-center rounded-full text-[14px] font-semibold transition outline-none";
 
-            let styles =
-              "text-slate700 hover:bg-slate500_08 " +
-              "dark:text-white dark:hover:bg-white/10";
+            // default
+            let cls =
+              "text-slate700 hover:bg-slate500_08 dark:text-white dark:hover:bg-white/10";
 
-            // ✅ Range = Yellow 40%
-            if (inRange)
-              styles =
-                `bg-[${BRAND_YELLOW}]/40 text-[#1C252E] ` +
-                `dark:bg-[${BRAND_YELLOW}]/40 dark:text-white`;
+            // today ring (keep)
+            if (showTodayRing) {
+              cls =
+                "ring-1 ring-slate500 text-slate700 dark:ring-white dark:text-white";
+            }
 
-            // ✅ Start/End = Yellow 100%
-            if (isStart || isEnd) styles = `bg-[${BRAND_YELLOW}] text-white`;
+            // background (inline = ALWAYS works, no Tailwind dynamic issues)
+            let style: React.CSSProperties | undefined;
 
-            // Today ring (keep as-is)
-            if (showTodayRing)
-              styles =
-                "ring-1 ring-slate500 text-slate700 " +
-                "dark:ring-white dark:text-white";
+            // between dates => yellow 40%
+            if (inBetween && !showTodayRing) {
+              style = { backgroundColor: RANGE_BG };
+              cls = "text-[#1C252E] dark:text-white";
+            }
+
+            // start/end => solid yellow
+            if ((isStart || isEnd) && !showTodayRing) {
+              style = { backgroundColor: BRAND_YELLOW };
+              cls = "text-white";
+            }
 
             return (
               <button
                 key={idx}
                 type="button"
                 onClick={() => handlePick(d)}
-                className={`${base} ${styles}`}
+                className={`${base} ${cls}`}
+                style={style}
               >
                 {d.date()}
               </button>
@@ -423,6 +431,63 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
         </div>
       </div>
     );
+  };
+
+  // ===== MOBILE helpers for highlighting between dates (same rules) =====
+  const getMobileDayStyle = (d: Dayjs) => {
+    const isStart = sameDay(d, start);
+    const isEnd = sameDay(d, end);
+    const hasRange = !!start && !!end;
+
+    const inBetween =
+      hasRange && start && end
+        ? d.isAfter(start, "day") && d.isBefore(end, "day")
+        : false;
+
+    const isToday = sameDay(d, today);
+
+  const base =
+  "mx-auto flex h-8 w-8 items-center justify-center rounded-full text-[13px] font-semibold transition outline-none";
+
+    // default
+    let cls =
+      "text-slate700 hover:bg-slate500_08 dark:text-white/85 dark:hover:bg-white/10";
+
+    // ring for today unless start/end
+    if (isToday && !(isStart || isEnd)) {
+      cls = "ring-1 ring-slate500 text-slate700 dark:ring-white dark:text-white";
+    }
+
+    let style: React.CSSProperties | undefined;
+
+    if (inBetween && !(isToday && !(isStart || isEnd))) {
+      style = { backgroundColor: RANGE_BG };
+      cls = "text-[#1C252E] dark:text-white";
+    }
+
+    if (isStart || isEnd) {
+      style = { backgroundColor: BRAND_YELLOW };
+      cls = "text-white";
+    }
+
+    return { base, cls, style };
+  };
+
+  const getTempSelectedStyle = (d: Dayjs, isSelected: boolean) => {
+    // Only highlight selected day in picker (like your current logic),
+    // BUT also show inBetween if range already chosen.
+    const { base, cls, style } = getMobileDayStyle(d);
+
+    // if user is picking inside picker, selected should be solid yellow
+    if (isSelected) {
+      return {
+        base,
+        cls: "text-white",
+        style: { backgroundColor: BRAND_YELLOW },
+      };
+    }
+
+    return { base, cls, style };
   };
 
   return (
@@ -492,7 +557,13 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
                       >
                         <span>{start ? start.format("MM/DD/YYYY") : "—"}</span>
                         <span className="opacity-70">
-                          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                          <svg
+                            width="22"
+                            height="22"
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                            aria-hidden="true"
+                          >
                             <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1.5A2.5 2.5 0 0 1 22 6.5v13A2.5 2.5 0 0 1 19.5 22h-15A2.5 2.5 0 0 1 2 19.5v-13A2.5 2.5 0 0 1 4.5 4H6V3a1 1 0 0 1 1-1Zm12.5 6h-15a.5.5 0 0 0-.5.5v11a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-11a.5.5 0 0 0-.5-.5Z" />
                           </svg>
                         </span>
@@ -516,7 +587,13 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
                       >
                         <span>{end ? end.format("MM/DD/YYYY") : "—"}</span>
                         <span className="opacity-70">
-                          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                          <svg
+                            width="22"
+                            height="22"
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                            aria-hidden="true"
+                          >
                             <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1.5A2.5 2.5 0 0 1 22 6.5v13A2.5 2.5 0 0 1 19.5 22h-15A2.5 2.5 0 0 1 2 19.5v-13A2.5 2.5 0 0 1 4.5 4H6V3a1 1 0 0 1 1-1Zm12.5 6h-15a.5.5 0 0 0-.5.5v11a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-11a.5.5 0 0 0-.5-.5Z" />
                           </svg>
                         </span>
@@ -536,7 +613,12 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
                     <div className="mt-6 mb-2 flex items-center justify-between">
                       <div className="inline-flex items-center gap-2 text-[18px] font-semibold text-[#1C252E] dark:text-white">
                         {pickMonth.format("MMMM YYYY")}
-                        <svg className="h-4 w-4 opacity-70" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <svg
+                          className="h-4 w-4 opacity-70"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                          aria-hidden="true"
+                        >
                           <path
                             fillRule="evenodd"
                             d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.94a.75.75 0 111.08 1.04l-4.24 4.5a.75.75 0 01-1.08 0l-4.24-4.5a.75.75 0 01.02-1.06z"
@@ -574,6 +656,7 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
                       ))}
                     </div>
 
+                    {/* ✅ MOBILE GRID with between highlight */}
                     <div className="grid grid-cols-7 gap-y-1 text-center">
                       {pickWeeks.flat().map((cell, idx) => {
                         if (!cell) return <div key={idx} className="h-10" />;
@@ -581,28 +664,15 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
                         const d = cell.startOf("day");
                         const isSelected = tempPick ? d.isSame(tempPick, "day") : false;
 
-                        const isToday = d.isSame(today, "day");
-                        const showTodayRing = isToday && !isSelected;
-
-                        const base =
-                          "mx-auto flex h-10 w-10 items-center justify-center rounded-full text-[14px] font-semibold transition outline-none";
-
-                        let styles =
-                          "text-slate700 hover:bg-slate500_08 dark:text-white/85 dark:hover:bg-white/10";
-
-                        // ✅ Mobile selected = Yellow 100%
-                        if (isSelected) styles = `bg-[${BRAND_YELLOW}] text-white`;
-
-                        if (showTodayRing)
-                          styles =
-                            "ring-1 ring-slate500 text-slate700 dark:ring-white dark:text-white";
+                        const { base, cls, style } = getTempSelectedStyle(d, isSelected);
 
                         return (
                           <button
                             key={idx}
                             type="button"
                             onClick={() => setTempPick(d)}
-                            className={`${base} ${styles}`}
+                            className={`${base} ${cls}`}
+                            style={style}
                           >
                             {d.date()}
                           </button>

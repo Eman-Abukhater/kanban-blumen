@@ -625,7 +625,7 @@ export default function ProjectsList() {
 
         <section className="mx-auto w-full px-5 py-6">
           {!userInfo ? (
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+<div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
               <ProjectCardSkeleton count={8} />
             </div>
           ) : (
@@ -634,7 +634,7 @@ export default function ProjectsList() {
               {!isTableView ? (
                 <>
                   {showSkeleton ? (
-                    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+<div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                       <ProjectCardSkeleton count={8} />
                     </div>
                   ) : cardTotal === 0 ? (
@@ -653,7 +653,7 @@ export default function ProjectsList() {
                       </button>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+<div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                       {isCreatingProject && <ProjectCardSkeleton count={1} />}
                       {cardPaginated.map((project: any) => (
                         <ProjectCard
