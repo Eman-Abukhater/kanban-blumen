@@ -842,3 +842,24 @@ export async function fetchOnlineUsers(
     return error; // Or any appropriate error handling
   }
 }
+
+export const DeleteCard = async (
+  kanbanCardId: number,
+  fkpoid: number,
+  updatedby: string
+) => {
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+
+ const res = await fetch(`${Base_URL}/ProjKanbanBoards/deletecard/${kanbanCardId}`, {
+  method: "DELETE",
+  headers: {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  },
+  body: JSON.stringify({ fkpoid, updatedby }),
+});
+
+
+  const data = await res.json().catch(() => ({}));
+  return { status: res.status, data };
+};

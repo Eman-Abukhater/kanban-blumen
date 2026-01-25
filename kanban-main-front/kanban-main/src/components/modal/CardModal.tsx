@@ -18,6 +18,7 @@ import {
   EditCard,
   AddTask,
   uploadImageToCloudinary,
+  DeleteCard,
 } from "@/services/kanbanApi";
 import { toast } from "react-toastify";
 import { GetCardImagePath } from "@/utility/baseUrl";
@@ -46,6 +47,7 @@ export function CardModal(props: CardModalProps) {
     userInfo,
     kanbanState,
     handleDragEnd,
+    handleDeleteCard,
   } = useContext(KanbanContext);
 
   const normalize = (s: string) => (s || "").trim().toLowerCase();
@@ -389,11 +391,46 @@ const handleImageUpload = async (f: File) => {
     mutation.mutate(cardData);
   };
 
-  const deleteCard = () => {
-    toast.error(` Please Contact The Admin as you are not Authorized`, {
+const [deletingCard, setDeletingCard] = useState(false);
+
+const deleteCard = async () => {
+  try {
+    setDeletingCard(true);
+
+    const res = await DeleteCard(
+      props.card.kanbanCardId,
+      userInfo.fkpoid,
+      userInfo.username
+    );
+
+    if (res?.status === 200 || res?.data?.success) {
+      // ✅ 1) remove from UI immediately
+      handleDeleteCard(currentListIndex, currentCardIndex);
+
+      // ✅ 2) close modal immediately
+      handleCloseModal();
+
+      // ✅ 3) refetch in background (optional but recommended)
+      invalidateKanban();
+
+      toast.success("Card deleted successfully!", {
+        position: toast.POSITION.TOP_CENTER,
+      });
+      return;
+    }
+
+    toast.error(res?.data?.error || "Failed to delete card", {
       position: toast.POSITION.TOP_CENTER,
     });
-  };
+  } catch (e: any) {
+    toast.error(e?.message || "Failed to delete card", {
+      position: toast.POSITION.TOP_CENTER,
+    });
+  } finally {
+    setDeletingCard(false);
+  }
+};
+
 
   // ================= TAGS =================
   const handleCreateTag = async (tagName: string, _colorIndex: number) => {
@@ -674,14 +711,16 @@ const handleImageUpload = async (f: File) => {
                         </Menu>
 
                         {/* Right icon (trash only like Figma) */}
-                        <button
-                          onClick={deleteCard}
-                          type="button"
-                          className="inline-flex h-10 w-10 items-center justify-center rounded-full hover:bg-slate500_12 dark:hover:bg-slate500_12"
-                          aria-label="Delete card"
-                        >
-                          <img src="/icons/trash.png" alt="Delete" className="h-5 w-5" />
-                        </button>
+  <button
+  onClick={deleteCard}
+  disabled={deletingCard}
+  type="button"
+  className="inline-flex h-10 w-10 items-center justify-center rounded-full hover:bg-slate500_12 disabled:opacity-50"
+>
+  <img src="/icons/trash.png" alt="Delete" className="h-5 w-5" />
+</button>
+
+
                       </div>
 
                       {/* ================= TABS ================= */}
