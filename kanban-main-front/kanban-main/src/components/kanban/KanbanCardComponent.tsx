@@ -1,4 +1,3 @@
-import { CheckCircleIcon } from "@heroicons/react/24/outline";
 import { useContext } from "react";
 import { Draggable } from "react-beautiful-dnd";
 import KanbanContext from "../../context/kanbanContext";
@@ -83,10 +82,11 @@ export default function KanbanCardComponent(props: IKanbanCardComponentProps) {
         >
         {props.card.imageUrl && (
   <div
-    className={classNames(
-      props.card.completed ? "opacity-50" : "opacity-100",
-      "p-2 " 
-    )}
+   className={classNames(
+  props.card.completed ? "opacity-50" : "opacity-100",
+  "p-2"
+)}
+
   >
     <div className="h-50 overflow-hidden rounded-[16px] border border-slate500_12 bg-white dark:border-slate500_20 dark:bg-[#1B232D]">
       <img
@@ -106,12 +106,8 @@ export default function KanbanCardComponent(props: IKanbanCardComponentProps) {
           <div className="px-4 py-3">
             <div className="flex items-center justify-between gap-3">
               <span
-                className={classNames(
-                  props.card.completed
-                    ? "text-slate-400 dark:text-slate-500"
-                    : "text-ink dark:text-white",
-                  "truncate text-[15px] font-semibold"
-                )}
+             className="truncate text-[15px] font-semibold text-ink dark:text-white"
+
               >
                 {props.card.title}
               </span>
@@ -123,39 +119,35 @@ export default function KanbanCardComponent(props: IKanbanCardComponentProps) {
                 </div>
               )}
 
-              {props.card.completed && (
-                <CheckCircleIcon className="h-5 w-5 text-emerald-500" />
-              )}
+             
             </div>
 
-            {props.card.completed === false && (
-              <>
-                {props.card.desc && (
-                  <div className="mb-1 mt-2">
-                    <p className="truncate text-[13px] text-slate500 dark:text-slate400">
-                      {props.card.desc}
-                    </p>
-                  </div>
-                )}
+          <>
+  {props.card.desc && (
+    <div className="mb-1 mt-2">
+      <p className="truncate text-[13px] text-slate500 dark:text-slate400">
+        {props.card.desc}
+      </p>
+    </div>
+  )}
 
-                {/* Tags row */}
-                {props.card.kanbanTags.length > 0 && (
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    {props.card.kanbanTags.map((tag, index) => (
-                      <span
-                        key={index}
-                        className={classNames(
-                          "rounded-[999px] px-3 py-1 text-[12px] font-semibold",
-                          tag.color
-                        )}
-                      >
-                        {tag.title}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
+  {props.card.kanbanTags.length > 0 && (
+    <div className="mt-1 flex flex-wrap gap-1">
+      {props.card.kanbanTags.map((tag, index) => (
+        <span
+          key={index}
+          className={classNames(
+            "rounded-[999px] px-3 py-1 text-[12px] font-semibold",
+            tag.color
+          )}
+        >
+          {tag.title}
+        </span>
+      ))}
+    </div>
+  )}
+</>
+
 
             {/* FOOTER: comments + attachments + assignees (Figma style) */}
             <div className="mt-3 flex items-center justify-between">
