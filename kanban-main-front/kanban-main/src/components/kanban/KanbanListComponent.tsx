@@ -109,6 +109,7 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
             "flex w-full flex-col rounded-[24px] border border-[#E5EAF1] bg-[#F4F6F8] shadow-soft",
             "dark:border-slate500_20 dark:bg-[#1B232D]",
             "min-h-0"
+            
           )}
           ref={provided.innerRef}
           {...provided.draggableProps}

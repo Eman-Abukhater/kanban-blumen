@@ -1,4 +1,3 @@
-// src/components/kanban/KanbanBoard.tsx
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
   DragDropContext,
@@ -20,10 +19,10 @@ export function KanbanBoard() {
   const [scrollWidth, setScrollWidth] = useState(0);
   const [hasOverflow, setHasOverflow] = useState(false);
 
-  // ✅ No pagination: show all lists
+  // No pagination: show all lists
   const visibleLists = useMemo(() => kanbanState, [kanbanState]);
 
-  // measure overflow for sticky bar
+  // Measure overflow for sticky bar
   useEffect(() => {
     const el = contentScrollRef.current;
     if (!el) return;
@@ -47,7 +46,7 @@ export function KanbanBoard() {
     };
   }, [visibleLists.length]);
 
-  // sync sticky scrollbar
+  // Sync sticky scrollbar
   useEffect(() => {
     const content = contentScrollRef.current;
     const bar = stickyBarRef.current;
@@ -80,13 +79,13 @@ export function KanbanBoard() {
 
   const onDragEnd = (result: DropResult, _provided: ResponderProvided) => {
     if (!result.destination) return;
-    // ✅ No pagination mapping needed anymore
+    // No pagination mapping needed anymore
     handleDragEnd(result);
   };
 
-  // column width
+  // Updated column width (to allow growing/shrinking)
   const columnShellClass =
-    "shrink-0 w-[calc(100vw-32px)] max-w-[340px] sm:w-[340px]";
+    "shrink-0 w-[calc(100vw-32px)] max-w-[340px] sm:w-[340px]"; // Keep the width adjustable
 
   return (
     <>
@@ -97,9 +96,9 @@ export function KanbanBoard() {
         ref={contentScrollRef}
         className={[
           "w-full min-w-0",
-          "overflow-x-auto kanban-scroll-hidden",
-          "overflow-y-hidden",
-          "px-4 pb-6",
+          "overflow-x-auto kanban-scroll-hidden", // Horizontal scrolling enabled
+          "overflow-y-hidden", // Hide vertical scroll
+          "px-4 pb-6", // Padding for spacing
         ].join(" ")}
       >
         <DragDropContext onDragEnd={onDragEnd}>
@@ -111,7 +110,7 @@ export function KanbanBoard() {
             {(provided) => (
               <div
                 className={[
-                  "flex min-w-max flex-nowrap",
+                  "flex min-w-max flex-nowrap", // Flex containers to allow horizontal scroll
                   "gap-4 sm:gap-6",
                   "items-start",
                 ].join(" ")}
@@ -124,7 +123,7 @@ export function KanbanBoard() {
                       listIndex={index}
                       dragIndex={index}
                       list={list}
-                      dense={false} // ✅ dense removed (always normal)
+                      dense={false} // Dense removed (always normal)
                     />
                   </div>
                 ))}
@@ -148,7 +147,7 @@ export function KanbanBoard() {
         </DragDropContext>
       </div>
 
-      {/* Sticky horizontal scrollbar (desktop only) */}
+      {/* Sticky horizontal scrollbar (only visible when overflow happens) */}
       {hasOverflow && (
         <div className="fixed bottom-0 left-0 right-0 z-50 hidden sm:block">
           <div
