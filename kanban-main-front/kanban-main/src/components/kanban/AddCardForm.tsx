@@ -1,9 +1,5 @@
 import { AddCard } from "@/services/kanbanApi";
-import {
-  FormEvent,
-  KeyboardEvent as ReactKeyboardEvent,
-  useState,
-} from "react";
+import { FormEvent, KeyboardEvent as ReactKeyboardEvent, useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import { useInvalidateKanban } from "@/hooks/useKanbanMutations";
 
@@ -18,13 +14,16 @@ export interface IAddFormProps {
   ) => void;
   userInfo: any;
   fkKanbanListId: number;
-  onCreated?: () => void; // 👈 جديد
+  onCreated?: () => void; // 👈 New
 }
 
 export function AddCardForm(props: IAddFormProps) {
   const [name, setName] = useState<string>("");
   const [isCreating, setIsCreating] = useState<boolean>(false);
+  const formRef = useRef<HTMLFormElement>(null);
   const invalidateKanban = useInvalidateKanban();
+
+  // Handle creating a new task
   const createCard = async () => {
     const trimmed = name.trim();
     if (!trimmed || isCreating) return;
@@ -42,29 +41,25 @@ export function AddCardForm(props: IAddFormProps) {
 
     setIsCreating(false);
 
-if (customResponse?.status === 200 && customResponse.data) {
-  props.onSubmit(
-    trimmed,
-    customResponse.data.kanbanCardId,
-    customResponse.data.seqNo,
-    props.fkKanbanListId
-  );
+    if (customResponse?.status === 200 && customResponse.data) {
+      props.onSubmit(
+        trimmed,
+        customResponse.data.kanbanCardId,
+        customResponse.data.seqNo,
+        props.fkKanbanListId
+      );
 
-  // ✅ close immediately (no waiting)
-  setName("");
-  props.onCreated?.();
+      setName("");
+      props.onCreated?.();
 
-  toast.success(
-    `Card ID: ${customResponse.data.kanbanCardId} Created Successfully`,
-    { position: toast.POSITION.TOP_CENTER }
-  );
+      toast.success(
+        `Card ID: ${customResponse.data.kanbanCardId} Created Successfully`,
+        { position: toast.POSITION.TOP_CENTER }
+      );
 
-  // ✅ invalidate in background
-  invalidateKanban(); // <-- no await
-
-  return;
-}
- else {
+      invalidateKanban(); // Invalidate in background
+      return;
+    } else {
       toast.error(
         "Something went wrong, could not add the card. Please try again later.",
         { position: toast.POSITION.TOP_CENTER }
@@ -72,6 +67,7 @@ if (customResponse?.status === 200 && customResponse.data) {
     }
   };
 
+  // Handle keydown for Enter key
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter") {
       event.preventDefault();
@@ -79,13 +75,29 @@ if (customResponse?.status === 200 && customResponse.data) {
     }
   };
 
+  // Handle form submission
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
     void createCard();
   };
 
+  // Handle closing the form when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (formRef.current && !formRef.current.contains(event.target as Node)) {
+        props.onCreated?.(); // Close form if clicked outside
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   return (
-    <form onSubmit={handleSubmit}>
+    <form ref={formRef} onSubmit={handleSubmit}>
       <div className="mb-3">
         <div className="w-full rounded-[16px] border border-[#E5EAF1] bg-white px-4 py-3 shadow-[0_18px_45px_rgba(15,23,42,0.06)] dark:border-slate500_20 dark:bg-[#1B232D]">
           {isCreating ? (
@@ -94,17 +106,16 @@ if (customResponse?.status === 200 && customResponse.data) {
               <div className="h-3 w-1/2 rounded-full bg-slate500_08 dark:bg-slate500_20" />
             </div>
           ) : (
-           <input
-  className="w-full border-none bg-transparent text-[14px] text-ink placeholder:text-slate500 
-             outline-none focus:outline-none focus-visible:outline-none focus:ring-0
-             dark:text-white dark:placeholder:text-slate500_80"
-  placeholder={props.placeholder || 'Task name'}
-  type="text"
-  value={name}
-  onChange={(e) => setName(e.target.value)}
-  onKeyDown={handleKeyDown}
-/>
-
+            <input
+              className="w-full border-none bg-transparent text-[14px] text-ink placeholder:text-slate500 
+                outline-none focus:outline-none focus-visible:outline-none focus:ring-0
+                dark:text-white dark:placeholder:text-slate500_80"
+              placeholder={props.placeholder || 'Task name'}
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={handleKeyDown}
+            />
           )}
         </div>
 

@@ -376,63 +376,77 @@ export default function ProjectsList() {
   };
 
   // CRUD handlers
-  const handleEditProject = async (
-    newTitle: string,
-    newDescription: string,
-    projectId: number
-  ) => {
-    try {
-      const res = await updateProject(projectId, newTitle, newDescription);
-      if (res?.status === 200 && res?.data?.success) {
-        setProjects((prev) =>
-          prev.map((p) => (p.id === projectId ? res.data.data : p))
-        );
-        toast.success("Project updated successfully!", {
-          position: toast.POSITION.TOP_CENTER,
-        });
-        closeEditModal();
-      } else {
-        toast.error("Failed to update project.", {
-          position: toast.POSITION.TOP_CENTER,
-        });
-      }
-    } catch (e: any) {
-      toast.error(`Error: ${e?.message ?? "Failed to update project"}`, {
+ 
+const handleEditProject = async (newTitle: string, newDescription: string, projectId: number) => {
+  const MAX_TITLE_LENGTH = 100;
+
+  // Check title length before making API request
+  if (newTitle.length > MAX_TITLE_LENGTH) {
+    toast.error(`Title must be at most ${MAX_TITLE_LENGTH} characters.`, {
+      position: toast.POSITION.TOP_CENTER,
+    });
+    return; // Stop execution if title length exceeds limit
+  }
+
+  try {
+    const res = await updateProject(projectId, newTitle, newDescription);
+    
+    if (res?.status === 200 && res?.data?.success) {
+      // Update project in the state
+      setProjects((prev) =>
+        prev.map((p) => (p.id === projectId ? res.data.data : p))
+      );
+      toast.success("Project updated successfully!", {
+        position: toast.POSITION.TOP_CENTER,
+      });
+      setIsModalOpen(false); // Close modal after successful update
+    } else {
+      toast.error("Failed to update project.", {
         position: toast.POSITION.TOP_CENTER,
       });
     }
-  };
+  } catch (error: any) {
+    toast.error(`Error: ${error.message ?? "Failed to update project"}`, {
+      position: toast.POSITION.TOP_CENTER,
+    });
+  }
+};
 
-  const handleAddProject = async (newTitle: string, newDescription: string) => {
-    try {
-      setIsCreatingProject(true);
-      const res = await createProject(newTitle, newDescription);
+ const handleAddProject = async (newTitle: string, newDescription: string) => {
+  const MAX_TITLE_LENGTH = 100;
+  
+  // Check title length before making API request
+  if (newTitle.length > MAX_TITLE_LENGTH) {
+    toast.error(`Title must be at most ${MAX_TITLE_LENGTH} characters.`, {
+      position: toast.POSITION.TOP_CENTER,
+    });
+    return; // Stop execution if title length exceeds limit
+  }
 
-      if (res?.status === 201 && res?.data?.success) {
-        // ✅ Add new one first
-        setProjects((prev) => [res.data.data, ...prev]);
-
-        // ✅ Ensure you SEE the new project immediately
-        setCardPage(0);
-        setTablePage(0);
-
-        toast.success("Project created successfully!", {
-          position: toast.POSITION.TOP_CENTER,
-        });
-        closeEditModal();
-      } else {
-        toast.error("Failed to create project.", {
-          position: toast.POSITION.TOP_CENTER,
-        });
-      }
-    } catch (e: any) {
-      toast.error(`Error: ${e?.message ?? "Failed to create project"}`, {
+  try {
+    setIsCreatingProject(true);
+    const res = await createProject(newTitle, newDescription);
+    
+    if (res?.status === 201 && res?.data?.success) {
+      // Add new project to the state
+      setProjects((prev) => [res.data.data, ...prev]);
+      toast.success("Project created successfully!", {
         position: toast.POSITION.TOP_CENTER,
       });
-    } finally {
-      setIsCreatingProject(false);
+      setIsModalOpen(false); // Close modal after successful creation
+    } else {
+      toast.error("Failed to create project.", {
+        position: toast.POSITION.TOP_CENTER,
+      });
     }
-  };
+  } catch (error: any) {
+    toast.error(`Error: ${error.message ?? "Failed to create project"}`, {
+      position: toast.POSITION.TOP_CENTER,
+    });
+  } finally {
+    setIsCreatingProject(false); // Reset creating state
+  }
+};
 
   const handleDeleteProject = async () => {
     if (!deleteConfirmModal.projectId) return;

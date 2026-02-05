@@ -85,7 +85,7 @@ export function KanbanBoard() {
 
   // Updated column width (to allow growing/shrinking)
   const columnShellClass =
-    "shrink-0 w-[calc(100vw-32px)] max-w-[340px] sm:w-[340px]"; // Keep the width adjustable
+     "shrink-0 flex-grow min-w-[280px] max-w-[340px] sm:w-[340px]";
 
   return (
     <>
@@ -93,13 +93,14 @@ export function KanbanBoard() {
           COLUMNS
          ======================= */}
       <div
-        ref={contentScrollRef}
-        className={[
-          "w-full min-w-0",
-          "overflow-x-auto kanban-scroll-hidden", // Horizontal scrolling enabled
-          "overflow-y-hidden", // Hide vertical scroll
-          "px-4 pb-6", // Padding for spacing
-        ].join(" ")}
+       className={[
+    "w-full", // Ensures full width
+    "min-w-[280px]", // Sets a minimum width for the container to avoid shrinking too much
+    "overflow-x-auto", // Horizontal scrolling enabled
+    "overflow-y-hidden", // Hide vertical scroll
+    "px-4 pb-6", // Padding for spacing
+    "kanban-scroll", // Custom scrollbar styles
+  ].join(" ")}
       >
         <DragDropContext onDragEnd={onDragEnd}>
           <Droppable

@@ -134,6 +134,10 @@ body {
   fill: #fff !important;
   stroke: #fff !important;
 }
+.Toastify__toast-container {
+  z-index: 9999;  /* Ensure the toast has the highest z-index */
+}
+
 
 /* ===== Description scrollbar (Light) ===== */
 .card-desc-scroll {
@@ -210,4 +214,44 @@ body {
 .dark .card-modal-scroll::-webkit-scrollbar-thumb:hover {
   background: rgba(255,255,255,0.22);
   background-clip: content-box;
+}
+/* Make the input field for the column responsive */
+.add-column-input {
+  width: 100%;            /* Ensure it uses the full width of the parent */
+  max-width: 100%;        /* Avoid growing beyond container width */
+  min-width: 160px;       /* Ensure minimum width to avoid too small size */
+  padding: 8px 16px;      /* Padding for the input */
+  border-radius: 8px;     /* Smooth borders */
+  border: 1px solid #ccc; /* Add border styling */
+  background-color: #fff;
+  color: #000;
+  box-sizing: border-box; /* Make sure padding is part of the width */
+  text-overflow: ellipsis; /* Handle long text properly */
+  overflow: hidden;       /* Prevent overflow */
+}
+
+/* Container that holds the "Add Column" button and input */
+.add-column-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+/* "Add Column" Button */
+.add-column-button {
+  padding: 10px 20px;
+  background-color: #1C252E;
+  color: #fff;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.add-column-button:hover {
+  background-color: #637381;
+}
+
+/* Ensure long names are handled */
+.add-column-input:focus {
+  border-color: #1C252E;
 }

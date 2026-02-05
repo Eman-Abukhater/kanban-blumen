@@ -46,7 +46,7 @@ export function AddForm(props: IAddFormProps) {
     };
   }, []);
 
-  // focus input when opened
+  // Focus input when opened
   useEffect(() => {
     if (showForm) {
       setTimeout(() => inputRef.current?.focus(), 0);
@@ -58,6 +58,14 @@ export function AddForm(props: IAddFormProps) {
 
     const trimmed = name.trim();
     if (!trimmed) return;
+
+    // Validate input length (max 100 characters)
+    if (trimmed.length > 100) {
+      toast.error("Column name cannot exceed 100 characters.", {
+        position: toast.POSITION.TOP_CENTER,
+      });
+      return;
+    }
 
     try {
       setIsCreating(true);
@@ -122,39 +130,36 @@ export function AddForm(props: IAddFormProps) {
           }}
         >
           <div className="min-w-[256px] rounded-[16px] border border-slate500_12 bg-white p-4 dark:border-slate500_20 dark:bg-[#1B232D]">
-            <input
-              ref={inputRef}
-className="
-  h-12 w-full rounded-[12px]
-  border-2 border-slate500_20 bg-white px-4
-  text-[16px] font-medium text-ink
-  placeholder:text-slate500
+       <input
+  ref={inputRef}
+  className="
+    h-12 w-full
+    max-w-full
+    rounded-[12px]
+    border-2 border-slate500_20 bg-white px-4
+    text-[16px] font-medium text-ink
+    placeholder:text-slate500
+    outline-none
+    focus:outline-none
+    focus:ring-0 focus:ring-offset-0
+    focus:border-ink
+    dark:border-slate500_20 dark:bg-[#141A21]
+    dark:text-white dark:placeholder:text-slate500_80
+    dark:focus:border-white
+  "
+  placeholder={props.placeholder}
+  type="text"
+  value={name}
+  onChange={(e) => setName(e.target.value)}
+  maxLength={100}  // Limit input to 100 characters
+  onKeyDown={(e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleSubmit();
+    }
+  }}
+/>
 
-  outline-none
-  focus:outline-none
-  focus:ring-0 focus:ring-offset-0
-  focus:border-ink
-
-  dark:border-slate500_20 dark:bg-[#141A21]
-  dark:text-white dark:placeholder:text-slate500_80
-  dark:focus:border-white
-  dark:focus:ring-0 dark:focus:ring-offset-0
-"
-
-
-              placeholder={props.placeholder}  
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              maxLength={30}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  // Enter creates
-                  e.preventDefault();
-                  handleSubmit();
-                }
-              }}
-            />
 
             <p className="mt-2 text-[13px] text-slate600 dark:text-slate500_80">
               Press Enter to create the column.
