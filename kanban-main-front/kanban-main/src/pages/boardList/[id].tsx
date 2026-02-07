@@ -525,111 +525,131 @@ export default function BoardListPage() {
     openAddModal();
   };
 
-  const handleEditTitle = async (newTitle: string, boardId: number) => {
-    if (!userInfo) return;
+ const handleEditTitle = async (newTitle: string, boardId: number) => {
+  // Frontend Validation: Check if title exceeds 100 characters
+  if (newTitle.length > 100) {
+    toast.error("Title must be at most 100 characters.", { 
+      position: toast.POSITION.TOP_CENTER,
+      autoClose: 3000,  // Auto close to prevent UI disruption
+      hideProgressBar: true  // Hide progress bar to avoid UI shift
+    });
+    return;
+  }
 
-    const res = await EditBoard(newTitle, boardId, userInfo.username);
+  if (!userInfo) return;
 
-    if (!res || res.status !== 200) {
+  const res = await EditBoard(newTitle, boardId, userInfo.username);
+
+  if (!res || res.status !== 200) {
+    const msg =
+      (res && (res as any).data && (res as any).data.message) ||
+      "Failed to edit board.";
+    toast.error(msg, { position: toast.POSITION.TOP_CENTER });
+    return;
+  }
+
+  setBoards((prev) =>
+    prev.map((b) => (b.boardId === boardId ? { ...b, title: newTitle } : b))
+  );
+
+  const msg =
+    typeof res.data === "string"
+      ? res.data
+      : (res.data as any)?.message || "Board updated successfully.";
+  toast.success(msg, { position: toast.POSITION.TOP_CENTER });
+
+  closeModal();
+};
+
+const handleAddBoardClick = async (newTitle: string) => {
+  // Frontend Validation: Check if title exceeds 100 characters
+  if (newTitle.length > 100) {
+    toast.error("Title must be at most 100 characters.", {
+      position: toast.POSITION.TOP_CENTER,
+      autoClose: 3000,  // Auto close to prevent UI disruption
+      hideProgressBar: true  // Hide progress bar to avoid UI shift
+    });
+    return;
+  }
+
+  if (!userInfo || fkpoid == null) return;
+
+  try {
+    setIsCreatingBoard(true);
+
+    const res = await AddBoard(
+      newTitle,
+      fkpoid,
+      userInfo.id,
+      userInfo.username
+    );
+
+    if (!res || res.status !== 200 || !res.data) {
       const msg =
         (res && (res as any).data && (res as any).data.message) ||
-        "Failed to edit board.";
+        "Failed to add board.";
       toast.error(msg, { position: toast.POSITION.TOP_CENTER });
       return;
     }
 
-    setBoards((prev) =>
-      prev.map((b) => (b.boardId === boardId ? { ...b, title: newTitle } : b))
-    );
+    let newBoardId: number | null = null;
+    const payload: any = res.data;
+
+    if (typeof payload === "number") {
+      newBoardId = payload;
+    } else if (typeof payload === "string" && /^\d+$/.test(payload)) {
+      newBoardId = Number(payload);
+    } else if (typeof payload === "object" && payload !== null) {
+      newBoardId =
+        payload.boardId ??
+        payload.id ??
+        payload.data?.boardId ??
+        payload.data?.id ??
+        null;
+    }
+
+    if (newBoardId == null || !Number.isFinite(newBoardId)) {
+      toast.error("Board created but ID was not returned correctly.", {
+        position: toast.POSITION.TOP_CENTER,
+      });
+      return;
+    }
+
+    const boardId: number = newBoardId;
+
+    const defaultListTitles = ["To do", "In progress", "In review", "Done"];
+    for (let i = 0; i < defaultListTitles.length; i++) {
+      const title = defaultListTitles[i];
+      try {
+        await AddKanbanList(
+          title,
+          boardId,
+          userInfo.username,
+          userInfo.id,
+          fkpoid
+        );
+      } catch (error) {
+        console.error(`Error creating default list "${title}":`, error);
+      }
+    }
+
+    // ✅ UPDATE #2: add to the TOP (newest first) + go to first page (so you see it instantly)
+    setBoards((prev) => [{ boardId, title: newTitle }, ...prev]);
+    setCardPage(0);
+    setTablePage(0);
 
     const msg =
       typeof res.data === "string"
         ? res.data
-        : (res.data as any)?.message || "Board updated successfully.";
+        : payload.message || `Board "${newTitle}" created with default lists!`;
+
     toast.success(msg, { position: toast.POSITION.TOP_CENTER });
 
     closeModal();
-  };
-
-  const handleAddBoardClick = async (newTitle: string) => {
-    if (!userInfo || fkpoid == null) return;
-
-    try {
-      setIsCreatingBoard(true);
-
-      const res = await AddBoard(
-        newTitle,
-        fkpoid,
-        userInfo.id,
-        userInfo.username
-      );
-
-      if (!res || res.status !== 200 || !res.data) {
-        const msg =
-          (res && (res as any).data && (res as any).data.message) ||
-          "Failed to add board.";
-        toast.error(msg, { position: toast.POSITION.TOP_CENTER });
-        return;
-      }
-
-      let newBoardId: number | null = null;
-      const payload: any = res.data;
-
-      if (typeof payload === "number") {
-        newBoardId = payload;
-      } else if (typeof payload === "string" && /^\d+$/.test(payload)) {
-        newBoardId = Number(payload);
-      } else if (typeof payload === "object" && payload !== null) {
-        newBoardId =
-          payload.boardId ??
-          payload.id ??
-          payload.data?.boardId ??
-          payload.data?.id ??
-          null;
-      }
-
-      if (newBoardId == null || !Number.isFinite(newBoardId)) {
-        toast.error("Board created but ID was not returned correctly.", {
-          position: toast.POSITION.TOP_CENTER,
-        });
-        return;
-      }
-
-      const boardId: number = newBoardId;
-
-      const defaultListTitles = ["To do", "In progress", "In review", "Done"];
-      for (let i = 0; i < defaultListTitles.length; i++) {
-        const title = defaultListTitles[i];
-        try {
-          await AddKanbanList(
-            title,
-            boardId,
-            userInfo.username,
-            userInfo.id,
-            fkpoid
-          );
-        } catch (error) {
-          console.error(`Error creating default list "${title}":`, error);
-        }
-      }
-
-      // ✅ UPDATE #2: add to the TOP (newest first) + go to first page (so you see it instantly)
-      setBoards((prev) => [{ boardId, title: newTitle }, ...prev]);
-      setCardPage(0);
-      setTablePage(0);
-
-      const msg =
-        typeof res.data === "string"
-          ? res.data
-          : payload.message || `Board "${newTitle}" created with default lists!`;
-
-      toast.success(msg, { position: toast.POSITION.TOP_CENTER });
-
-      closeModal();
-    } finally {
-      setIsCreatingBoard(false);
-    }
-  };
+  } finally {
+    setIsCreatingBoard(false);
+  }
+};
 
   // ✅ Confirm delete board (called from modal)
   const handleConfirmDeleteBoard = async () => {
