@@ -25,8 +25,16 @@ export function AddCardForm(props: IAddFormProps) {
 
   // Handle creating a new task
   const createCard = async () => {
-    const trimmed = name.trim();
+    let trimmed = name.trim();
     if (!trimmed || isCreating) return;
+
+    // If the task name exceeds 100 characters, trim it and show a toast
+    if (trimmed.length > 100) {
+      trimmed = trimmed.slice(0, 100);
+      toast.warning("Task title has been shortened to 100 characters", {
+        position: toast.POSITION.TOP_CENTER,
+      });
+    }
 
     setIsCreating(true);
 
@@ -106,16 +114,16 @@ export function AddCardForm(props: IAddFormProps) {
               <div className="h-3 w-1/2 rounded-full bg-slate500_08 dark:bg-slate500_20" />
             </div>
           ) : (
-            <input
-              className="w-full border-none bg-transparent text-[14px] text-ink placeholder:text-slate500 
-                outline-none focus:outline-none focus-visible:outline-none focus:ring-0
-                dark:text-white dark:placeholder:text-slate500_80"
-              placeholder={props.placeholder || 'Task name'}
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              onKeyDown={handleKeyDown}
-            />
+           <input
+  className="w-full border-none bg-transparent text-[14px] text-ink placeholder:text-slate500 
+    outline-none focus:outline-none focus-visible:outline-none focus:ring-0
+    dark:text-white dark:placeholder:text-slate500_80"
+  placeholder={props.placeholder || 'Task name'}
+  type="text"
+  value={name}
+  onChange={(e) => setName(e.target.value)}
+  onKeyDown={handleKeyDown}
+/>
           )}
         </div>
 

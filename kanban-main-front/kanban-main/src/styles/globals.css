@@ -281,3 +281,20 @@ body {
 .Toastify__toast--error {
   background-color: #E74C3C;  /* Customize the error toast color */
 }
+.kanban-title {
+  white-space: nowrap; /* Prevent title from wrapping */
+  overflow: hidden;    /* Hide overflowed content */
+  text-overflow: ellipsis; /* Add ellipsis (...) when the text overflows */
+  max-width: 100%; /* Ensure it stays within the container */
+  cursor: pointer;
+}
+
+/* For input field when editing */
+input[type="text"] {
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  padding-right: 20px; /* Add space for scrollbar */
+  box-sizing: border-box;
+}

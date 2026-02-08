@@ -1,4 +1,3 @@
-// src/components/kanban/KanbanListComponent.tsx
 import { useContext, useEffect, useRef, useState } from "react";
 import { Draggable, Droppable } from "react-beautiful-dnd";
 import Image from "next/image";
@@ -21,20 +20,16 @@ export interface IKanbanListComponentProps {
   dragIndex: number;
   list: KanbanList;
   dense: boolean;
-
-  // ✅ height passed from board in Dense ON
-  columnHeight?: number;
+  columnHeight?: number;  // height passed from board in Dense ON
 }
 
 function KanbanListComponent(props: IKanbanListComponentProps) {
-  const { handleCreateCard, handleRenameList, userInfo } =
-    useContext(KanbanContext);
+  const { handleCreateCard, handleRenameList, userInfo } = useContext(KanbanContext);
 
   const invalidateKanban = useInvalidateKanban();
 
   const cardCount = props.list.kanbanCards?.length ?? 0;
   const [showAddCard, setShowAddCard] = useState(false);
-
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState(props.list.title);
   const renameInputRef = useRef<HTMLInputElement>(null);
@@ -57,7 +52,7 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
   };
 
   const commitRename = async () => {
-    const next = renameValue.trim();
+    let next = renameValue.trim();
     const prev = props.list.title;
 
     if (!next) {
@@ -68,6 +63,15 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
       return;
     }
 
+    // Truncate the title to 100 characters if it's longer
+    if (next.length > 100) {
+      next = next.slice(0, 100);
+      toast.warning("List title has been shortened to 100 characters", {
+        position: toast.POSITION.TOP_CENTER,
+      });
+    }
+
+    // If the title hasn't changed, no need to proceed
     if (next === prev.trim()) {
       setIsRenaming(false);
       return;
@@ -109,7 +113,6 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
             "flex w-full flex-col rounded-[24px] border border-[#E5EAF1] bg-[#F4F6F8] shadow-soft",
             "dark:border-slate500_20 dark:bg-[#1B232D]",
             "min-h-0"
-            
           )}
           ref={provided.innerRef}
           {...provided.draggableProps}
@@ -120,18 +123,22 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
               : {}),
           }}
         >
-          {/* ✅ IMPORTANT: h-full + min-h-0 so only the cards area scrolls */}
           <div className="flex h-full min-h-0 flex-col touch-manipulation">
-            {/* HEADER fixed */}
-<div className="relative z-20 shrink-0 flex items-center justify-between rounded-t-[24px] px-5 py-4 overflow-visible">
+            <div className="relative z-20 shrink-0 flex items-center justify-between rounded-t-[24px] px-5 py-4 overflow-visible">
               <div className="flex items-center gap-3">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#DFE3E8] text-[11px] font-bold text-[#637381]">
                   {cardCount}
                 </span>
 
                 {!isRenaming ? (
-                  <div className="text-[17px] font-semibold text-ink dark:text-white">
-                    {props.list.title}
+                  <div
+                    className="kanban-title text-[17px] font-semibold text-ink dark:text-white"
+                    onDoubleClick={startRename}
+                  >
+                    {/* Show only first 15 characters */}
+                    {props.list.title.length > 15
+                      ? props.list.title.slice(0, 15)
+                      : props.list.title}
                   </div>
                 ) : (
                   <input
@@ -209,18 +216,16 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
               </div>
             </div>
 
-            {/* ✅ Cards area: ONLY this scrolls in Dense mode */}
             <Droppable droppableId={props.list.id}>
               {(dropProvided) => (
                 <div
                   {...dropProvided.droppableProps}
                   ref={dropProvided.innerRef}
-                className={classNames(
-  "relative z-0 flex-1 min-h-0",
-  props.dense ? "overflow-y-auto kanban-scroll" : "",
-  "px-4 pb-4 pt-3"
-)}
-
+                  className={classNames(
+                    "relative z-0 flex-1 min-h-0",
+                    props.dense ? "overflow-y-auto kanban-scroll" : "",
+                    "px-4 pb-4 pt-3"
+                  )}
                 >
                   <div className="space-y-3">
                     <div id={`add-card-${props.list.kanbanListId}`}>
@@ -233,15 +238,22 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
                             kanbanCardId,
                             seqNo,
                             fkKanbanListId
-                          ) =>
+                          ) => {
+                            // Trim title to 100 characters before submitting
+                            if (title.length > 100) {
+                              toast.warning("Task title has been shortened to 100 characters", {
+                                position: toast.POSITION.TOP_CENTER,
+                              });
+                              title = title.slice(0, 100);
+                            }
                             handleCreateCard(
                               props.listIndex,
                               title,
                               kanbanCardId,
                               seqNo,
                               fkKanbanListId
-                            )
-                          }
+                            );
+                          }}
                           userInfo={userInfo}
                           fkKanbanListId={props.list.kanbanListId}
                           onCreated={() => setShowAddCard(false)}
