@@ -80,79 +80,77 @@ export default function KanbanCardComponent(props: IKanbanCardComponentProps) {
             })
           }
         >
-        {props.card.imageUrl && (
-  <div
-   className={classNames(
-  props.card.completed ? "opacity-50" : "opacity-100",
-  "p-2"
-)}
-
-  >
-    <div className="h-50 overflow-hidden rounded-[16px] border border-slate500_12 bg-white dark:border-slate500_20 dark:bg-[#1B232D]">
-      <img
-        src={getImageUrl()}
-        alt="task banner"
-        className="h-full w-full object-cover"
-        onError={({ currentTarget }) => {
-          currentTarget.onerror = null;
-          currentTarget.src = `/static/kanbanDefaultBanner.jpg`;
-        }}
-      />
-    </div>
-  </div>
-)}
+          {/* ✅ IMAGE (no opacity change when completed anymore) */}
+          {props.card.imageUrl && (
+            <div className="p-2">
+              <div className="h-50 overflow-hidden rounded-[16px] border border-slate500_12 bg-white dark:border-slate500_20 dark:bg-[#1B232D]">
+                <img
+                  src={getImageUrl()}
+                  alt="task banner"
+                  className="h-full w-full object-cover"
+                  onError={({ currentTarget }) => {
+                    currentTarget.onerror = null;
+                    currentTarget.src = `/static/kanbanDefaultBanner.jpg`;
+                  }}
+                />
+              </div>
+            </div>
+          )}
 
           {/* Card body */}
           <div className="px-4 py-3">
             <div className="flex items-center justify-between gap-3">
-              <span
-             className="truncate text-[15px] font-semibold text-ink dark:text-white"
-
-              >
+              <span className="truncate text-[15px] font-semibold text-ink dark:text-white">
                 {props.card.title}
               </span>
 
-            {/* tasks count badge (small, upper-right) */}
+              {/* tasks count badge (small, upper-right) */}
               {!props.card.completed && props.card.kanbanTasks.length > 0 && (
                 <div className="text-[12px] font-medium text-slate600 dark:text-slate500_80">
                   {calculateTaskCompleted()}/{props.card.kanbanTasks.length}
                 </div>
               )}
-
-             
             </div>
 
-          <>
-  {props.card.desc && (
-    <div className="mb-1 mt-2">
-      <p className="truncate text-[13px] text-slate500 dark:text-slate400">
-        {props.card.desc}
-      </p>
-    </div>
-  )}
+            <>
+              {props.card.desc && (
+                <div className="mb-1 mt-2">
+                  <p className="truncate text-[13px] text-slate500 dark:text-slate400">
+                    {props.card.desc}
+                  </p>
+                </div>
+              )}
 
-  {props.card.kanbanTags.length > 0 && (
-    <div className="mt-1 flex flex-wrap gap-1">
-      {props.card.kanbanTags.map((tag, index) => (
-        <span
-          key={index}
-          className={classNames(
-            "rounded-[999px] px-3 py-1 text-[12px] font-semibold",
-            tag.color
-          )}
-        >
-          {tag.title}
-        </span>
-      ))}
-    </div>
-  )}
-</>
-
+              {props.card.kanbanTags.length > 0 && (
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {props.card.kanbanTags.length > 0 && (
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                      {props.card.kanbanTags.map((tag, index) => (
+                        <span
+                          key={(tag as any).kanbanTagId ?? index}
+                          className="
+                            inline-flex items-center
+                            rounded-[18px]
+                            px-3 py-2
+                            text-[13px] font-semibold leading-none
+                            bg-[#FFAB00]/10 text-[#FFAB00]
+                            dark:bg-[#FFAB00]/18 dark:text-[#FFAB00]
+                          "
+                          title={tag.title}
+                        >
+                          {tag.title}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
 
             {/* FOOTER: comments + attachments + assignees (Figma style) */}
             <div className="mt-3 flex items-center justify-between">
               {/* left: comments + attachments */}
-             
+              {/* (you imported MessageCircle/Paperclip but not rendering them here — leaving as-is) */}
 
               {/* right: avatars */}
               {assignees.length > 0 && (

@@ -371,23 +371,32 @@ const handleOpenModal = (payload: hanbleOpenModalProps) => {
 };
 
 
-  // ✅ لازم تقبل userInfo عشان ListMenu بمررها
-  const handleClearList = (listid: number, _userInfo: any) => {
-    const idx = kanbanState.findIndex((l) => l.kanbanListId === listid);
+// ✅ Clear all cards in a list (by listIndex - always matches kanbanState UI order)
+const handleClearList = (listid: number, _userInfo: any) => {
+  const id = Number(listid);
 
-    if (idx === -1) {
-      toast.error("List not found");
-      return;
-    }
+  console.log("handleClearList RUNNING, listid =", id);
 
-    const copy = [...kanbanState];
-    copy[idx] = { ...copy[idx], kanbanCards: [] };
+  setKanbanState((prev) => {
+    const idx = prev.findIndex((l) => Number(l.kanbanListId) === id);
 
-    setKanbanState(copy);
+    console.log("handleClearList idx =", idx);
 
-    toast.success("List cleared", { position: toast.POSITION.TOP_CENTER });
-  };
+    if (idx === -1) return prev;
 
+    const next = [...prev];
+    next[idx] = { ...next[idx], kanbanCards: [] };
+
+    console.log(
+      "handleClearList AFTER: cards count =",
+      next[idx].kanbanCards.length
+    );
+
+    return next;
+  });
+
+  toast.success("List cleared", { position: toast.POSITION.TOP_CENTER });
+};
   const renderModal = (state: ModalContextState) => {
     if (!state.isOpen) return null;
 

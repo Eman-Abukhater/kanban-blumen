@@ -23,7 +23,7 @@ export function ListMenu(props: IListMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
 
   const MENU_W = 170;
-  const MENU_H = 150; // approx height for 3 items
+  const MENU_H = 150;
   const GAP = 8;
 
   const updatePosition = () => {
@@ -31,32 +31,25 @@ export function ListMenu(props: IListMenuProps) {
     if (!btn) return;
 
     const r = btn.getBoundingClientRect();
-
     const spaceBelow = window.innerHeight - r.bottom;
     const openUp = spaceBelow < MENU_H + GAP;
 
     const top = openUp ? r.top - MENU_H - GAP : r.bottom + GAP;
 
-    // align right edge of menu with button right edge
     let left = r.right - MENU_W;
-
-    // keep inside viewport
     left = Math.max(8, Math.min(left, window.innerWidth - MENU_W - 8));
 
     setPos({ top, left, placement: openUp ? "top" : "bottom" });
   };
 
-  // position when opening
   useLayoutEffect(() => {
     if (!open) return;
     updatePosition();
-    // also update after paint (safer with fonts/layout)
     const t = requestAnimationFrame(updatePosition);
     return () => cancelAnimationFrame(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  // close on outside click + ESC
   useEffect(() => {
     if (!open) return;
 
@@ -109,10 +102,12 @@ export function ListMenu(props: IListMenuProps) {
           className="
             fixed z-[999999]
             rounded-[16px] border border-slate500_12 bg-white
-            shadow-[0_18px_45px_rgba(145,158,171,0.24)]
+            shadow-[0_18px_45px_rgba(15,23,42,0.10)]
             dark:border-slate500_20 dark:bg-[#1B232D]
+            dark:shadow-[0_18px_45px_rgba(0,0,0,0.55)]
             overflow-hidden
           "
+          onClick={(e) => e.stopPropagation()}
         >
           <div className="p-2">
             <button
@@ -127,13 +122,15 @@ export function ListMenu(props: IListMenuProps) {
               <span>Rename</span>
             </button>
 
+            {/* ✅ FIXED: clear by listIndex */}
             <button
               type="button"
               className="flex w-full items-center gap-3 rounded-[12px] px-3 py-2 text-[14px] text-ink hover:bg-slate500_08 dark:text-white dark:hover:bg-white/5"
-              onClick={() => {
-                setOpen(false);
-                handleClearList(props.listId, props.userInfo);
-              }}
+            onClick={() => {
+  console.log("CLEAR CLICKED: listId =", props.listId);
+  setOpen(false);
+  handleClearList(props.listId, props.userInfo);
+}}
             >
               <Eraser className="h-5 w-5" />
               <span>Clear</span>

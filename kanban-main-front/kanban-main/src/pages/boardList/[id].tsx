@@ -617,7 +617,7 @@ const handleAddBoardClick = async (newTitle: string) => {
 
     const boardId: number = newBoardId;
 
-    const defaultListTitles = ["To do", "In progress", "In review", "Done"];
+    const defaultListTitles = ["To do", "In progress", "In review", "Done", "Completed"];
     for (let i = 0; i < defaultListTitles.length; i++) {
       const title = defaultListTitles[i];
       try {

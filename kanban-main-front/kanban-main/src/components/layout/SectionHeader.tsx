@@ -25,20 +25,37 @@ export default function SectionHeader({
   const router = useRouter();
   const path = router.pathname.split("/").filter(Boolean);
 
+  // ✅ Breadcrumb-related additions (ONLY)
+  const projectListHref = "/projects";
+
+  // This should resolve to the SAME id used in /boardList/:id (ex: 10)
+  const boardListId =
+    (router.query.boardListId as string) ||
+    (router.query.projectId as string) ||
+    (router.query.id as string) ||
+    (router.query.boardId as string);
+
+  const boardListHref = boardListId ? `/boardList/${boardListId}` : "/boardList";
+  // ✅ End breadcrumb-related additions
+
   const breadcrumb: { label: string; href?: string }[] = [];
 
   if (path[0] === "projects") {
     breadcrumb.push({ label: "Project" });
     breadcrumb.push({ label: "Project List" });
   } else if (path[0] === "boardList") {
-    breadcrumb.push({ label: "Project", href: "/projects" });
-    breadcrumb.push({ label: "Project List", href: "/projects" });
+    breadcrumb.push({ label: "Project", href: projectListHref });
+    breadcrumb.push({ label: "Project List", href: projectListHref });
     breadcrumb.push({ label: "Board List" });
   } else if (path[0] === "kanbanList") {
-    breadcrumb.push({ label: "Project", href: "/projects" });
-    breadcrumb.push({ label: "Project List", href: "/projects" });
-    breadcrumb.push({ label: "Board List" });
-    breadcrumb.push({ label: "kanban" });
+    breadcrumb.push({ label: "Project", href: projectListHref });
+    breadcrumb.push({ label: "Project List", href: projectListHref });
+
+    // ✅ ONLY change here: make Board List clickable and go to /boardList/:id
+    breadcrumb.push({ label: "Board List", href: boardListHref });
+
+    // ✅ keep label nice
+    breadcrumb.push({ label: "Kanban" });
   } else {
     breadcrumb.push({ label: "Project" });
     breadcrumb.push({ label: "Project List" });

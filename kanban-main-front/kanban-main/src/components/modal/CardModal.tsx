@@ -19,6 +19,7 @@ import {
   AddTask,
   uploadImageToCloudinary,
   DeleteCard,
+  AddKanbanList,
 } from "@/services/kanbanApi";
 import { toast } from "react-toastify";
 import { GetCardImagePath } from "@/utility/baseUrl";
@@ -48,8 +49,11 @@ export function CardModal(props: CardModalProps) {
     kanbanState,
     handleDragEnd,
     handleDeleteCard,
+    handleCreateList,
   } = useContext(KanbanContext);
 
+const kanbanStateRef = useRef<any[]>([]);
+kanbanStateRef.current = kanbanState as any[];
   const normalize = (s: string) => (s || "").trim().toLowerCase();
 
   // ✅ Status options = ALL columns titles (dynamic)
@@ -72,11 +76,10 @@ export function CardModal(props: CardModalProps) {
 const lastNonDoneStatusRef = useRef<string>("");
 
 // ✅ find the real "Done" column title from your board (case-insensitive)
-const doneTitle = useMemo(() => {
-  const found = statusOptions.find((t) => normalize(t) === "done");
-  return found || "Done"; // fallback
+const completedTitle = useMemo(() => {
+  const found = statusOptions.find((t) => normalize(t) === "completed");
+  return found || "Completed";
 }, [statusOptions]);
-
 
   const [title, setTitle] = useState<string>(props.card.title);
   const [desc, setDesc] = useState(props.card.desc);
@@ -145,46 +148,156 @@ useEffect(() => {
   }, [kanbanState, props.card.kanbanCardId, props.card.id]);
 
   // keep completed in sync (ONLY if you literally have a column called "Done")
-  useEffect(() => {
-    setCompleted(normalize(status) === "done");
-  }, [status]);
+const isCompleted = normalize(status) === "completed";;
 
+const creatingCompletedRef = useRef<Promise<{ title: string; listIndex: number }> | null>(null);
+
+const findCompletedIndex = () => {
+  const lists = kanbanStateRef.current;
+  return lists.findIndex((l) => normalize(l?.title) === "completed");
+};
+
+const ensureCompletedColumn = async (): Promise<{ title: string; listIndex: number }> => {
+  const existingIndex = findCompletedIndex();
+  if (existingIndex >= 0) {
+    const realTitle = (kanbanStateRef.current[existingIndex]?.title ?? "Completed").trim();
+    return { title: realTitle, listIndex: existingIndex };
+  }
+
+  if (creatingCompletedRef.current) return creatingCompletedRef.current;
+
+  creatingCompletedRef.current = (async () => {
+    const res = await AddKanbanList(
+      "Completed",
+      userInfo.fkboardid,
+      userInfo.username,
+      userInfo.id,
+      userInfo.fkpoid
+    );
+
+    if (!(res?.status === 200 && res?.data)) {
+      throw new Error("Failed to create Completed column");
+    }
+
+    // ✅ Optimistic add to UI
+    handleCreateList(
+      "Completed",
+      res.data.kanbanListId,
+      res.data.seqNo,
+      userInfo.fkboardid
+    );
+
+    // ✅ Wait until the new list appears in kanbanState
+    const newId = res.data.kanbanListId;
+    const start = Date.now();
+
+    while (Date.now() - start < 1500) {
+      const lists = kanbanStateRef.current;
+
+      const byId = lists.findIndex((l) =>
+        l?.kanbanListId === newId || String(l?.id) === String(newId)
+      );
+      if (byId >= 0) {
+        return { title: (lists[byId]?.title ?? "Completed").trim(), listIndex: byId };
+      }
+
+      const byTitle = findCompletedIndex();
+      if (byTitle >= 0) {
+        return { title: (lists[byTitle]?.title ?? "Completed").trim(), listIndex: byTitle };
+      }
+
+      await new Promise((r) => setTimeout(r, 50));
+    }
+
+    return { title: "Completed", listIndex: -1 };
+  })();
+
+  try {
+    return await creatingCompletedRef.current;
+  } finally {
+    creatingCompletedRef.current = null;
+  }
+};
   const getTargetListIndexByTitle = (titleStr: string) => {
     const t = normalize(titleStr);
     return (kanbanState as any[]).findIndex((l) => normalize(l?.title) === t);
   };
 
   // ✅ IMMEDIATE UI MOVE when status selected from dropdown
-  const moveCardOptimistic = (nextStatus: string) => {
-    const targetListIndex = getTargetListIndexByTitle(nextStatus);
-    if (targetListIndex < 0) return;
+const moveCardOptimistic = (nextStatus: string) => {
+  const targetListIndex = (kanbanStateRef.current as any[]).findIndex(
+    (l) => normalize(l?.title) === normalize(nextStatus)
+  );
 
-    // same list -> nothing to move
-    if (targetListIndex === currentListIndex) return;
+  if (targetListIndex < 0) return;
+  if (targetListIndex === currentListIndex) return;
 
-    const fromList: any = (kanbanState as any[])[currentListIndex];
-    const toList: any = (kanbanState as any[])[targetListIndex];
+  const lists = kanbanStateRef.current;
+  const fromList: any = lists[currentListIndex];
+  const toList: any = lists[targetListIndex];
+  if (!fromList?.id || !toList?.id) return;
 
-    if (!fromList?.id || !toList?.id) return;
+  const destinationIndex = (toList?.kanbanCards?.length ?? 0);
 
-    // place at end (you can change to 0 to move to top)
-    const destinationIndex = (toList?.kanbanCards?.length ?? 0);
+  handleDragEnd({
+    draggableId: props.card.id,
+    type: "DEFAULT",
+    reason: "DROP",
+    mode: "FLUID",
+    source: { droppableId: fromList.id, index: currentCardIndex },
+    destination: { droppableId: toList.id, index: destinationIndex },
+    combine: null,
+  } as any);
 
-    // Call your existing board logic (updates state immediately)
-    handleDragEnd({
-      draggableId: props.card.id,
-      type: "DEFAULT", // must NOT be "all-lists"
-      reason: "DROP",
-      mode: "FLUID",
-      source: { droppableId: fromList.id, index: currentCardIndex },
-      destination: { droppableId: toList.id, index: destinationIndex },
-      combine: null,
-    } as any);
+  setCurrentListIndex(targetListIndex);
+  setCurrentCardIndex(destinationIndex);
+};
 
-    // update local indices immediately
-    setCurrentListIndex(targetListIndex);
-    setCurrentCardIndex(destinationIndex);
-  };
+const handleToggleCompleted = async () => {
+  // ✅ if currently NOT completed -> go to completed
+  if (!isCompleted) {
+    // remember last non-completed status
+    if (normalize(status) !== "completed") lastNonDoneStatusRef.current = status;
+
+    // ✅ show checked immediately
+    setStatus("Completed");
+
+    try {
+      const ensured = await ensureCompletedColumn();
+
+      if (ensured.listIndex >= 0) {
+        moveCardOptimistic(ensured.title);
+      } else {
+        // fallback (if state didn't update fast)
+        invalidateKanban();
+      }
+    } catch (e: any) {
+      // revert if failed
+      const fallback =
+        lastNonDoneStatusRef.current &&
+        normalize(lastNonDoneStatusRef.current) !== "completed"
+          ? lastNonDoneStatusRef.current
+          : statusOptions.find((s) => normalize(s) !== "completed") || "In progress";
+
+      setStatus(fallback);
+      toast.error(e?.message || "Could not create Completed column", {
+        position: toast.POSITION.TOP_CENTER,
+      });
+    }
+
+    return;
+  }
+
+  // ✅ if currently completed -> go back
+  const fallback =
+    lastNonDoneStatusRef.current &&
+    normalize(lastNonDoneStatusRef.current) !== "completed"
+      ? lastNonDoneStatusRef.current
+      : statusOptions.find((s) => normalize(s) !== "completed") || "In progress";
+
+  setStatus(fallback);
+  moveCardOptimistic(fallback);
+};
 
   const CardImagePath = GetCardImagePath();
 
@@ -312,7 +425,7 @@ const handleImageUpload = async (f: File) => {
             ...props.card,
             title,
             desc,
-            completed: normalize(status) === "done",
+completed: normalize(status) === "completed",
             status, // ✅ requires KanbanCard.status?: string
             imageUrl: cardData.imageUrl || props.card.imageUrl || "",
             kanbanTags,
@@ -378,7 +491,7 @@ const handleImageUpload = async (f: File) => {
       desc: desc || "....",
       imageUrl: finalImageUrl,
       imagePublicId: cloudinaryPublicId,
-      completed: normalize(status) === "done",
+completed: normalize(status) === "completed",
       startDate: date?.startDate ? date.startDate.toString() : undefined,
       endDate: date?.endDate ? date.endDate.toString() : undefined,
       fkboardid: userInfo.fkboardid,
@@ -875,15 +988,23 @@ const deleteCard = async () => {
                               <div className="pt-2 text-[13px] font-medium text-[#637381] dark:text-slate500_80">
                                 Description
                               </div>
-                              <textarea
-                                ref={descTextAreaRef}
-                                className="card-desc-scroll
- min-h-[96px] w-full resize-none rounded-[12px] border border-slate500_12 bg-white/60 px-4 py-3 text-[15px] text-ink outline-none dark:border-slate500_20 dark:bg-white/5 dark:text-white "
-                                placeholder="Add a short description..."
-                                value={desc}
-                                onChange={(e) => setDesc(e.target.value)}
-                                minLength={3}
-                              />
+                            <textarea
+  ref={descTextAreaRef}
+  className="
+    card-desc-scroll
+    min-h-[96px] w-full resize-none rounded-[12px]
+    border border-slate500_12
+    bg-white/60 px-4 py-3 text-[15px] text-ink outline-none
+    focus:outline-none focus:ring-0 focus:border-ink
+    dark:border-slate500_20 dark:bg-white/5 dark:text-white
+    dark:focus:border-white
+  "
+  placeholder="Add a short description..."
+  value={desc}
+  onChange={(e) => setDesc(e.target.value)}
+  minLength={3}
+/>
+
 
                               {/* Image */}
                               <div className="pt-2 text-[13px] font-medium text-[#637381] dark:text-slate500_80">
@@ -973,40 +1094,15 @@ const deleteCard = async () => {
                                 <div className="flex items-center">
 <button
   type="button"
-  onClick={() => {
-    setCompleted((prev) => {
-      const next = !prev;
-
-      if (next) {
-        if (normalize(status) !== "done") lastNonDoneStatusRef.current = status;
-        setStatus(doneTitle);
-        moveCardOptimistic(doneTitle);
-      } else {
-        const fallback =
-          lastNonDoneStatusRef.current &&
-          normalize(lastNonDoneStatusRef.current) !== "done"
-            ? lastNonDoneStatusRef.current
-            : statusOptions.find((s) => normalize(s) !== "done") || "In progress";
-
-        if (normalize(fallback) !== "done") lastNonDoneStatusRef.current = fallback;
-        setStatus(fallback);
-        moveCardOptimistic(fallback);
-      }
-
-      return next;
-    });
-  }}
-  aria-pressed={completed}
+  onClick={handleToggleCompleted}
+  aria-pressed={isCompleted}
   className={[
     "flex h-5 w-5 items-center justify-center rounded-[6px] border transition",
-    completed
-      ? "border-[#FFAB00] bg-[#FFAB00]"
-      : "border-[#637381] bg-transparent",
+    isCompleted ? "border-[#FFAB00] bg-[#FFAB00]" : "border-[#637381] bg-transparent",
   ].join(" ")}
 >
-  {/* check icon */}
   <svg
-    className={completed ? "h-4 w-4 text-white" : "hidden"}
+    className={isCompleted ? "h-4 w-4 text-white" : "hidden"}
     viewBox="0 0 20 20"
     fill="currentColor"
   >
@@ -1027,15 +1123,22 @@ const deleteCard = async () => {
                                 <div className="pt-2 text-[13px] font-medium text-[#637381] dark:text-slate500_80">
                                   Description
                                 </div>
-                                  <textarea
-                                ref={descTextAreaRef}
-                                className="card-desc-scroll
- min-h-[96px] w-full resize-none rounded-[12px] border border-slate500_12 bg-white/60 px-4 py-3 text-[15px] text-ink outline-none dark:border-slate500_20 dark:bg-white/5 dark:text-white "
-                                placeholder="Add a short description..."
-                                value={desc}
-                                onChange={(e) => setDesc(e.target.value)}
-                                minLength={3}
-                              />
+                         <textarea
+  ref={descTextAreaRef}
+  className="
+    card-desc-scroll
+    min-h-[96px] w-full resize-none rounded-[12px]
+    border border-slate500_12
+    bg-white/60 px-4 py-3 text-[15px] text-ink outline-none
+    focus:outline-none focus:ring-0 focus:border-ink
+    dark:border-slate500_20 dark:bg-white/5 dark:text-white
+    dark:focus:border-white
+  "
+  placeholder="Add a short description..."
+  value={desc}
+  onChange={(e) => setDesc(e.target.value)}
+  minLength={3}
+/>
 
                                 {/* Image */}
                                 <div className="pt-2 text-[13px] font-medium text-[#637381] dark:text-slate500_80">
@@ -1098,19 +1201,34 @@ const deleteCard = async () => {
                                       {({ open }) => (
                                         <>
                                           <div className="mb-2 flex items-center justify-between rounded-[14px] border border-slate500_12 bg-white/60 px-4 py-3 dark:border-slate500_20 dark:bg-white/5 dark:text-white">
-                                            <div className="flex items-center gap-2">
-                                              <span className="text-[14px] font-semibold">{_t.title}</span>
-                                            </div>
+                                   <div className="flex min-w-0 flex-1 items-center gap-2">
+ <input
+  type="text"
+  readOnly
+  value={_t.title}
+  title={_t.title}
+  className="
+    w-full min-w-0
+    rounded-[14px]
+    bg-white/60
+    px-4 py-3
+    text-[14px] font-semibold text-ink
+    border border-slate500_12
+
+    outline-none appearance-none
+    focus:outline-none focus-visible:outline-none
+    focus:ring-0 focus-visible:ring-0
+    focus:ring-offset-0 focus-visible:ring-offset-0
+
+    focus:border-black
+    dark:bg-white/5 dark:text-white dark:border-slate500_20
+    dark:focus:border-white
+  "
+/>
+</div>
 
                                             <div className="flex items-center gap-2">
-                                              <Disclosure.Button className="rounded-full p-2 hover:bg-slate500_08 dark:hover:bg-slate500_12">
-                                                <ChevronUpIcon
-                                                  className={classNames(
-                                                    "h-4 w-4 text-slate500 transition-transform",
-                                                    open ? "rotate-0" : "rotate-180"
-                                                  )}
-                                                />
-                                              </Disclosure.Button>
+                                           
 
                                               {_t.addedBy === userInfo.username && _t.completed === false && (
                                                 <button

@@ -2,7 +2,6 @@
 export const getServerSideProps = async () => ({ props: {} });
 
 import SectionHeader from "@/components/layout/SectionHeader";
-import type { GetServerSideProps } from "next";
 import {
   useState,
   useEffect,

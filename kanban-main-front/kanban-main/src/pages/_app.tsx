@@ -39,8 +39,6 @@ export default function App({ Component, pageProps }: AppProps) {
               closeOnClick
               draggable
               hideProgressBar
-              toastClassName="blumen-toast"
-              bodyClassName="blumen-toast-body"
             />
           </KanbanContextComponent>
         </Hydrate>

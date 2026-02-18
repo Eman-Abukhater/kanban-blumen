@@ -255,15 +255,7 @@ body {
 .add-column-input:focus {
   border-color: #1C252E;
 }
-/* In your globals.css or a specific CSS file */
-.blumen-toast {
-  z-index: 9999;  /* Ensure the toast appears on top */
-}
 
-.blumen-toast-body {
-  font-size: 14px; /* Customize the font size */
-  color: white; /* Customize the text color */
-}
 
 .Toastify__toast-container {
   position: fixed !important;  /* Ensure the container is fixed */

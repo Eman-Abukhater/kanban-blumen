@@ -1,5 +1,5 @@
 // src/components/kanban/DueDateModal.tsx
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import React, { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Dialog, Transition, Menu } from "@headlessui/react";
 import dayjs, { Dayjs } from "dayjs";
 import { DateValueType } from "react-tailwindcss-datepicker/dist/types";
@@ -15,8 +15,6 @@ const WEEK = ["S", "M", "T", "W", "T", "F", "S"];
 
 // Brand
 const BRAND_YELLOW = "#FFAB00";
-
-// ✅ in-between color (simple, like review screen)
 const RANGE_BG = "rgba(255, 171, 0, 0.40)";
 
 const toDay = (d: any): Dayjs | null => {
@@ -27,12 +25,6 @@ const toDay = (d: any): Dayjs | null => {
 
 const sameDay = (a: Dayjs | null, b: Dayjs | null) =>
   !!a && !!b && a.isSame(b, "day");
-
-// (inclusive util kept, but we will use "between only" in styling)
-const isBetweenInclusive = (d: Dayjs, start: Dayjs, end: Dayjs) =>
-  (d.isAfter(start, "day") && d.isBefore(end, "day")) ||
-  sameDay(d, start) ||
-  sameDay(d, end);
 
 function buildMonthGrid(month: Dayjs) {
   const start = month.startOf("month");
@@ -59,25 +51,25 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
   const [start, setStart] = useState<Dayjs | null>(null);
   const [end, setEnd] = useState<Dayjs | null>(null);
 
-  // today ring
   const today = useMemo(() => dayjs().startOf("day"), []);
 
-  // ===== MOBILE: switch view inside same Dialog (NO nested Dialog) =====
+  // ===== MOBILE =====
   const [mobileStep, setMobileStep] = useState<"form" | "picker">("form");
   const [activeField, setActiveField] = useState<"start" | "end">("start");
 
   const [pickMonth, setPickMonth] = useState(() => dayjs().startOf("month"));
   const pickWeeks = useMemo(() => buildMonthGrid(pickMonth), [pickMonth]);
 
-  // temp selected inside picker (only commits on OK)
+  // temp selection (only commits on OK)
   const [tempPick, setTempPick] = useState<Dayjs | null>(null);
 
   const closeAll = () => {
     setMobileStep("form");
+    setTempPick(null);
     onClose();
   };
 
-  // ✅ hard “outside click” close (works 100% even if Dialog outside detection fails)
+  // ✅ hard outside click close
   useEffect(() => {
     if (!open) return;
 
@@ -101,10 +93,12 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
+  // sync initial value when opening
   useEffect(() => {
     if (!open) return;
 
-    setMobileStep("form"); // reset mobile view when opening
+    setMobileStep("form");
+    setTempPick(null);
 
     const s = toDay(value?.startDate);
     const e = toDay(value?.endDate);
@@ -120,7 +114,7 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
   const leftWeeks = useMemo(() => buildMonthGrid(leftMonth), [leftMonth]);
   const rightWeeks = useMemo(() => buildMonthGrid(rightMonth), [rightMonth]);
 
-  // ✅ Re-pick logic (always can change later)
+  // ===== DESKTOP pick logic =====
   const handlePick = (d: Dayjs) => {
     if (!start) {
       setStart(d);
@@ -143,13 +137,16 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
     setEnd(d);
   };
 
-  const apply = () => {
+  const applyAndClose = (nextStart: Dayjs | null, nextEnd: Dayjs | null) => {
     onApply({
-      startDate: start ? start.toDate() : null,
-      endDate: end ? end.toDate() : null,
+      startDate: nextStart ? nextStart.toDate() : null,
+      endDate: nextEnd ? nextEnd.toDate() : null,
     } as DateValueType);
+
+    closeAll();
   };
 
+  // ===== MOBILE open picker =====
   const openMobilePicker = (field: "start" | "end") => {
     setActiveField(field);
 
@@ -165,6 +162,9 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
     setMobileStep("form");
   };
 
+  // ✅ MOBILE commit (OK)
+  // Start: set start, return to form
+  // End: set end, AUTO-APPLY + CLOSE (this matches your required flow)
   const commitMobilePick = () => {
     const chosen = tempPick;
     if (!chosen) {
@@ -174,30 +174,50 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
 
     if (activeField === "start") {
       const newStart = chosen;
+
+      // keep range valid
       if (end && end.isBefore(newStart, "day")) {
         setStart(newStart);
         setEnd(newStart);
       } else {
         setStart(newStart);
       }
-    } else {
-      const newEnd = chosen;
 
-      if (!start) {
-        setStart(newEnd);
-        setEnd(null);
-      } else if (newEnd.isBefore(start, "day")) {
-        setEnd(start);
-        setStart(newEnd);
-      } else {
-        setEnd(newEnd);
-      }
+      setMobileStep("form");
+      return;
     }
 
-    setMobileStep("form");
+    // activeField === "end"
+    const newEnd = chosen;
+
+    // if no start yet, treat it as start
+    if (!start) {
+      setStart(newEnd);
+      setEnd(null);
+      setMobileStep("form");
+      return;
+    }
+
+    // if end before start => swap
+    if (newEnd.isBefore(start, "day")) {
+      const nextStart = newEnd;
+      const nextEnd = start;
+
+      setStart(nextStart);
+      setEnd(nextEnd);
+
+      // ✅ auto apply when user confirms end
+      applyAndClose(nextStart, nextEnd);
+      return;
+    }
+
+    setEnd(newEnd);
+
+    // ✅ auto apply when user confirms end
+    applyAndClose(start, newEnd);
   };
 
-  // ===== Month dropdown (functional arrow) =====
+  // ===== Month dropdown =====
   const MONTHS = useMemo(
     () => Array.from({ length: 12 }, (_, i) => dayjs().month(i).format("MMMM")),
     []
@@ -207,8 +227,6 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
     if (side === "left") {
       setLeftMonth((m) => m.month(monthIndex).startOf("month"));
     } else {
-      // rightMonth is leftMonth + 1
-      // if user chooses month for right calendar => set leftMonth = chosenMonth - 1
       setLeftMonth((m) =>
         m.add(1, "month").month(monthIndex).startOf("month").subtract(1, "month")
       );
@@ -246,10 +264,9 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
             rounded-[16px] border border-slate500_12 bg-white p-2
             shadow-[0_18px_45px_rgba(15,23,42,0.12)]
             dark:border-white/10 dark:bg-[#1B232D]
-            dark:shadow-[0_18px_45px_rgba(0,0,0,0.45)]
+            dark:shadow-[0_18px_45px_rgba(0,0,0,0.55)]
           "
         >
-          {/* Months */}
           <div className="grid grid-cols-2 gap-1">
             {MONTHS.map((mName, idx) => (
               <Menu.Item key={mName}>
@@ -272,7 +289,6 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
             ))}
           </div>
 
-          {/* Year controls */}
           <div className="mt-3 flex items-center justify-between rounded-[12px] border border-slate500_12 px-3 py-2 dark:border-white/10">
             <button
               type="button"
@@ -318,7 +334,6 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
           dark:border-white/10 dark:bg-[#1C252E]
         "
       >
-        {/* Header */}
         <div className="mb-4 flex items-center justify-between">
           {renderMonthTitle(month, side)}
 
@@ -359,8 +374,7 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
           </div>
         </div>
 
-        {/* Weekdays */}
-        <div className="grid grid-cols-7 text-center text-[12px] font-medium text-[#637381] dark:text-white/50">
+        <div className="grid grid-cols-7 text-center text-[12px] font-medium text-[#637381] dark:text-white/60">
           {WEEK.map((w) => (
             <div key={w} className="py-2">
               {w}
@@ -368,7 +382,6 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
           ))}
         </div>
 
-        {/* Days */}
         <div className="grid grid-cols-7 gap-y-1 text-center">
           {weeks.flat().map((cell, idx) => {
             if (!cell) return <div key={idx} className="h-10" />;
@@ -379,7 +392,6 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
             const isEnd = sameDay(d, end);
             const hasRange = !!start && !!end;
 
-            // ✅ IMPORTANT: ONLY BETWEEN (exclude start/end)
             const inBetween =
               hasRange && start && end
                 ? d.isAfter(start, "day") && d.isBefore(end, "day")
@@ -391,26 +403,22 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
             const base =
               "mx-auto flex h-10 w-10 items-center justify-center rounded-full text-[14px] font-semibold transition outline-none";
 
-            // default
+            // ✅ readable default in dark mode
             let cls =
-              "text-slate700 hover:bg-slate500_08 dark:text-white dark:hover:bg-white/10";
+              "text-[#1C252E] hover:bg-slate500_08 dark:text-white dark:hover:bg-white/10";
 
-            // today ring (keep)
             if (showTodayRing) {
               cls =
-                "ring-1 ring-slate500 text-slate700 dark:ring-white dark:text-white";
+                "ring-1 ring-slate500 text-[#1C252E] dark:ring-white dark:text-white";
             }
 
-            // background (inline = ALWAYS works, no Tailwind dynamic issues)
             let style: React.CSSProperties | undefined;
 
-            // between dates => yellow 40%
             if (inBetween && !showTodayRing) {
               style = { backgroundColor: RANGE_BG };
               cls = "text-[#1C252E] dark:text-white";
             }
 
-            // start/end => solid yellow
             if ((isStart || isEnd) && !showTodayRing) {
               style = { backgroundColor: BRAND_YELLOW };
               cls = "text-white";
@@ -433,7 +441,7 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
     );
   };
 
-  // ===== MOBILE helpers for highlighting between dates (same rules) =====
+  // ===== MOBILE styles =====
   const getMobileDayStyle = (d: Dayjs) => {
     const isStart = sameDay(d, start);
     const isEnd = sameDay(d, end);
@@ -446,16 +454,14 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
 
     const isToday = sameDay(d, today);
 
-  const base =
-  "mx-auto flex h-8 w-8 items-center justify-center rounded-full text-[13px] font-semibold transition outline-none";
+    const base =
+      "mx-auto flex h-9 w-9 items-center justify-center rounded-full text-[13px] font-semibold transition outline-none";
 
-    // default
     let cls =
-      "text-slate700 hover:bg-slate500_08 dark:text-white/85 dark:hover:bg-white/10";
+      "text-[#1C252E] hover:bg-slate500_08 dark:text-white dark:hover:bg-white/10";
 
-    // ring for today unless start/end
     if (isToday && !(isStart || isEnd)) {
-      cls = "ring-1 ring-slate500 text-slate700 dark:ring-white dark:text-white";
+      cls = "ring-1 ring-slate500 text-[#1C252E] dark:ring-white dark:text-white";
     }
 
     let style: React.CSSProperties | undefined;
@@ -474,11 +480,8 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
   };
 
   const getTempSelectedStyle = (d: Dayjs, isSelected: boolean) => {
-    // Only highlight selected day in picker (like your current logic),
-    // BUT also show inBetween if range already chosen.
     const { base, cls, style } = getMobileDayStyle(d);
 
-    // if user is picking inside picker, selected should be solid yellow
     if (isSelected) {
       return {
         base,
@@ -492,9 +495,7 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
 
   return (
     <Transition appear show={open} as={Fragment}>
-      {/* onClose should still work on ESC */}
       <Dialog as="div" className="relative z-[9999]" onClose={closeAll}>
-        {/* Overlay (also closes on click) */}
         <Transition.Child
           as={Fragment}
           enter="ease-out duration-150"
@@ -507,7 +508,6 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
           <div className="fixed inset-0 bg-black/50" onClick={closeAll} />
         </Transition.Child>
 
-        {/* Panel */}
         <div className="fixed inset-0 flex items-center justify-center p-4 sm:p-6">
           <Transition.Child
             as={Fragment}
@@ -521,7 +521,10 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
             <Dialog.Panel
               ref={panelRef}
               className="
+                card-modal-scroll
                 w-full max-w-[920px] rounded-[24px] p-6
+                max-h-[90vh] overflow-y-auto
+                md:max-h-none md:overflow-visible
                 bg-white shadow-[0_30px_80px_rgba(0,0,0,0.18)]
                 dark:bg-[#1C252E] dark:shadow-[0_30px_80px_rgba(0,0,0,0.55)]
               "
@@ -536,7 +539,7 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
                 {renderCalendar(rightMonth, rightWeeks, "right")}
               </div>
 
-              {/* ===== MOBILE (form -> picker) ===== */}
+              {/* ===== MOBILE (Start/End -> Picker) ===== */}
               <div className="mt-6 md:hidden">
                 {mobileStep === "form" ? (
                   <div className="space-y-4">
@@ -613,18 +616,6 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
                     <div className="mt-6 mb-2 flex items-center justify-between">
                       <div className="inline-flex items-center gap-2 text-[18px] font-semibold text-[#1C252E] dark:text-white">
                         {pickMonth.format("MMMM YYYY")}
-                        <svg
-                          className="h-4 w-4 opacity-70"
-                          viewBox="0 0 20 20"
-                          fill="currentColor"
-                          aria-hidden="true"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.94a.75.75 0 111.08 1.04l-4.24 4.5a.75.75 0 01-1.08 0l-4.24-4.5a.75.75 0 01.02-1.06z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
                       </div>
 
                       <div className="flex items-center gap-2">
@@ -648,7 +639,7 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-7 text-center text-[12px] font-medium text-[#637381] dark:text-white/50">
+                    <div className="grid grid-cols-7 text-center text-[12px] font-medium text-[#637381] dark:text-white/60">
                       {WEEK.map((w) => (
                         <div key={w} className="py-2">
                           {w}
@@ -656,7 +647,6 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
                       ))}
                     </div>
 
-                    {/* ✅ MOBILE GRID with between highlight */}
                     <div className="grid grid-cols-7 gap-y-1 text-center">
                       {pickWeeks.flat().map((cell, idx) => {
                         if (!cell) return <div key={idx} className="h-10" />;
@@ -680,11 +670,16 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
                       })}
                     </div>
 
-                    <div className="mt-8 flex items-center justify-end gap-6">
+                    <div className="mt-8 flex items-center justify-end gap-3">
+                      {/* ✅ bordered cancel (review) */}
                       <button
                         type="button"
                         onClick={cancelMobilePicker}
-                        className="text-[16px] font-semibold text-[#1C252E] dark:text-white/90"
+                        className="
+                          rounded-[12px] px-6 py-3 text-[14px] font-semibold
+                          border border-slate500_20 text-[#1C252E] hover:bg-slate500_08
+                          dark:border-white/10 dark:text-white dark:hover:bg-white/10
+                        "
                       >
                         Cancel
                       </button>
@@ -705,7 +700,7 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
                 )}
               </div>
 
-              {/* Footer (desktop Apply/Cancel) */}
+              {/* ===== DESKTOP footer ===== */}
               <div className="mt-6 hidden items-center justify-end gap-3 md:flex">
                 <button
                   type="button"
@@ -721,7 +716,12 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
 
                 <button
                   type="button"
-                  onClick={apply}
+                  onClick={() =>
+                    onApply({
+                      startDate: start ? start.toDate() : null,
+                      endDate: end ? end.toDate() : null,
+                    } as DateValueType)
+                  }
                   className="
                     rounded-[12px] px-5 py-2 text-[14px] font-semibold
                     bg-[#1C252E] text-white hover:opacity-90

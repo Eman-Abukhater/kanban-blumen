@@ -1,9 +1,9 @@
 // src/pages/kanbanList/[id].tsx
 
-import { useEffect, useMemo, useState, useContext } from "react";
+import { useEffect, useMemo, useState, useContext, useRef } from "react";
 import { useRouter } from "next/router";
 import { useQuery } from "@tanstack/react-query";
-import {toast } from "react-toastify";
+import { toast } from "react-toastify";
 
 import Shell from "@/components/layout/Shell";
 import Topbar from "@/components/layout/Topbar";
@@ -47,28 +47,27 @@ export default function GetKanbanList() {
   }, [router.events]);
 
   // -------- fetch kanban lists (React Query) --------
-  const {
-    data,
-    isLoading,
-    isError,
-    error,
-    refetch,
-    isFetched,
-  } = useQuery<any, Error | null>({
+  const { data, isLoading, isError, error, refetch, isFetched } = useQuery<
+    any,
+    Error | null
+  >({
     queryKey: ["kanbanlist", fkboardid],
     queryFn: () => fetchKanbanList(fkboardid),
     enabled: router.isReady && !!fkboardid,
-    staleTime: 60_000, // keep cached longer so refresh feels instant
+    staleTime: 60_000,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
-    retry: 1, // avoid “stuck” feeling due to multiple retries
+    retry: 1,
   });
 
   // -------- auth check + restore user from sessionStorage --------
   useEffect(() => {
     if (!router.isReady || !fkboardid) return;
 
-    // If userInfo already exists, just ensure fkboardid is attached
+    // ✅ STOP LOOP: If already has the right fkboardid, do nothing
+    if (userInfo?.fkboardid === fkboardid) return;
+
+    // If userInfo exists but missing/wrong fkboardid, fix it once
     if (userInfo) {
       handleSetUserInfo({ ...userInfo, fkboardid });
       return;
@@ -103,18 +102,24 @@ export default function GetKanbanList() {
     };
   }, [signalRConnection, refetch]);
 
-  // -------- when data arrives, push into context state --------
+  // ✅ Keep a stable reference to setKanbanListState
+  const setKanbanListStateRef = useRef(setKanbanListState);
   useEffect(() => {
-    if (isFetched && !isError) {
-      setKanbanListState(Array.isArray(data) ? data : []);
-    }
-  }, [isFetched, isError, data, setKanbanListState]);
+    setKanbanListStateRef.current = setKanbanListState;
+  }, [setKanbanListState]);
 
-  // ✅ loader should depend ONLY on real loading/navigation (NOT on userInfo/showContent gates)
+  // -------- when data arrives, push into context state --------
+  // ✅ IMPORTANT: do NOT depend on setKanbanListState directly
+  useEffect(() => {
+    if (!isFetched || isError) return;
+    setKanbanListStateRef.current(Array.isArray(data) ? data : []);
+  }, [isFetched, isError, data]);
+
+  // ✅ loader should depend ONLY on real loading/navigation
   const shouldShowLoading =
     isNavigating || (router.isReady && !!fkboardid && isLoading);
 
-  // ✅ show skeleton only if loading lasts >150ms (so it feels instant)
+  // ✅ show skeleton only if loading lasts >150ms
   useEffect(() => {
     if (shouldShowLoading) {
       const t = setTimeout(() => setShowSkeleton(true), 150);
@@ -129,11 +134,9 @@ export default function GetKanbanList() {
   return (
     <Shell>
       <Topbar />
-
-      {/* Header always visible */}
       <SectionHeader />
 
-<section className="mx-auto w-full  px-4 py-6">
+      <section className="mx-auto w-full px-4 py-6">
         {/* ⏳ Skeleton only after 150ms */}
         {showSkeleton && <KanbanBoardSkeleton />}
 
@@ -157,12 +160,9 @@ export default function GetKanbanList() {
           </div>
         )}
 
-        {/* ✅ Always render board shell when not loading & not error */}
-       {!shouldShowLoading && !isError && <KanbanBoard />}
-
+        {/* ✅ Always render board when not loading & not error */}
+        {!shouldShowLoading && !isError && <KanbanBoard />}
       </section>
-
-    
     </Shell>
   );
 }

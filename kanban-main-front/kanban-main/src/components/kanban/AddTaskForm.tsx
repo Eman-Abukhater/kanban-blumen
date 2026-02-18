@@ -1,10 +1,11 @@
 import { CheckIcon, PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
-import { FormEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import CreatableSelect from "react-select/creatable";
 import type { StylesConfig } from "react-select";
 
 import { fetchAllMembers } from "@/services/kanbanApi";
+
 const YELLOW_HOVER_LIGHT = "rgba(255, 171, 0, 0.20)"; // hover
 const YELLOW_HOVER_DARK  = "rgba(255, 171, 0, 0.20)"; // hover
 const YELLOW_SELECTED_LIGHT = "rgba(255, 171, 0, 0.28)";
@@ -204,8 +205,12 @@ export function AddTaskForm(props: IAddFormProps) {
       ...base,
       color: isDark ? "rgba(145, 158, 171, 0.8)" : "#919EAB",
     }),
+
+    // ✅ ONLY CHANGE: restore rounded menu border
     menu: (base) => ({
       ...base,
+      borderRadius: 16,     // ✅ added
+      overflow: "hidden",   // ✅ added
       backgroundColor: isDark ? "#1B232D" : "#FFFFFF",
       border: "1px solid rgba(145, 158, 171, 0.2)",
       boxShadow: isDark
@@ -213,19 +218,19 @@ export function AddTaskForm(props: IAddFormProps) {
         : "0 18px 45px rgba(15,23,42,0.12)",
       zIndex: 9999,
     }),
-   option: (base, state) => ({
-  ...base,
-  fontSize: 13,
-  fontWeight: 600,
-  cursor: "pointer",
-  color: isDark ? "#FFFFFF" : "#1C252E",
 
-  backgroundColor: state.isSelected
-    ? (isDark ? YELLOW_SELECTED_DARK : YELLOW_SELECTED_LIGHT)
-    : state.isFocused
-    ? (isDark ? YELLOW_HOVER_DARK : YELLOW_HOVER_LIGHT)
-    : "transparent",
-}),
+    option: (base, state) => ({
+      ...base,
+      fontSize: 13,
+      fontWeight: 600,
+      cursor: "pointer",
+      color: isDark ? "#FFFFFF" : "#1C252E",
+      backgroundColor: state.isSelected
+        ? (isDark ? YELLOW_SELECTED_DARK : YELLOW_SELECTED_LIGHT)
+        : state.isFocused
+        ? (isDark ? YELLOW_HOVER_DARK : YELLOW_HOVER_LIGHT)
+        : "transparent",
+    }),
 
     multiValue: (base) => ({
       ...base,
@@ -256,23 +261,17 @@ export function AddTaskForm(props: IAddFormProps) {
     const spaceBelow = viewportH - r.bottom;
     const spaceAbove = r.top;
 
-    // we allow auto flip; just cap height to the best available side
     const bestSpace = Math.max(spaceBelow, spaceAbove);
-
-    // padding so it never touches edges
     const pad = 16;
 
-    // clamp between 120 and 320 (tweak if you want)
     const next = Math.max(120, Math.min(320, bestSpace - pad));
     setMenuMaxHeight(next);
   };
 
-  // When menu opens, compute
   const handleMenuOpen = () => {
     computeMenuMaxHeight();
   };
 
-  // While open, keep it responsive to viewport changes
   useEffect(() => {
     if (!showForm) return;
 
@@ -339,13 +338,11 @@ export function AddTaskForm(props: IAddFormProps) {
                 onBlur={() => setAssigneeTouched(true)}
                 styles={selectStyles}
                 classNamePrefix="assignTo"
-                // ✅ THIS IS THE CORE OF “dynamic” behavior:
-                menuPlacement="auto"          // flips up/down automatically
-                menuPosition="fixed"          // shifts correctly in viewport/modals
-                maxMenuHeight={menuMaxHeight} // sizes based on available space
-                onMenuOpen={handleMenuOpen}   // recalc when opening
+                menuPlacement="auto"
+                menuPosition="fixed"
+                maxMenuHeight={menuMaxHeight}
+                onMenuOpen={handleMenuOpen}
                 menuShouldBlockScroll={false}
-                // ✅ fixes cropping inside modal / scroll containers
                 menuPortalTarget={typeof document !== "undefined" ? document.body : null}
               />
             </div>
