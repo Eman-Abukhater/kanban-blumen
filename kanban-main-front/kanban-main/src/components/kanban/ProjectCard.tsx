@@ -100,43 +100,45 @@ export default function ProjectCard({ project, onView, onEdit, onDelete }: Props
               <MoreVertical className="h-5 w-5 text-[#637381] dark:text-slate500_80" />
             </button>
 
-            {menuOpen && (
-              <div className="absolute right-0 mt-2 w-32 rounded-2xl bg-white py-2 text-sm text-black shadow-[0_18px_45px_rgba(15,23,42,0.40)]
-] dark:bg-[#232C36] dark:text-white">
-                {/* Edit */}
-            <button
-  type="button"
-  onClick={handleEditClick}
-  className="
-    flex w-full items-center gap-2 px-4 py-2 text-left
-    rounded-xl
-    transition-colors
-    hover:bg-slate500_08 dark:hover:bg-slate500_20
-    focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40
-  "
->
-  <Pencil className="h-4 w-4" />
-  <span>Edit</span>
-</button>
+           {menuOpen && (
+  <div
+    className="absolute right-0 mt-2 w-32 rounded-2xl bg-white py-2 text-sm text-black
+      shadow-[0_18px_45px_rgba(15,23,42,0.40)]
+      dark:bg-[#232C36] dark:text-white"
+  >
+    {/* Edit */}
+    <button
+      type="button"
+      onClick={handleEditClick}
+      className="
+        flex w-full items-center gap-2 px-4 py-2 text-left
+        rounded-xl transition-colors
+        hover:bg-slate-100 hover:text-slate-900
+        dark:hover:bg-slate500_20 dark:hover:text-white
+        focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40
+      "
+    >
+      <Pencil className="h-4 w-4" />
+      <span>Edit</span>
+    </button>
 
-                {/* Delete */}
-       <button
-  type="button"
-  onClick={handleDeleteClick}
-  className="
-    flex w-full items-center gap-2 px-4 py-2 text-left
-    rounded-xl
-    transition-colors
-    hover:bg-slate500_08 dark:hover:bg-slate500_20
-    focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40
-    hover:text-red-600 dark:hover:text-red-400
-  "
->
-  <Trash2 className="h-4 w-4" />
-  <span>Delete</span>
-</button>
-              </div>
-            )}
+    {/* Delete */}
+    <button
+      type="button"
+      onClick={handleDeleteClick}
+      className="
+        flex w-full items-center gap-2 px-4 py-2 text-left
+        rounded-xl transition-colors
+        hover:bg-red-50 hover:text-red-600
+        dark:hover:bg-slate500_20 dark:hover:text-red-400
+        focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40
+      "
+    >
+      <Trash2 className="h-4 w-4" />
+      <span>Delete</span>
+    </button>
+  </div>
+)}
           </div>
         </div>
 
