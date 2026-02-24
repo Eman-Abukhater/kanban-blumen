@@ -43,8 +43,7 @@ export type KanbanCard = {
   assignedTo?: string;
   priority?: "low" | "medium" | "high";
   imagePublicId?: string | null;
-
-  //mine
+ images?: KanbanCardImage[];
   fkKanbanListId: number;
   seqNo: number;
   createdAt: Date;
@@ -62,5 +61,11 @@ export type KanbanList = {
   createdAt: Date;
   addedBy: string;
 };
-
+export type KanbanCardImage = {
+  id: number;
+  url: string;
+  publicId?: string | null;
+  seqNo: number;
+  createdAt?: Date | string;
+};
 export type KanbanBoardState = KanbanList[];

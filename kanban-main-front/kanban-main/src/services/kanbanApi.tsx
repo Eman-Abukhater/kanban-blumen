@@ -863,3 +863,33 @@ export const DeleteCard = async (
   const data = await res.json().catch(() => ({}));
   return { status: res.status, data };
 };
+// ✅ Add multiple images to a card (DB insert into kanban_card_images)
+export async function AddCardImages(payload: {
+  kanbanCardId: number;
+  images: { url: string; publicId?: string | null }[];
+  fkpoid?: number | null;
+  updatedby?: string;
+}): Promise<AddCustomResponse<any> | null> {
+  try {
+    const response = await apiClient.post("/ProjKanbanBoards/addcardimages", payload);
+    return { status: response.status, data: response.data };
+  } catch (error: any) {
+    console.error("AddCardImages failed:", error?.response?.data ?? error?.message);
+    return null;
+  }
+}
+
+// ✅ Delete one image (DB delete) - you must add backend route for it
+export async function DeleteCardImage(payload: {
+  imageId: number;
+  fkpoid?: number | null;
+  updatedby?: string;
+}): Promise<AddCustomResponse<any> | null> {
+  try {
+    const response = await apiClient.post("/ProjKanbanBoards/deletecardimage", payload);
+    return { status: response.status, data: response.data };
+  } catch (error: any) {
+    console.error("DeleteCardImage failed:", error?.response?.data ?? error?.message);
+    return null;
+  }
+}

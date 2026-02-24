@@ -5,7 +5,7 @@ import { PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { ChevronDownIcon, ChevronUpIcon } from "@heroicons/react/20/solid";
 import KanbanContext from "../../context/kanbanContext";
 import useAutosizeTextArea from "../../hooks/useAutosizeTextarea";
-import { KanbanCard } from "../kanban/KanbanTypes";
+import { KanbanCard, KanbanCardImage } from "../kanban/KanbanTypes";
 import { DateValueType } from "react-tailwindcss-datepicker/dist/types";
 import { CreateTagModal } from "./CreateTagModal";
 import { AddTaskForm } from "../kanban/AddTaskForm";
@@ -20,12 +20,15 @@ import {
   uploadImageToCloudinary,
   DeleteCard,
   AddKanbanList,
+  AddCardImages,
+  DeleteCardImage,
 } from "@/services/kanbanApi";
 import { toast } from "react-toastify";
 import { GetCardImagePath } from "@/utility/baseUrl";
 import dayjs from "dayjs";
 import { DueDateModal } from "./DueDateModal";
 import { useInvalidateKanban } from "@/hooks/useKanbanMutations";
+import { XMarkIcon } from "@heroicons/react/24/solid";
 
 export interface CardModalProps {
   listIndex: number;
@@ -52,8 +55,9 @@ export function CardModal(props: CardModalProps) {
     handleCreateList,
   } = useContext(KanbanContext);
 
-const kanbanStateRef = useRef<any[]>([]);
-kanbanStateRef.current = kanbanState as any[];
+  const kanbanStateRef = useRef<any[]>([]);
+  kanbanStateRef.current = kanbanState as any[];
+
   const normalize = (s: string) => (s || "").trim().toLowerCase();
 
   // ✅ Status options = ALL columns titles (dynamic)
@@ -73,13 +77,13 @@ kanbanStateRef.current = kanbanState as any[];
   }, [kanbanState]);
 
   // ✅ remember last non-done status (so when uncheck we can go back)
-const lastNonDoneStatusRef = useRef<string>("");
+  const lastNonDoneStatusRef = useRef<string>("");
 
-// ✅ find the real "Done" column title from your board (case-insensitive)
-const completedTitle = useMemo(() => {
-  const found = statusOptions.find((t) => normalize(t) === "completed");
-  return found || "Completed";
-}, [statusOptions]);
+  // ✅ find the real "Done" column title from your board (case-insensitive)
+  const completedTitle = useMemo(() => {
+    const found = statusOptions.find((t) => normalize(t) === "completed");
+    return found || "Completed";
+  }, [statusOptions]);
 
   const [title, setTitle] = useState<string>(props.card.title);
   const [desc, setDesc] = useState(props.card.desc);
@@ -99,21 +103,16 @@ const completedTitle = useMemo(() => {
   const [status, setStatus] = useState<string>(() => {
     const raw = ((props.card as any)?.status as string | undefined)?.trim();
     if (raw) return raw;
-    return props.card.completed ? "Done" : "In progress";
+    return props.card.completed ? "Completed" : "In progress";
   });
-useEffect(() => {
-  // Only sync from props if we don't already have a new uploaded url
-  if (!cloudinaryUrl) {
-    setImageUrl(getImageUrl(props.card.imageUrl || null));
-  }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [props.card.imageUrl]);
 
   // ✅ If user drags the card to another column while modal is open,
   // we detect it from kanbanState and update the status + indices immediately.
   useEffect(() => {
     const cardKey =
-      (props.card as any)?.kanbanCardId ?? (props.card as any)?.id ?? props.card.id;
+      (props.card as any)?.kanbanCardId ??
+      (props.card as any)?.id ??
+      props.card.id;
 
     let foundListIndex = -1;
     let foundCardIndex = -1;
@@ -148,156 +147,161 @@ useEffect(() => {
   }, [kanbanState, props.card.kanbanCardId, props.card.id]);
 
   // keep completed in sync (ONLY if you literally have a column called "Done")
-const isCompleted = normalize(status) === "completed";;
+  const isCompleted = normalize(status) === "completed";
 
-const creatingCompletedRef = useRef<Promise<{ title: string; listIndex: number }> | null>(null);
+  const creatingCompletedRef =
+    useRef<Promise<{ title: string; listIndex: number }> | null>(null);
 
-const findCompletedIndex = () => {
-  const lists = kanbanStateRef.current;
-  return lists.findIndex((l) => normalize(l?.title) === "completed");
-};
+  const findCompletedIndex = () => {
+    const lists = kanbanStateRef.current;
+    return lists.findIndex((l) => normalize(l?.title) === "completed");
+  };
 
-const ensureCompletedColumn = async (): Promise<{ title: string; listIndex: number }> => {
-  const existingIndex = findCompletedIndex();
-  if (existingIndex >= 0) {
-    const realTitle = (kanbanStateRef.current[existingIndex]?.title ?? "Completed").trim();
-    return { title: realTitle, listIndex: existingIndex };
-  }
-
-  if (creatingCompletedRef.current) return creatingCompletedRef.current;
-
-  creatingCompletedRef.current = (async () => {
-    const res = await AddKanbanList(
-      "Completed",
-      userInfo.fkboardid,
-      userInfo.username,
-      userInfo.id,
-      userInfo.fkpoid
-    );
-
-    if (!(res?.status === 200 && res?.data)) {
-      throw new Error("Failed to create Completed column");
+  const ensureCompletedColumn = async (): Promise<{
+    title: string;
+    listIndex: number;
+  }> => {
+    const existingIndex = findCompletedIndex();
+    if (existingIndex >= 0) {
+      const realTitle = (kanbanStateRef.current[existingIndex]?.title ?? "Completed").trim();
+      return { title: realTitle, listIndex: existingIndex };
     }
 
-    // ✅ Optimistic add to UI
-    handleCreateList(
-      "Completed",
-      res.data.kanbanListId,
-      res.data.seqNo,
-      userInfo.fkboardid
-    );
+    if (creatingCompletedRef.current) return creatingCompletedRef.current;
 
-    // ✅ Wait until the new list appears in kanbanState
-    const newId = res.data.kanbanListId;
-    const start = Date.now();
-
-    while (Date.now() - start < 1500) {
-      const lists = kanbanStateRef.current;
-
-      const byId = lists.findIndex((l) =>
-        l?.kanbanListId === newId || String(l?.id) === String(newId)
+    creatingCompletedRef.current = (async () => {
+      const res = await AddKanbanList(
+        "Completed",
+        userInfo.fkboardid,
+        userInfo.username,
+        userInfo.id,
+        userInfo.fkpoid
       );
-      if (byId >= 0) {
-        return { title: (lists[byId]?.title ?? "Completed").trim(), listIndex: byId };
+
+      if (!(res?.status === 200 && res?.data)) {
+        throw new Error("Failed to create Completed column");
       }
 
-      const byTitle = findCompletedIndex();
-      if (byTitle >= 0) {
-        return { title: (lists[byTitle]?.title ?? "Completed").trim(), listIndex: byTitle };
+      // ✅ Optimistic add to UI
+      handleCreateList(
+        "Completed",
+        res.data.kanbanListId,
+        res.data.seqNo,
+        userInfo.fkboardid
+      );
+
+      // ✅ Wait until the new list appears in kanbanState
+      const newId = res.data.kanbanListId;
+      const start = Date.now();
+
+      while (Date.now() - start < 1500) {
+        const lists = kanbanStateRef.current;
+
+        const byId = lists.findIndex(
+          (l) => l?.kanbanListId === newId || String(l?.id) === String(newId)
+        );
+        if (byId >= 0) {
+          return { title: (lists[byId]?.title ?? "Completed").trim(), listIndex: byId };
+        }
+
+        const byTitle = findCompletedIndex();
+        if (byTitle >= 0) {
+          return { title: (lists[byTitle]?.title ?? "Completed").trim(), listIndex: byTitle };
+        }
+
+        await new Promise((r) => setTimeout(r, 50));
       }
 
-      await new Promise((r) => setTimeout(r, 50));
+      return { title: "Completed", listIndex: -1 };
+    })();
+
+    try {
+      return await creatingCompletedRef.current;
+    } finally {
+      creatingCompletedRef.current = null;
     }
+  };
 
-    return { title: "Completed", listIndex: -1 };
-  })();
-
-  try {
-    return await creatingCompletedRef.current;
-  } finally {
-    creatingCompletedRef.current = null;
-  }
-};
   const getTargetListIndexByTitle = (titleStr: string) => {
     const t = normalize(titleStr);
     return (kanbanState as any[]).findIndex((l) => normalize(l?.title) === t);
   };
 
   // ✅ IMMEDIATE UI MOVE when status selected from dropdown
-const moveCardOptimistic = (nextStatus: string) => {
-  const targetListIndex = (kanbanStateRef.current as any[]).findIndex(
-    (l) => normalize(l?.title) === normalize(nextStatus)
-  );
+  const moveCardOptimistic = (nextStatus: string) => {
+    const targetListIndex = (kanbanStateRef.current as any[]).findIndex(
+      (l) => normalize(l?.title) === normalize(nextStatus)
+    );
 
-  if (targetListIndex < 0) return;
-  if (targetListIndex === currentListIndex) return;
+    if (targetListIndex < 0) return;
+    if (targetListIndex === currentListIndex) return;
 
-  const lists = kanbanStateRef.current;
-  const fromList: any = lists[currentListIndex];
-  const toList: any = lists[targetListIndex];
-  if (!fromList?.id || !toList?.id) return;
+    const lists = kanbanStateRef.current;
+    const fromList: any = lists[currentListIndex];
+    const toList: any = lists[targetListIndex];
+    if (!fromList?.id || !toList?.id) return;
 
-  const destinationIndex = (toList?.kanbanCards?.length ?? 0);
+    const destinationIndex = (toList?.kanbanCards?.length ?? 0);
 
-  handleDragEnd({
-    draggableId: props.card.id,
-    type: "DEFAULT",
-    reason: "DROP",
-    mode: "FLUID",
-    source: { droppableId: fromList.id, index: currentCardIndex },
-    destination: { droppableId: toList.id, index: destinationIndex },
-    combine: null,
-  } as any);
+    handleDragEnd({
+      draggableId: props.card.id,
+      type: "DEFAULT",
+      reason: "DROP",
+      mode: "FLUID",
+      source: { droppableId: fromList.id, index: currentCardIndex },
+      destination: { droppableId: toList.id, index: destinationIndex },
+      combine: null,
+    } as any);
 
-  setCurrentListIndex(targetListIndex);
-  setCurrentCardIndex(destinationIndex);
-};
+    setCurrentListIndex(targetListIndex);
+    setCurrentCardIndex(destinationIndex);
+  };
 
-const handleToggleCompleted = async () => {
-  // ✅ if currently NOT completed -> go to completed
-  if (!isCompleted) {
-    // remember last non-completed status
-    if (normalize(status) !== "completed") lastNonDoneStatusRef.current = status;
+  const handleToggleCompleted = async () => {
+    // ✅ if currently NOT completed -> go to completed
+    if (!isCompleted) {
+      // remember last non-completed status
+      if (normalize(status) !== "completed") lastNonDoneStatusRef.current = status;
 
-    // ✅ show checked immediately
-    setStatus("Completed");
+      // ✅ show checked immediately
+      setStatus("Completed");
 
-    try {
-      const ensured = await ensureCompletedColumn();
+      try {
+        const ensured = await ensureCompletedColumn();
 
-      if (ensured.listIndex >= 0) {
-        moveCardOptimistic(ensured.title);
-      } else {
-        // fallback (if state didn't update fast)
-        invalidateKanban();
+        if (ensured.listIndex >= 0) {
+          moveCardOptimistic(ensured.title);
+        } else {
+          // fallback (if state didn't update fast)
+          invalidateKanban();
+        }
+      } catch (e: any) {
+        // revert if failed
+        const fallback =
+          lastNonDoneStatusRef.current &&
+          normalize(lastNonDoneStatusRef.current) !== "completed"
+            ? lastNonDoneStatusRef.current
+            : statusOptions.find((s) => normalize(s) !== "completed") || "In progress";
+
+        setStatus(fallback);
+        toast.error(e?.message || "Could not create Completed column", {
+          position: toast.POSITION.TOP_CENTER,
+        });
       }
-    } catch (e: any) {
-      // revert if failed
-      const fallback =
-        lastNonDoneStatusRef.current &&
-        normalize(lastNonDoneStatusRef.current) !== "completed"
-          ? lastNonDoneStatusRef.current
-          : statusOptions.find((s) => normalize(s) !== "completed") || "In progress";
 
-      setStatus(fallback);
-      toast.error(e?.message || "Could not create Completed column", {
-        position: toast.POSITION.TOP_CENTER,
-      });
+      return;
     }
 
-    return;
-  }
+    // ✅ if currently completed -> go back
+    const fallback =
+      lastNonDoneStatusRef.current &&
+      normalize(lastNonDoneStatusRef.current) !== "completed"
+        ? lastNonDoneStatusRef.current
+        : statusOptions.find((s) => normalize(s) !== "completed") || "In progress";
 
-  // ✅ if currently completed -> go back
-  const fallback =
-    lastNonDoneStatusRef.current &&
-    normalize(lastNonDoneStatusRef.current) !== "completed"
-      ? lastNonDoneStatusRef.current
-      : statusOptions.find((s) => normalize(s) !== "completed") || "In progress";
-
-  setStatus(fallback);
-  moveCardOptimistic(fallback);
-};
+    setStatus(fallback);
+    moveCardOptimistic(fallback);
+  };
 
   const CardImagePath = GetCardImagePath();
 
@@ -310,11 +314,7 @@ const handleToggleCompleted = async () => {
     ((props.card as any).priority as "low" | "medium" | "high") || "low"
   );
 
-  const assigneeAvatars = [
-    "/icons/Avatar_1.png",
-    "/icons/Avatar_2.png",
-    "/icons/Avatar_3.png",
-  ];
+  const assigneeAvatars = ["/icons/Avatar_1.png", "/icons/Avatar_2.png", "/icons/Avatar_3.png"];
 
   const isCloudinaryUrl = (url: string) =>
     url && (url.startsWith("http://") || url.startsWith("https://"));
@@ -345,8 +345,145 @@ const handleToggleCompleted = async () => {
   const [isCreatingTag, setIsCreatingTag] = useState<boolean>(false);
   const [isDeletingTag, setIsDeletingTag] = useState<number | null>(null);
   const [isDeletingTask, setIsDeletingTask] = useState<number | null>(null);
-
   const maxFileSize = 5000000;
+
+  // ====================== IMAGES (UPDATED LOGIC ONLY) ======================
+
+  const sortImgs = (imgs: KanbanCardImage[]) =>
+    (imgs || []).slice().sort((a, b) => (a.seqNo ?? 0) - (b.seqNo ?? 0));
+
+  // ✅ images from card (sorted)
+  const initialImages = sortImgs((((props.card as any).images || []) as KanbanCardImage[]).slice());
+
+  const [cardImages, setCardImages] = useState<KanbanCardImage[]>(initialImages);
+
+  // ✅ cover initial:
+  // - if backend already has imageUrl and it's in images => use it
+  // - else default to FIRST uploaded image
+  const [coverUrl, setCoverUrl] = useState<string>(() => {
+    const imgUrl = (props.card.imageUrl || "").trim();
+    if (imgUrl && initialImages.some((x) => x.url === imgUrl)) return imgUrl;
+    return initialImages.length ? initialImages[0].url : "";
+  });
+
+  const applyImagesAndCover = (
+    nextImages: KanbanCardImage[],
+    opts?: { forceCoverUrl?: string; keepCurrentCover?: boolean }
+  ) => {
+    const sorted = sortImgs(nextImages);
+
+    const currentCover = coverUrl || "";
+    const currentCoverStillExists = !!sorted.find((x) => x.url === currentCover);
+
+    let nextCover = "";
+
+    // 1) If we force a cover (upload first time OR user click)
+    if (opts?.forceCoverUrl !== undefined) {
+      nextCover = opts.forceCoverUrl; // can be "" to clear
+    }
+    // 2) Keep user-picked cover ONLY if it still exists
+    else if ((opts?.keepCurrentCover ?? true) && currentCoverStillExists) {
+      nextCover = currentCover;
+    }
+    // 3) Otherwise ALWAYS fallback to the FIRST remaining uploaded image
+    else {
+      nextCover = sorted[0]?.url || "";
+    }
+
+    // If no images, cover must be empty
+    if (!sorted.length) nextCover = "";
+
+    setCardImages(sorted);
+    setCoverUrl(nextCover);
+    setCloudinaryUrl(nextCover);
+    setImageUrl(nextCover);
+
+    handleUpdateCard(currentListIndex, currentCardIndex, {
+      ...props.card,
+      images: sorted as any,
+      imageUrl: nextCover,
+    });
+    return nextCover;
+  };
+
+  // ✅ helper: user picks cover manually
+  const persistCoverToBackend = async (url: string) => {
+  try {
+    await EditCard({
+      title: title || props.card.title,
+      kanbanCardId: props.card.kanbanCardId,
+      updatedby: userInfo.username,
+      desc: (desc || props.card.desc || "....") as string,
+      imageUrl: url || "",
+      completed: normalize(status) === "completed",
+      startDate: date?.startDate ? date.startDate.toString() : undefined,
+      endDate: date?.endDate ? date.endDate.toString() : undefined,
+      fkboardid: String(userInfo.fkboardid),
+      fkpoid: String(userInfo.fkpoid),
+    });
+
+    invalidateKanban(); // ✅ so board re-renders with correct cover
+  } catch {
+    // ignore (UI already updated)
+  }
+};
+
+const setCover = async (url: string) => {
+  // ✅ UI immediately
+  setCoverUrl(url);
+  setCloudinaryUrl(url);
+  setImageUrl(url);
+
+  // ✅ update board state immediately
+  handleUpdateCard(currentListIndex, currentCardIndex, {
+    ...props.card,
+    imageUrl: url || "",
+    images: cardImages as any,
+  });
+
+  // ✅ persist so refresh keeps it
+  await persistCoverToBackend(url);
+};
+
+  // ✅ delete image (single source of truth for BOTH tabs)
+  const handleDeleteImage = async (
+    img: KanbanCardImage,
+    e?: React.MouseEvent<HTMLButtonElement, MouseEvent>
+  ) => {
+    try {
+      if (e) e.stopPropagation(); // ✅ prevents clicking the image under the button
+
+      if (img.id > 0) {
+        await DeleteCardImage({
+          imageId: img.id,
+          fkpoid: userInfo.fkpoid,
+          updatedby: userInfo.username,
+        });
+      }
+
+      const next = cardImages.filter((x) => x.id !== img.id);
+
+      // ✅ RULES:
+      // - if deleted image WAS the current cover => cover becomes FIRST remaining uploaded
+      // - else keep current cover
+    const nextCover = applyImagesAndCover(next, { keepCurrentCover: img.url !== coverUrl });
+await persistCoverToBackend(nextCover || "");
+invalidateKanban();
+    } catch (e2: any) {
+      toast.error(e2?.message || "Failed to delete image", {
+        position: toast.POSITION.TOP_CENTER,
+      });
+    }
+  };
+
+  // ✅ sync when backend images change:
+  // keep current cover if still exists, else fallback to FIRST image
+  useEffect(() => {
+    const imgs = sortImgs((((props.card as any).images || []) as KanbanCardImage[]));
+    applyImagesAndCover(imgs, { keepCurrentCover: true });
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.card.kanbanCardId, (props.card as any).images]);
 
   // keep autosize for description
   useAutosizeTextArea(descTextAreaRef, desc);
@@ -373,45 +510,85 @@ const handleToggleCompleted = async () => {
   };
 
   // ================= IMAGE UPLOAD =================
-const handleImageUpload = async (f: File) => {
-  try {
-    setUploadingImage(true);
-    setFileSizeExceeded(false);
+  const uploadManyImages = async (files: FileList) => {
+    try {
+      setUploadingImage(true);
+      setFileSizeExceeded(false);
 
-    const uploadResult = await uploadImageToCloudinary(f);
+      const arr = Array.from(files);
 
-    if (uploadResult?.data?.url) {
-      const url = uploadResult.data.url;
-      const publicId = uploadResult.data.publicId;
+      // validate
+      for (const f of arr) {
+        if (f.size > maxFileSize) {
+          setFileSizeExceeded(true);
+          toast.error("File size must be less than 5MB", {
+            position: toast.POSITION.TOP_CENTER,
+          });
+          return;
+        }
+      }
 
-      // 1) keep it in modal states
-      setCloudinaryUrl(url);
-      setCloudinaryPublicId(publicId);
-      setImageUrl(url);
+      // upload sequential (keeps order)
+      const uploaded: { url: string; publicId?: string | null }[] = [];
 
-      // 2) ✅ IMPORTANT: update the card in kanban context immediately
-      handleUpdateCard(currentListIndex, currentCardIndex, {
-        ...props.card,
-        imageUrl: url,
-        imagePublicId: publicId, // (we'll fix typing below)
+      for (const f of arr) {
+        const res = await uploadImageToCloudinary(f);
+        if (res?.data?.url) {
+          uploaded.push({
+            url: res.data.url,
+            publicId: res.data.publicId ?? null,
+          });
+        }
+      }
+
+      if (!uploaded.length) return;
+
+      // save to DB
+      const saveRes = await AddCardImages({
+        kanbanCardId: props.card.kanbanCardId,
+        images: uploaded,
+        fkpoid: userInfo.fkpoid,
+        updatedby: userInfo.username,
       });
 
-      toast.success("Image uploaded successfully!", {
+      if (!saveRes || saveRes.status !== 200) {
+        toast.error("Failed to save images", {
+          position: toast.POSITION.TOP_CENTER,
+        });
+        return;
+      }
+
+      // optimistic UI append
+      const startSeq = (cardImages?.length ? cardImages[cardImages.length - 1].seqNo : 0) + 1;
+      const newImgs: KanbanCardImage[] = uploaded.map((u, i) => ({
+        id: -Date.now() - i, // temp id until refetch
+        url: u.url,
+        publicId: u.publicId ?? null,
+        seqNo: startSeq + i,
+      }));
+
+      const nextAll = sortImgs([...cardImages, ...newImgs]);
+
+      // ✅ rule: if no cover yet => first uploaded becomes cover
+      if (!coverUrl) {
+        applyImagesAndCover(nextAll, { forceCoverUrl: uploaded[0].url });
+      } else {
+        applyImagesAndCover(nextAll, { keepCurrentCover: true });
+      }
+
+      toast.success("Images uploaded successfully!", {
         position: toast.POSITION.TOP_CENTER,
       });
 
-      // optional: you can invalidate after save only, not here
-      // await invalidateKanban();
+      invalidateKanban(); // to get real IDs from backend
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to upload images", {
+        position: toast.POSITION.TOP_CENTER,
+      });
+    } finally {
+      setUploadingImage(false);
     }
-  } catch (error: any) {
-    toast.error(error.message || "Failed to upload image", {
-      position: toast.POSITION.TOP_CENTER,
-    });
-  } finally {
-    setUploadingImage(false);
-  }
-};
-
+  };
 
   // ================= SAVE CARD (EDIT) =================
   const mutation = useMutation({
@@ -425,7 +602,7 @@ const handleImageUpload = async (f: File) => {
             ...props.card,
             title,
             desc,
-completed: normalize(status) === "completed",
+            completed: normalize(status) === "completed",
             status, // ✅ requires KanbanCard.status?: string
             imageUrl: cardData.imageUrl || props.card.imageUrl || "",
             kanbanTags,
@@ -477,12 +654,11 @@ completed: normalize(status) === "completed",
 
     setSubmit(true);
 
-    const finalImageUrl = cloudinaryUrl || props.card.imageUrl || "";
+    const finalImageUrl = coverUrl || "";
 
     // send fkKanbanListId for the selected status (if backend supports it)
     const targetListIndex = getTargetListIndexByTitle(status);
-    const targetList: any =
-      targetListIndex >= 0 ? (kanbanState as any[])[targetListIndex] : null;
+    const targetList: any = targetListIndex >= 0 ? (kanbanState as any[])[targetListIndex] : null;
 
     const cardData = {
       title,
@@ -491,7 +667,7 @@ completed: normalize(status) === "completed",
       desc: desc || "....",
       imageUrl: finalImageUrl,
       imagePublicId: cloudinaryPublicId,
-completed: normalize(status) === "completed",
+      completed: normalize(status) === "completed",
       startDate: date?.startDate ? date.startDate.toString() : undefined,
       endDate: date?.endDate ? date.endDate.toString() : undefined,
       fkboardid: userInfo.fkboardid,
@@ -504,46 +680,41 @@ completed: normalize(status) === "completed",
     mutation.mutate(cardData);
   };
 
-const [deletingCard, setDeletingCard] = useState(false);
+  const [deletingCard, setDeletingCard] = useState(false);
 
-const deleteCard = async () => {
-  try {
-    setDeletingCard(true);
+  const deleteCard = async () => {
+    try {
+      setDeletingCard(true);
 
-    const res = await DeleteCard(
-      props.card.kanbanCardId,
-      userInfo.fkpoid,
-      userInfo.username
-    );
+      const res = await DeleteCard(props.card.kanbanCardId, userInfo.fkpoid, userInfo.username);
 
-    if (res?.status === 200 || res?.data?.success) {
-      // ✅ 1) remove from UI immediately
-      handleDeleteCard(currentListIndex, currentCardIndex);
+      if (res?.status === 200 || res?.data?.success) {
+        // ✅ 1) remove from UI immediately
+        handleDeleteCard(currentListIndex, currentCardIndex);
 
-      // ✅ 2) close modal immediately
-      handleCloseModal();
+        // ✅ 2) close modal immediately
+        handleCloseModal();
 
-      // ✅ 3) refetch in background (optional but recommended)
-      invalidateKanban();
+        // ✅ 3) refetch in background (optional but recommended)
+        invalidateKanban();
 
-      toast.success("Card deleted successfully!", {
+        toast.success("Card deleted successfully!", {
+          position: toast.POSITION.TOP_CENTER,
+        });
+        return;
+      }
+
+      toast.error(res?.data?.error || "Failed to delete card", {
         position: toast.POSITION.TOP_CENTER,
       });
-      return;
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to delete card", {
+        position: toast.POSITION.TOP_CENTER,
+      });
+    } finally {
+      setDeletingCard(false);
     }
-
-    toast.error(res?.data?.error || "Failed to delete card", {
-      position: toast.POSITION.TOP_CENTER,
-    });
-  } catch (e: any) {
-    toast.error(e?.message || "Failed to delete card", {
-      position: toast.POSITION.TOP_CENTER,
-    });
-  } finally {
-    setDeletingCard(false);
-  }
-};
-
+  };
 
   // ================= TAGS =================
   const handleCreateTag = async (tagName: string, _colorIndex: number) => {
@@ -587,10 +758,9 @@ const deleteCard = async () => {
           position: toast.POSITION.TOP_CENTER,
         });
       } else {
-        toast.error(
-          `something went wrong could not add the Tag, please try again later`,
-          { position: toast.POSITION.TOP_CENTER }
-        );
+        toast.error(`something went wrong could not add the Tag, please try again later`, {
+          position: toast.POSITION.TOP_CENTER,
+        });
       }
     } finally {
       setIsCreatingTag(false);
@@ -623,10 +793,9 @@ const deleteCard = async () => {
           position: toast.POSITION.TOP_CENTER,
         });
       } else {
-        toast.error(
-          `something went wrong could not Remove the Tag, please try again later`,
-          { position: toast.POSITION.TOP_CENTER }
-        );
+        toast.error(`something went wrong could not Remove the Tag, please try again later`, {
+          position: toast.POSITION.TOP_CENTER,
+        });
       }
     } finally {
       setIsDeletingTag(null);
@@ -661,10 +830,9 @@ const deleteCard = async () => {
           position: toast.POSITION.TOP_CENTER,
         });
       } else {
-        toast.error(
-          `something went wrong could not Remove the Task, please try again later`,
-          { position: toast.POSITION.TOP_CENTER }
-        );
+        toast.error(`something went wrong could not Remove the Task, please try again later`, {
+          position: toast.POSITION.TOP_CENTER,
+        });
       }
     } finally {
       setIsDeletingTask(null);
@@ -680,9 +848,7 @@ const deleteCard = async () => {
     try {
       setIsCreatingTask(true);
 
-      const assignToJoin = selectedOptions
-        .map((option) => `${option.value}`)
-        .join(" - ");
+      const assignToJoin = selectedOptions.map((option) => `${option.value}`).join(" - ");
 
       const customResponse = await AddTask(
         taskTitle,
@@ -722,10 +888,9 @@ const deleteCard = async () => {
           position: toast.POSITION.TOP_CENTER,
         });
       } else {
-        toast.error(
-          `something went wrong could not add the Task, please try again later`,
-          { position: toast.POSITION.TOP_CENTER }
-        );
+        toast.error(`something went wrong could not add the Task, please try again later`, {
+          position: toast.POSITION.TOP_CENTER,
+        });
       }
     } finally {
       setIsCreatingTask(false);
@@ -736,14 +901,14 @@ const deleteCard = async () => {
   return (
     <>
       <Transition appear show={modalState.isOpen} as={Fragment}>
-<Dialog
-  as="div"
-  className="relative z-[60]"
-  onClose={() => {
-    if (isDueDateModalOpen) return; // ✅ prevent CardModal from closing while DueDateModal is open
-    handleCloseModal();
-  }}
->
+        <Dialog
+          as="div"
+          className="relative z-[60]"
+          onClose={() => {
+            if (isDueDateModalOpen) return; // ✅ prevent CardModal from closing while DueDateModal is open
+            handleCloseModal();
+          }}
+        >
           {/* Overlay */}
           <Transition.Child
             as={Fragment}
@@ -798,14 +963,14 @@ const deleteCard = async () => {
                                   {({ active }) => (
                                     <button
                                       type="button"
-                                    onClick={() => {
-  // ✅ keep last non-done status so checkbox can return back
-  if (normalize(opt) !== "done") lastNonDoneStatusRef.current = opt;
+                                      onClick={() => {
+                                        // ✅ keep last non-done status so checkbox can return back
+                                        if (normalize(opt) !== "completed")
+                                          lastNonDoneStatusRef.current = opt;
 
-  setStatus(opt);           // ✅ update button text immediately
-  moveCardOptimistic(opt);  // ✅ move card immediately
-}}
-
+                                        setStatus(opt); // ✅ update button text immediately
+                                        moveCardOptimistic(opt); // ✅ move card immediately
+                                      }}
                                       className={classNames(
                                         "flex w-full items-center rounded-[12px] px-3 py-3 text-left text-[12px] font-medium outline-none focus:outline-none focus:ring-0",
                                         active ? "bg-[#F4F6F8]/60 dark:bg-white/5" : "",
@@ -824,16 +989,14 @@ const deleteCard = async () => {
                         </Menu>
 
                         {/* Right icon (trash only like Figma) */}
-  <button
-  onClick={deleteCard}
-  disabled={deletingCard}
-  type="button"
-  className="inline-flex h-10 w-10 items-center justify-center rounded-full hover:bg-slate500_12 disabled:opacity-50"
->
-  <img src="/icons/trash.png" alt="Delete" className="h-5 w-5" />
-</button>
-
-
+                        <button
+                          onClick={deleteCard}
+                          disabled={deletingCard}
+                          type="button"
+                          className="inline-flex h-10 w-10 items-center justify-center rounded-full hover:bg-slate500_12 disabled:opacity-50"
+                        >
+                          <img src="/icons/trash.png" alt="Delete" className="h-5 w-5" />
+                        </button>
                       </div>
 
                       {/* ================= TABS ================= */}
@@ -868,7 +1031,7 @@ const deleteCard = async () => {
                       </div>
 
                       {/* ================= CONTENT ================= */}
-<div className="card-modal-scroll relative flex-1 overflow-y-auto px-6 py-6">
+                      <div className="card-modal-scroll relative flex-1 overflow-y-auto px-6 py-6">
                         <div className="pointer-events-none absolute inset-0" />
                         <div className="relative z-10">
                           {/* Title input */}
@@ -894,16 +1057,16 @@ const deleteCard = async () => {
                           {/* ============= OVERVIEW TAB ============= */}
                           {activeTab === "overview" && (
                             <div className="mt-6 grid grid-cols-[110px,1fr] items-start gap-x-8 gap-y-6">
-{/* Tag */}
-<div className="pt-2 text-[13px] font-medium text-[#637381] dark:text-slate500_80">
-  Tag
-</div>
+                              {/* Tag */}
+                              <div className="pt-2 text-[13px] font-medium text-[#637381] dark:text-slate500_80">
+                                Tag
+                              </div>
 
-<div className="flex flex-wrap items-center gap-2">
-  {kanbanTags.map((tag, index) => (
-    <div
-      key={tag.kanbanTagId ?? index}
-      className="
+                              <div className="flex flex-wrap items-center gap-2">
+                                {kanbanTags.map((tag, index) => (
+                                  <div
+                                    key={tag.kanbanTagId ?? index}
+                                    className="
         inline-flex items-center gap-2
         rounded-[18px]
         px-3 py-2
@@ -911,15 +1074,15 @@ const deleteCard = async () => {
         bg-[#FFAB00]/10 text-[#FFAB00]
         dark:bg-[#FFAB00]/18 dark:text-[#FFAB00]
       "
-    >
-      <span className="leading-none">{tag.title}</span>
+                                  >
+                                    <span className="leading-none">{tag.title}</span>
 
-<button
-  type="button"
-  onClick={() => handleDeleteTag(index, tag.kanbanTagId)}
-  disabled={isDeletingTag === tag.kanbanTagId}
-  aria-label="Delete tag"
-  className="
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteTag(index, tag.kanbanTagId)}
+                                      disabled={isDeletingTag === tag.kanbanTagId}
+                                      aria-label="Delete tag"
+                                      className="
     inline-flex h-5 w-5 items-center justify-center
     rounded-full
     bg-[#FFAB00]/30 text-[#637381]
@@ -927,47 +1090,43 @@ const deleteCard = async () => {
     disabled:opacity-50
     dark:bg-[#FFAB00]/30 dark:text-[#141A21]
   "
->
-  <svg
-    viewBox="0 0 24 24"
-    className="h-3 w-3"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2.5"
-    strokeLinecap="round"
-  >
-    <path d="M7 7l10 10M17 7L7 17" />
-  </svg>
-</button>
+                                    >
+                                      <svg
+                                        viewBox="0 0 24 24"
+                                        className="h-3 w-3"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2.5"
+                                        strokeLinecap="round"
+                                      >
+                                        <path d="M7 7l10 10M17 7L7 17" />
+                                      </svg>
+                                    </button>
+                                  </div>
+                                ))}
 
+                                {isCreatingTag && (
+                                  <div className="h-8 w-24 animate-pulse rounded-md bg-slate500_12 dark:bg-slate500_20" />
+                                )}
 
-    </div>
-  ))}
+                                {kanbanTags.length < 6 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setOpenTagModal(true)}
+                                    disabled={isCreatingTag}
+                                    className="inline-flex h-8 items-center justify-center rounded-md border border-dashed border-slate500_20 px-3 text-[13px] font-medium text-slate500 hover:bg-slate500_12 dark:border-slate500_48 dark:text-slate500_80"
+                                  >
+                                    <PlusIcon className="mr-1 h-4 w-4" />
+                                    Add tag
+                                  </button>
+                                )}
 
-  {isCreatingTag && (
-    <div className="h-8 w-24 animate-pulse rounded-md bg-slate500_12 dark:bg-slate500_20" />
-  )}
-
-  {kanbanTags.length < 6 && (
-    <button
-      type="button"
-      onClick={() => setOpenTagModal(true)}
-      disabled={isCreatingTag}
-      className="inline-flex h-8 items-center justify-center rounded-md border border-dashed border-slate500_20 px-3 text-[13px] font-medium text-slate500 hover:bg-slate500_12 dark:border-slate500_48 dark:text-slate500_80"
-    >
-      <PlusIcon className="mr-1 h-4 w-4" />
-      Add tag
-    </button>
-  )}
-
-  <CreateTagModal
-    show={openTagModal}
-    handleClose={setOpenTagModal}
-    handleSubmit={handleCreateTag}
-  />
-</div>
-
-
+                                <CreateTagModal
+                                  show={openTagModal}
+                                  handleClose={setOpenTagModal}
+                                  handleSubmit={handleCreateTag}
+                                />
+                              </div>
 
                               {/* Due date */}
                               <div className="pt-2 text-[13px] font-medium text-[#637381] dark:text-slate500_80">
@@ -988,9 +1147,9 @@ const deleteCard = async () => {
                               <div className="pt-2 text-[13px] font-medium text-[#637381] dark:text-slate500_80">
                                 Description
                               </div>
-                            <textarea
-  ref={descTextAreaRef}
-  className="
+                              <textarea
+                                ref={descTextAreaRef}
+                                className="
     card-desc-scroll
     min-h-[96px] w-full resize-none rounded-[12px]
     border border-slate500_12
@@ -999,47 +1158,31 @@ const deleteCard = async () => {
     dark:border-slate500_20 dark:bg-white/5 dark:text-white
     dark:focus:border-white
   "
-  placeholder="Add a short description..."
-  value={desc}
-  onChange={(e) => setDesc(e.target.value)}
-  minLength={3}
-/>
-
+                                placeholder="Add a short description..."
+                                value={desc}
+                                onChange={(e) => setDesc(e.target.value)}
+                                minLength={3}
+                              />
 
                               {/* Image */}
                               <div className="pt-2 text-[13px] font-medium text-[#637381] dark:text-slate500_80">
                                 Image
                               </div>
-                              <div className="flex items-start gap-4">
+
+                              <div className="flex flex-wrap items-start gap-3">
                                 <label className="flex h-[64px] w-[64px] cursor-pointer items-center justify-center rounded-[16px] border border-dashed border-slate500_20 bg-[#919EAB33] hover:bg-slate500_08/60 dark:border-slate500_48 dark:bg-white/5">
                                   <input
                                     className="hidden"
                                     type="file"
                                     accept="image/*"
+                                    multiple
                                     disabled={uploadingImage}
-                                  onChange={(e) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
-
-  if (file.size > maxFileSize) {
-    setFileSizeExceeded(true);
-    toast.error("File size must be less than 5MB", { position: toast.POSITION.TOP_CENTER });
-    return;
-  }
-
-  setFileSizeExceeded(false);
-
-  // show preview immediately
-  const previewUrl = URL.createObjectURL(file);
-  setImageUrl(previewUrl);
-
-  // upload to cloudinary, then it will replace preview with real url
-  handleImageUpload(file);
-
-  // ✅ allow selecting same file again
-  e.currentTarget.value = "";
-}}
-
+                                    onChange={(e) => {
+                                      const files = e.target.files;
+                                      if (!files || !files.length) return;
+                                      uploadManyImages(files);
+                                      e.currentTarget.value = "";
+                                    }}
                                   />
 
                                   <img
@@ -1049,13 +1192,32 @@ const deleteCard = async () => {
                                   />
                                 </label>
 
-                                {(displayImage || cloudinaryUrl) && (
-                                  <img
-                                    src={cloudinaryUrl || displayImage}
-                                    alt="Card image"
-                                    className="h-[64px] w-[64px] rounded-[16px] border border-slate500_12 object-cover dark:border-slate500_20"
-                                  />
-                                )}
+                                {/* Thumbnails */}
+                                {cardImages.map((img) => (
+                                  <div key={img.id} className="relative h-[64px] w-[64px]">
+                                    <img
+                                      src={img.url}
+                                      alt="attachment"
+                                      className={[
+                                        "h-[64px] w-[64px] rounded-[16px] border object-cover",
+                                        "border-slate500_12 dark:border-slate500_20",
+                                        coverUrl === img.url ? "ring-2 ring-[#FFAB00]" : "",
+                                      ].join(" ")}
+                                     onClick={async () => {
+  await setCover(img.url);
+}}
+                                    />
+
+                                    {/* X remove */}
+                                 <button
+  type="button"
+  className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/70"
+  onClick={(e) => handleDeleteImage(img, e)}
+>
+  <XMarkIcon className="h-3 w-3" />
+</button>
+                                  </div>
+                                ))}
                               </div>
 
                               {fileSizeExceeded && (
@@ -1084,48 +1246,43 @@ const deleteCard = async () => {
                                   </button>
                                 </div>
 
-                               
-                              
-
                                 {/* Completed */}
                                 <div className="pt-2 text-[13px] font-medium text-[#637381] dark:text-slate500_80">
                                   Completed
                                 </div>
                                 <div className="flex items-center">
-<button
-  type="button"
-  onClick={handleToggleCompleted}
-  aria-pressed={isCompleted}
-  className={[
-    "flex h-5 w-5 items-center justify-center rounded-[6px] border transition",
-    isCompleted ? "border-[#FFAB00] bg-[#FFAB00]" : "border-[#637381] bg-transparent",
-  ].join(" ")}
->
-  <svg
-    className={isCompleted ? "h-4 w-4 text-white" : "hidden"}
-    viewBox="0 0 20 20"
-    fill="currentColor"
-  >
-    <path
-      fillRule="evenodd"
-      d="M16.707 5.293a1 1 0 010 1.414l-7.5 7.5a1 1 0 01-1.414 0l-3.5-3.5a1 1 0 011.414-1.414l2.793 2.793 6.793-6.793a1 1 0 011.414 0z"
-      clipRule="evenodd"
-    />
-  </svg>
-</button>
-
-
-
-
+                                  <button
+                                    type="button"
+                                    onClick={handleToggleCompleted}
+                                    aria-pressed={isCompleted}
+                                    className={[
+                                      "flex h-5 w-5 items-center justify-center rounded-[6px] border transition",
+                                      isCompleted
+                                        ? "border-[#FFAB00] bg-[#FFAB00]"
+                                        : "border-[#637381] bg-transparent",
+                                    ].join(" ")}
+                                  >
+                                    <svg
+                                      className={isCompleted ? "h-4 w-4 text-white" : "hidden"}
+                                      viewBox="0 0 20 20"
+                                      fill="currentColor"
+                                    >
+                                      <path
+                                        fillRule="evenodd"
+                                        d="M16.707 5.293a1 1 0 010 1.414l-7.5 7.5a1 1 0 01-1.414 0l-3.5-3.5a1 1 0 011.414-1.414l2.793 2.793 6.793-6.793a1 1 0 011.414 0z"
+                                        clipRule="evenodd"
+                                      />
+                                    </svg>
+                                  </button>
                                 </div>
 
                                 {/* Description */}
                                 <div className="pt-2 text-[13px] font-medium text-[#637381] dark:text-slate500_80">
                                   Description
                                 </div>
-                         <textarea
-  ref={descTextAreaRef}
-  className="
+                                <textarea
+                                  ref={descTextAreaRef}
+                                  className="
     card-desc-scroll
     min-h-[96px] w-full resize-none rounded-[12px]
     border border-slate500_12
@@ -1134,46 +1291,31 @@ const deleteCard = async () => {
     dark:border-slate500_20 dark:bg-white/5 dark:text-white
     dark:focus:border-white
   "
-  placeholder="Add a short description..."
-  value={desc}
-  onChange={(e) => setDesc(e.target.value)}
-  minLength={3}
-/>
+                                  placeholder="Add a short description..."
+                                  value={desc}
+                                  onChange={(e) => setDesc(e.target.value)}
+                                  minLength={3}
+                                />
 
                                 {/* Image */}
                                 <div className="pt-2 text-[13px] font-medium text-[#637381] dark:text-slate500_80">
                                   Image
                                 </div>
+
                                 <div className="flex items-start gap-4">
                                   <label className="flex h-[64px] w-[64px] cursor-pointer items-center justify-center rounded-[16px] border border-dashed border-slate500_20 bg-[#919EAB33] hover:bg-slate500_08/60 dark:border-slate500_48 dark:bg-white/5">
                                     <input
                                       className="hidden"
                                       type="file"
                                       accept="image/*"
+                                      multiple
                                       disabled={uploadingImage}
-                                    onChange={(e) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
-
-  if (file.size > maxFileSize) {
-    setFileSizeExceeded(true);
-    toast.error("File size must be less than 5MB", { position: toast.POSITION.TOP_CENTER });
-    return;
-  }
-
-  setFileSizeExceeded(false);
-
-  // show preview immediately
-  const previewUrl = URL.createObjectURL(file);
-  setImageUrl(previewUrl);
-
-  // upload to cloudinary, then it will replace preview with real url
-  handleImageUpload(file);
-
-  // ✅ allow selecting same file again
-  e.currentTarget.value = "";
-}}
-
+                                      onChange={(e) => {
+                                        const files = e.target.files;
+                                        if (!files || !files.length) return;
+                                        uploadManyImages(files);
+                                        e.currentTarget.value = "";
+                                      }}
                                     />
 
                                     <img
@@ -1183,13 +1325,31 @@ const deleteCard = async () => {
                                     />
                                   </label>
 
-                                  {(displayImage || cloudinaryUrl) && (
-                                    <img
-                                      src={cloudinaryUrl || displayImage}
-                                      alt="Card image"
-                                      className="h-[64px] w-[64px] rounded-[16px] border border-slate500_12 object-cover dark:border-slate500_20"
-                                    />
-                                  )}
+                                  {/* Thumbnails */}
+                                  {cardImages.map((img) => (
+                                    <div key={img.id} className="relative h-[64px] w-[64px]">
+                                      <img
+                                        src={img.url}
+                                        alt="attachment"
+                                        className={[
+                                          "h-[64px] w-[64px] rounded-[16px] border object-cover",
+                                          "border-slate500_12 dark:border-slate500_20",
+                                          coverUrl === img.url ? "ring-2 ring-[#FFAB00]" : "",
+                                        ].join(" ")}
+                                       onClick={async () => {
+  await setCover(img.url);
+}}
+                                      />
+
+                                      <button
+                                        type="button"
+                                        className="absolute -right-1 -top-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/70"
+                                        onClick={(e) => handleDeleteImage(img, e)}
+                                      >
+                                        ×
+                                      </button>
+                                    </div>
+                                  ))}
                                 </div>
                               </div>
 
@@ -1201,13 +1361,13 @@ const deleteCard = async () => {
                                       {({ open }) => (
                                         <>
                                           <div className="mb-2 flex items-center justify-between rounded-[14px] border border-slate500_12 bg-white/60 px-4 py-3 dark:border-slate500_20 dark:bg-white/5 dark:text-white">
-                                   <div className="flex min-w-0 flex-1 items-center gap-2">
- <input
-  type="text"
-  readOnly
-  value={_t.title}
-  title={_t.title}
-  className="
+                                            <div className="flex min-w-0 flex-1 items-center gap-2">
+                                              <input
+                                                type="text"
+                                                readOnly
+                                                value={_t.title}
+                                                title={_t.title}
+                                                className="
     w-full min-w-0
     rounded-[14px]
     bg-white/60
@@ -1224,12 +1384,10 @@ const deleteCard = async () => {
     dark:bg-white/5 dark:text-white dark:border-slate500_20
     dark:focus:border-white
   "
-/>
-</div>
+                                              />
+                                            </div>
 
                                             <div className="flex items-center gap-2">
-                                           
-
                                               {_t.addedBy === userInfo.username && _t.completed === false && (
                                                 <button
                                                   type="button"
@@ -1321,16 +1479,15 @@ const deleteCard = async () => {
         </Dialog>
       </Transition>
 
-     <DueDateModal
-  open={isDueDateModalOpen}
-  value={date}
-  onClose={() => setIsDueDateModalOpen(false)}
-  onApply={(newValue) => {
-    setDate(newValue);
-    setIsDueDateModalOpen(false);
-  }}
-/>
-
+      <DueDateModal
+        open={isDueDateModalOpen}
+        value={date}
+        onClose={() => setIsDueDateModalOpen(false)}
+        onApply={(newValue) => {
+          setDate(newValue);
+          setIsDueDateModalOpen(false);
+        }}
+      />
     </>
   );
 }
