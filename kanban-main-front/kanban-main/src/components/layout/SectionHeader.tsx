@@ -25,17 +25,24 @@ export default function SectionHeader({
   const router = useRouter();
   const path = router.pathname.split("/").filter(Boolean);
 
-  // ✅ Breadcrumb-related additions (ONLY)
+  // ✅ Breadcrumb-related additions (FIXED)
   const projectListHref = "/projects";
 
-  // This should resolve to the SAME id used in /boardList/:id (ex: 10)
-  const boardListId =
-    (router.query.boardListId as string) ||
-    (router.query.projectId as string) ||
-    (router.query.id as string) ||
-    (router.query.boardId as string);
+  // ✅ projectId must be the same value used in /boardList/[id]
+  // - on /boardList/[id] => router.query.id is the PROJECT id ✅
+  // - on /kanbanList/[id] => router.query.id is the BOARD id ❌ (wrong for boardList breadcrumb)
+  // so: read the project id from sessionStorage on kanbanList
+  const projectIdFromSession =
+    typeof window !== "undefined"
+      ? sessionStorage.getItem("activeProjectId")
+      : null;
 
-  const boardListHref = boardListId ? `/boardList/${boardListId}` : "/boardList";
+  const projectId =
+    path[0] === "boardList"
+      ? ((router.query.id as string) || "")
+      : (projectIdFromSession || "");
+
+  const boardListHref = projectId ? `/boardList/${projectId}` : "/boardList";
   // ✅ End breadcrumb-related additions
 
   const breadcrumb: { label: string; href?: string }[] = [];
@@ -51,10 +58,9 @@ export default function SectionHeader({
     breadcrumb.push({ label: "Project", href: projectListHref });
     breadcrumb.push({ label: "Project List", href: projectListHref });
 
-    // ✅ ONLY change here: make Board List clickable and go to /boardList/:id
+    // ✅ clickable Board List => goes back to the SAME project board list
     breadcrumb.push({ label: "Board List", href: boardListHref });
 
-    // ✅ keep label nice
     breadcrumb.push({ label: "Kanban" });
   } else {
     breadcrumb.push({ label: "Project" });

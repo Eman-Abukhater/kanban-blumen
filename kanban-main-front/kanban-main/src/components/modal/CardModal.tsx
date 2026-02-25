@@ -360,11 +360,14 @@ export function CardModal(props: CardModalProps) {
   // ✅ cover initial:
   // - if backend already has imageUrl and it's in images => use it
   // - else default to FIRST uploaded image
-  const [coverUrl, setCoverUrl] = useState<string>(() => {
-    const imgUrl = (props.card.imageUrl || "").trim();
-    if (imgUrl && initialImages.some((x) => x.url === imgUrl)) return imgUrl;
-    return initialImages.length ? initialImages[0].url : "";
-  });
+ const [coverUrl, setCoverUrl] = useState<string>(() => {
+  if (!initialImages.length) return ""; // ✅ force no cover if no images
+
+  const imgUrl = (props.card.imageUrl || "").trim();
+  if (imgUrl && initialImages.some((x) => x.url === imgUrl)) return imgUrl;
+
+  return initialImages[0].url; // fallback to first image
+});
 
   const applyImagesAndCover = (
     nextImages: KanbanCardImage[],
@@ -407,14 +410,17 @@ export function CardModal(props: CardModalProps) {
   };
 
   // ✅ helper: user picks cover manually
-  const persistCoverToBackend = async (url: string) => {
+const persistCoverToBackend = async (url: string) => {
   try {
     await EditCard({
       title: title || props.card.title,
       kanbanCardId: props.card.kanbanCardId,
       updatedby: userInfo.username,
       desc: (desc || props.card.desc || "....") as string,
-      imageUrl: url || "",
+
+      // ✅ IMPORTANT: always send imageUrl (even empty string)
+      imageUrl: typeof url === "string" ? url : "",
+
       completed: normalize(status) === "completed",
       startDate: date?.startDate ? date.startDate.toString() : undefined,
       endDate: date?.endDate ? date.endDate.toString() : undefined,
@@ -422,9 +428,9 @@ export function CardModal(props: CardModalProps) {
       fkpoid: String(userInfo.fkpoid),
     });
 
-    invalidateKanban(); // ✅ so board re-renders with correct cover
+    invalidateKanban();
   } catch {
-    // ignore (UI already updated)
+    // ignore
   }
 };
 
@@ -467,7 +473,7 @@ const setCover = async (url: string) => {
       // - if deleted image WAS the current cover => cover becomes FIRST remaining uploaded
       // - else keep current cover
     const nextCover = applyImagesAndCover(next, { keepCurrentCover: img.url !== coverUrl });
-await persistCoverToBackend(nextCover || "");
+await persistCoverToBackend(nextCover);
 invalidateKanban();
     } catch (e2: any) {
       toast.error(e2?.message || "Failed to delete image", {
@@ -510,86 +516,103 @@ invalidateKanban();
   };
 
   // ================= IMAGE UPLOAD =================
-  const uploadManyImages = async (files: FileList) => {
-    try {
-      setUploadingImage(true);
-      setFileSizeExceeded(false);
+const uploadManyImages = async (files: FileList) => {
+  try {
+    setUploadingImage(true);
+    setFileSizeExceeded(false);
 
-      const arr = Array.from(files);
+    const arr = Array.from(files);
 
-      // validate
-      for (const f of arr) {
-        if (f.size > maxFileSize) {
-          setFileSizeExceeded(true);
-          toast.error("File size must be less than 5MB", {
-            position: toast.POSITION.TOP_CENTER,
-          });
-          return;
-        }
-      }
+    // ✅ Only allow common supported types (Cloudinary/browser-friendly)
+    const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/gif"];
 
-      // upload sequential (keeps order)
-      const uploaded: { url: string; publicId?: string | null }[] = [];
+    const validFiles = arr.filter((f) => ALLOWED_TYPES.includes(f.type));
+    const rejectedCount = arr.length - validFiles.length;
 
-      for (const f of arr) {
-        const res = await uploadImageToCloudinary(f);
-        if (res?.data?.url) {
-          uploaded.push({
-            url: res.data.url,
-            publicId: res.data.publicId ?? null,
-          });
-        }
-      }
+    // ✅ General toast (covers WEBP, AVIF, HEIC, etc.)
+    if (rejectedCount > 0) {
+      toast.error(
+        "Some images were skipped (unsupported format). Please upload JPG / PNG / GIF only.",
+        { position: toast.POSITION.TOP_CENTER }
+      );
+    }
 
-      if (!uploaded.length) return;
+    // If all are rejected -> stop
+    if (!validFiles.length) return;
 
-      // save to DB
-      const saveRes = await AddCardImages({
-        kanbanCardId: props.card.kanbanCardId,
-        images: uploaded,
-        fkpoid: userInfo.fkpoid,
-        updatedby: userInfo.username,
-      });
-
-      if (!saveRes || saveRes.status !== 200) {
-        toast.error("Failed to save images", {
+    // ✅ Size validation (5MB)
+    for (const f of validFiles) {
+      if (f.size > maxFileSize) {
+        setFileSizeExceeded(true);
+        toast.error("File size must be less than 5MB", {
           position: toast.POSITION.TOP_CENTER,
         });
         return;
       }
-
-      // optimistic UI append
-      const startSeq = (cardImages?.length ? cardImages[cardImages.length - 1].seqNo : 0) + 1;
-      const newImgs: KanbanCardImage[] = uploaded.map((u, i) => ({
-        id: -Date.now() - i, // temp id until refetch
-        url: u.url,
-        publicId: u.publicId ?? null,
-        seqNo: startSeq + i,
-      }));
-
-      const nextAll = sortImgs([...cardImages, ...newImgs]);
-
-      // ✅ rule: if no cover yet => first uploaded becomes cover
-      if (!coverUrl) {
-        applyImagesAndCover(nextAll, { forceCoverUrl: uploaded[0].url });
-      } else {
-        applyImagesAndCover(nextAll, { keepCurrentCover: true });
-      }
-
-      toast.success("Images uploaded successfully!", {
-        position: toast.POSITION.TOP_CENTER,
-      });
-
-      invalidateKanban(); // to get real IDs from backend
-    } catch (e: any) {
-      toast.error(e?.message || "Failed to upload images", {
-        position: toast.POSITION.TOP_CENTER,
-      });
-    } finally {
-      setUploadingImage(false);
     }
-  };
 
+    // ✅ Upload sequential (keeps order)
+    const uploaded: { url: string; publicId?: string | null }[] = [];
+
+    for (const f of validFiles) {
+      const res = await uploadImageToCloudinary(f);
+      if (res?.data?.url) {
+        uploaded.push({
+          url: res.data.url,
+          publicId: res.data.publicId ?? null,
+        });
+      }
+    }
+
+    if (!uploaded.length) return;
+
+    // ✅ Save to DB
+    const saveRes = await AddCardImages({
+      kanbanCardId: props.card.kanbanCardId,
+      images: uploaded,
+      fkpoid: userInfo.fkpoid,
+      updatedby: userInfo.username,
+    });
+
+    if (!saveRes || saveRes.status !== 200) {
+      toast.error("Failed to save images", {
+        position: toast.POSITION.TOP_CENTER,
+      });
+      return;
+    }
+
+    // ✅ Optimistic UI append
+    const startSeq =
+      (cardImages?.length ? cardImages[cardImages.length - 1].seqNo : 0) + 1;
+
+    const newImgs: KanbanCardImage[] = uploaded.map((u, i) => ({
+      id: -Date.now() - i,
+      url: u.url,
+      publicId: u.publicId ?? null,
+      seqNo: startSeq + i,
+    }));
+
+    const nextAll = sortImgs([...cardImages, ...newImgs]);
+
+    if (!coverUrl) {
+      applyImagesAndCover(nextAll, { forceCoverUrl: uploaded[0].url });
+    } else {
+      applyImagesAndCover(nextAll, { keepCurrentCover: true });
+    }
+
+    toast.success("Images uploaded successfully!", {
+      position: toast.POSITION.TOP_CENTER,
+    });
+
+    invalidateKanban();
+  } catch (e: any) {
+    toast.error(e?.message || "Failed to upload images", {
+      position: toast.POSITION.TOP_CENTER,
+    });
+  } finally {
+    setUploadingImage(false);
+  }
+};
   // ================= SAVE CARD (EDIT) =================
   const mutation = useMutation({
     mutationFn: async (cardData: any) => {

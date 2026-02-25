@@ -5,7 +5,6 @@ import Head from "next/head";
 
 import { KanbanContextComponent } from "../context/KanbanContextComponent";
 import { Hydrate, QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import OnlineUsersButton from "@/components/layout/OnlineUsersButton";
 
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -30,7 +29,6 @@ export default function App({ Component, pageProps }: AppProps) {
         <Hydrate state={(pageProps as any).dehydratedState}>
           <KanbanContextComponent>
             <Component {...pageProps} />
-            <OnlineUsersButton />
 
             <ToastContainer
               position="top-center"

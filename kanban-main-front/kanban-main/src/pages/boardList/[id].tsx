@@ -808,15 +808,22 @@ const handleAddBoardClick = async (newTitle: string) => {
     );
   };
 
-  const handleAddClick = (board: ApiBoard) => {
-    if (!userInfo) return;
-    handleSetUserInfo({
-      ...userInfo,
-      boardTitle: board.title,
-      fkboardid: board.boardId,
-    });
-    router.push(`/kanbanList/${board.boardId}`);
-  };
+const handleAddClick = (board: ApiBoard) => {
+  if (!userInfo) return;
+
+  // ✅ Save current project id for breadcrumb back link
+  if (fkpoid != null) {
+    sessionStorage.setItem("activeProjectId", String(fkpoid));
+  }
+
+  handleSetUserInfo({
+    ...userInfo,
+    boardTitle: board.title,
+    fkboardid: board.boardId,
+  });
+
+  router.push(`/kanbanList/${board.boardId}`);
+};
 
   return (
     <>

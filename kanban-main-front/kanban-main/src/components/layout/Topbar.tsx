@@ -1,5 +1,6 @@
 // src/components/layout/Topbar.tsx
 import Image from "next/image";
+import Link from "next/link";
 import { Fragment } from "react";
 import { Menu, Transition } from "@headlessui/react";
 import ThemeSwitch from "./ThemeSwitch";
@@ -28,16 +29,18 @@ export default function Topbar() {
   <nav className="fixed left-0 right-0 top-0 z-30 bg-white dark:bg-[#141A21]">
       <div className="mx-auto w-full max-w-[1320px] px-6">
         <div className="relative flex h-[88px] items-center justify-between">
-          {/* Logo */}
-          <div className="flex items-center">
-            <Image
-              src="/Logo.png"
-              alt="Blumen Cafe"
-              width={170}
-              height={70}
-              priority
-            />
-          </div>
+       <div className="relative flex h-[88px] items-center justify-between">
+  {/* Logo */}
+  <Link href="/projects" className="flex items-center" aria-label="Go to Projects">
+    <Image
+      src="/Logo.png"
+      alt="Blumen Cafe"
+      width={170}
+      height={70}
+      priority
+    />
+  </Link>
+</div>
 
         {/* Avatar dropdown */}
         <Menu as="div" className="relative">
