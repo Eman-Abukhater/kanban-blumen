@@ -20,8 +20,10 @@ export function KanbanBoard() {
   const [hasOverflow, setHasOverflow] = useState(false);
 
   // No pagination: show all lists
-  const visibleLists = useMemo(() => kanbanState, [kanbanState]);
-
+const visibleLists = useMemo(
+  () => (Array.isArray(kanbanState) ? kanbanState.filter(Boolean) : []),
+  [kanbanState]
+);
   // Measure overflow for sticky bar
   useEffect(() => {
     const el = contentScrollRef.current;

@@ -33,7 +33,12 @@ export function KanbanContextComponent(props: IAppProps) {
     "kanban-state",
     defaultKanbanBoardState
   );
-
+const safeKanbanState = (Array.isArray(kanbanState) ? kanbanState : [])
+  .filter(Boolean)
+  .map((l: any) => ({
+    ...l,
+    kanbanCards: Array.isArray(l?.kanbanCards) ? l.kanbanCards : [],
+  }));
   const [modalState, setModalState] = useState<ModalContextState>(
     defaultModalContextState
   );
@@ -44,7 +49,7 @@ export function KanbanContextComponent(props: IAppProps) {
     seqNo: number,
     fkBoardId: number
   ) => {
-    const tempList = [...kanbanState];
+    const tempList = [...safeKanbanState];
     tempList.push({
       kanbanListId,
       id: s4(),
@@ -59,13 +64,13 @@ export function KanbanContextComponent(props: IAppProps) {
   };
 
   const handleDeleteList = (listIndex: number) => {
-    const tempList = [...kanbanState];
+    const tempList = [...safeKanbanState];
     tempList.splice(listIndex, 1);
     setKanbanState(tempList);
   };
 
   const handleRenameList = (listIndex: number, title: string) => {
-    const tempList = [...kanbanState];
+    const tempList = [...safeKanbanState];
     if (!tempList[listIndex]) return;
     tempList[listIndex].title = title;
     setKanbanState(tempList);
@@ -82,7 +87,7 @@ export function KanbanContextComponent(props: IAppProps) {
     seqNo: number,
     fkKanbanListId: number
   ) => {
-    const tempList = [...kanbanState];
+    const tempList = [...safeKanbanState];
     tempList[listIndex].kanbanCards.push({
       kanbanCardId,
       id: s4(),
@@ -103,7 +108,7 @@ export function KanbanContextComponent(props: IAppProps) {
   };
 
   const handleDeleteCard = (listIndex: number, cardIndex: number) => {
-    const tempList = [...kanbanState];
+    const tempList = [...safeKanbanState];
     tempList[listIndex].kanbanCards.splice(cardIndex, 1);
     setKanbanState(tempList);
   };
@@ -113,7 +118,7 @@ export function KanbanContextComponent(props: IAppProps) {
     cardIndex: number,
     updatedCard: KanbanCard
   ) => {
-    const tempList = [...kanbanState];
+    const tempList = [...safeKanbanState];
     tempList[listIndex].kanbanCards[cardIndex] = updatedCard;
     setKanbanState(tempList);
   };
@@ -442,7 +447,7 @@ const handleClearList = async (listid: number, _userInfo: any) => {
   return (
     <KanbanContextProvider
       value={{
-        kanbanState,
+        kanbanState: safeKanbanState,
         userInfo,
         signalRConnection,
         onlineUsers,

@@ -46,18 +46,36 @@ export default function GetKanbanList() {
     };
   }, [router.events]);
 
+  // ✅ Keep a stable reference to setKanbanListState
+  const setKanbanListStateRef = useRef(setKanbanListState);
+  useEffect(() => {
+    setKanbanListStateRef.current = setKanbanListState;
+  }, [setKanbanListState]);
+
+  // ✅ NEW: clear old board state when board id changes (prevents stale UI)
+  useEffect(() => {
+    if (!router.isReady || !fkboardid) return;
+    setKanbanListStateRef.current([]);
+  }, [router.isReady, fkboardid]);
+
   // -------- fetch kanban lists (React Query) --------
+  // ✅ NOTE: best practice: fetchKanbanList should THROW on errors (not return null)
   const { data, isLoading, isError, error, refetch, isFetched } = useQuery<
-    any,
-    Error | null
+    any[],
+    Error
   >({
     queryKey: ["kanbanlist", fkboardid],
-    queryFn: () => fetchKanbanList(fkboardid),
+    queryFn: () => fetchKanbanList(fkboardid as number),
     enabled: router.isReady && !!fkboardid,
     staleTime: 60_000,
-    refetchOnMount: false,
+
+    // ✅ NEW: refetch on mount helps when you come back to the tab / route
+    refetchOnMount: true,
+
     refetchOnWindowFocus: false,
-    retry: 1,
+
+    // ✅ NEW: retry a bit more (Render sometimes fails once)
+    retry: 2,
   });
 
   // -------- auth check + restore user from sessionStorage --------
@@ -102,14 +120,7 @@ export default function GetKanbanList() {
     };
   }, [signalRConnection, refetch]);
 
-  // ✅ Keep a stable reference to setKanbanListState
-  const setKanbanListStateRef = useRef(setKanbanListState);
-  useEffect(() => {
-    setKanbanListStateRef.current = setKanbanListState;
-  }, [setKanbanListState]);
-
   // -------- when data arrives, push into context state --------
-  // ✅ IMPORTANT: do NOT depend on setKanbanListState directly
   useEffect(() => {
     if (!isFetched || isError) return;
     setKanbanListStateRef.current(Array.isArray(data) ? data : []);

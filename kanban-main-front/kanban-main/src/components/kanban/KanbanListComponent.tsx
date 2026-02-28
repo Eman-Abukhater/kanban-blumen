@@ -198,6 +198,7 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
                   title={props.list.title}
                   userInfo={userInfo}
                   onRename={startRename}
+                  
                 />
 
                 <div

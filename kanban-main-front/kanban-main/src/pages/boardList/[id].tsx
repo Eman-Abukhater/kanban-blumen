@@ -1347,16 +1347,24 @@ const handleAddClick = (board: ApiBoard) => {
               <div className="mt-6 flex justify-end gap-2">
                 <button
                   onClick={closeDeleteBoardConfirm}
-                  className="btn btn-outline"
-                  disabled={deleteBoardModal.isLoading}
+  className="
+    inline-flex h-10 items-center justify-center rounded-[10px]
+    px-4 text-sm font-semibold
+    border border-slate500_20 text-ink bg-white
+    hover:bg-slate500_08 active:scale-[0.98]
+    disabled:cursor-not-allowed disabled:opacity-60
+    dark:bg-transparent dark:text-white dark:border-slate500_20
+    dark:hover:bg-white/5
+    transition
+  "                  disabled={deleteBoardModal.isLoading}
                 >
-                  Cancel
+                  Cancel 
                 </button>
 
                 <button
                   onClick={handleConfirmDeleteBoard}
                   disabled={deleteBoardModal.isLoading}
-                  className="btn rounded-[10px] bg-red-600 px-2 py-2 text-sm font-semibold text-white hover:bg-red-700 hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="btn rounded-[10px] bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {deleteBoardModal.isLoading ? "Deleting..." : "Delete"}
                 </button>

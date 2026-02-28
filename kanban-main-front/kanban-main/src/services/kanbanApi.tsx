@@ -6,7 +6,7 @@ const Base_URL: string = "https://kanban-backend-final.onrender.com/api";
 // Configure axios with better defaults for performance
 const apiClient = axios.create({
   baseURL: Base_URL,
-  timeout: 10000, // 10 second timeout
+  timeout: 30000, // 10 second timeout
   headers: {
     "Content-Type": "application/json",
   },
@@ -426,23 +426,29 @@ export async function EditBoard(
 }
 
 // on loading the page first check and fetch Board List
-export async function fetchKanbanList(id: any): Promise<any> {
+export async function fetchKanbanList(id: number): Promise<any[]> {
+  if (!id) throw new Error("Board id is missing");
+
   try {
-    const response = await apiClient.get(
-      `/ProjKanbanBoards/getkanbanlist?fkboardid=${id}`
+    const res = await apiClient.get(
+      `/ProjKanbanBoards/getkanbanlist?fkboardid=${id}`,
+      { timeout: 30000 } // ✅ increase timeout
     );
 
-    if (!response) {
-      throw new Error("Network response was not ok");
+    if (!Array.isArray(res.data)) {
+      throw new Error("Invalid kanban response (expected array)");
     }
 
-    return response.data;
-  } catch (error) {
-    console.error("Error fetching kanban list:", error);
-    return null;
+    return res.data;
+  } catch (err: any) {
+    // ✅ IMPORTANT: throw so React Query sets isError=true
+    const msg =
+      err?.response?.data?.error ||
+      err?.message ||
+      "Failed to fetch kanban list";
+    throw new Error(msg);
   }
 }
-
 //add Kanban list by passing the fkboardid
 export async function AddKanbanList(
   title: string,

@@ -224,15 +224,17 @@ export default function ProjectsList() {
   const [isNavigating, setIsNavigating] = useState(false);
 
   const [search, setSearch] = useState("");
-  const [deleteConfirmModal, setDeleteConfirmModal] = useState<{
-    isOpen: boolean;
-    projectId: number | null;
-    projectTitle: string;
-  }>({
-    isOpen: false,
-    projectId: null,
-    projectTitle: "",
-  });
+const [deleteConfirmModal, setDeleteConfirmModal] = useState<{
+  isOpen: boolean;
+  projectId: number | null;
+  projectTitle: string;
+  isLoading: boolean;
+}>({
+  isOpen: false,
+  projectId: null,
+  projectTitle: "",
+  isLoading: false,
+});
 
   // 🔹 footer state
   const [dense, setDense] = useState(false);
@@ -447,52 +449,61 @@ const handleEditProject = async (newTitle: string, newDescription: string, proje
   }
 };
 
-  const handleDeleteProject = async () => {
-    if (!deleteConfirmModal.projectId) return;
+const handleDeleteProject = async () => {
+  const idToDelete = deleteConfirmModal.projectId;
+  if (!idToDelete) return;
 
-    try {
-      const idToDelete = deleteConfirmModal.projectId;
-      const res = await deleteProject(idToDelete);
+  // ✅ prevent double click
+  if (deleteConfirmModal.isLoading) return;
 
-      if (res?.status === 200 && res?.data?.success) {
-        setProjects((prev) => prev.filter((p) => p.id !== idToDelete));
+  try {
+    setDeleteConfirmModal((prev) => ({ ...prev, isLoading: true }));
 
-        // ✅ close modal
-        setDeleteConfirmModal({
-          isOpen: false,
-          projectId: null,
-          projectTitle: "",
-        });
+    const res = await deleteProject(idToDelete);
 
-        // ✅ if current page becomes empty after delete, clamp to last valid page
-        // We'll clamp after render using derived totals (below) by just moving one step back safely:
-        setCardPage((p) => Math.max(0, p - 1));
-        setTablePage((p) => Math.max(0, p - 1));
+    if (res?.status === 200 && res?.data?.success) {
+      setProjects((prev) => prev.filter((p) => p.id !== idToDelete));
 
-        toast.success("Project deleted successfully!", {
-          position: toast.POSITION.TOP_CENTER,
-        });
-      } else {
-        toast.error("Failed to delete project.", {
-          position: toast.POSITION.TOP_CENTER,
-        });
-      }
-    } catch (e: any) {
-      toast.error(`Error: ${e?.message ?? "Failed to delete project"}`, {
+      toast.success("Project deleted successfully!", {
         position: toast.POSITION.TOP_CENTER,
       });
+
+      closeDeleteConfirm();
+
+      // optional: step back a page if empty
+      setCardPage((p) => Math.max(0, p - 1));
+      setTablePage((p) => Math.max(0, p - 1));
+      return;
     }
-  };
 
-  const openDeleteConfirm = (projectId: number, projectTitle: string) =>
-    setDeleteConfirmModal({ isOpen: true, projectId, projectTitle });
-
-  const closeDeleteConfirm = () =>
-    setDeleteConfirmModal({
-      isOpen: false,
-      projectId: null,
-      projectTitle: "",
+    toast.error(
+      res?.data?.message || "Failed to delete project.",
+      { position: toast.POSITION.TOP_CENTER }
+    );
+  } catch (e: any) {
+    toast.error(e?.message ?? "Failed to delete project", {
+      position: toast.POSITION.TOP_CENTER,
     });
+  } finally {
+    setDeleteConfirmModal((prev) => ({ ...prev, isLoading: false }));
+  }
+};
+
+const openDeleteConfirm = (projectId: number, projectTitle: string) =>
+  setDeleteConfirmModal({
+    isOpen: true,
+    projectId,
+    projectTitle,
+    isLoading: false,
+  });
+
+const closeDeleteConfirm = () =>
+  setDeleteConfirmModal({
+    isOpen: false,
+    projectId: null,
+    projectTitle: "",
+    isLoading: false,
+  });
 
   const handleViewProject = (project: any) => {
     if (!userInfo) return;
@@ -1129,15 +1140,31 @@ const handleEditProject = async (newTitle: string, newDescription: string, proje
               </p>
 
               <div className="mt-6 flex justify-end gap-2">
-                <button onClick={closeDeleteConfirm} className="btn btn-outline">
+                <button onClick={closeDeleteConfirm} 
+  className="
+    inline-flex h-10 items-center justify-center rounded-[10px]
+    px-4 text-sm font-semibold
+    border border-slate500_20 text-ink bg-white
+    hover:bg-slate500_08 active:scale-[0.98]
+    disabled:cursor-not-allowed disabled:opacity-60
+    dark:bg-transparent dark:text-white dark:border-slate500_20
+    dark:hover:bg-white/5
+    transition
+  "                >
                   Cancel
                 </button>
                 <button
                   onClick={handleDeleteProject}
-                  className="btn rounded-[10px] bg-red-600 px-2 py-2 text-sm font-semibold text-white hover:bg-red-700 hover:opacity-95"
+                  className="btn rounded-[10px] bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={deleteConfirmModal.isLoading}
                 >
-                  Delete
+                  {deleteConfirmModal.isLoading ? "Deleting..." : "Delete"}
                 </button>
+
+
+
+
+
               </div>
             </div>
           </div>
