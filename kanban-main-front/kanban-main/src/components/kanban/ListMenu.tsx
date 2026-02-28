@@ -2,6 +2,7 @@ import { useContext, useEffect, useLayoutEffect, useRef, useState } from "react"
 import KanbanContext from "../../context/kanbanContext";
 import { PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { MoreHorizontal, Eraser } from "lucide-react";
+import { toast } from "react-toastify";
 
 export interface IListMenuProps {
   title: string;
@@ -14,7 +15,8 @@ export interface IListMenuProps {
 type Pos = { top: number; left: number; placement: "top" | "bottom" };
 
 export function ListMenu(props: IListMenuProps) {
-  const { handleOpenModal, handleClearList } = useContext(KanbanContext);
+  // ✅ get kanbanState so we can check if the list is empty
+  const { handleOpenModal, kanbanState } = useContext(KanbanContext);
 
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<Pos>({ top: 0, left: 0, placement: "bottom" });
@@ -122,15 +124,34 @@ export function ListMenu(props: IListMenuProps) {
               <span>Rename</span>
             </button>
 
-            {/* ✅ FIXED: clear by listIndex */}
+            {/* ✅ Clear: if list is empty -> toast only, NO modal */}
             <button
               type="button"
               className="flex w-full items-center gap-3 rounded-[12px] px-3 py-2 text-[14px] text-ink hover:bg-slate500_08 dark:text-white dark:hover:bg-white/5"
-            onClick={() => {
-  console.log("CLEAR CLICKED: listId =", props.listId);
-  setOpen(false);
-  handleClearList(props.listId, props.userInfo);
-}}
+              onClick={() => {
+                setOpen(false);
+
+                const list = (kanbanState || []).find(
+                  (l: any) => Number(l.kanbanListId) === Number(props.listId)
+                );
+                const count = list?.kanbanCards?.length ?? 0;
+
+                if (count === 0) {
+                  toast.error("This column is already empty", {
+                    position: toast.POSITION.TOP_CENTER,
+                  });
+                  return;
+                }
+
+                handleOpenModal({
+                  type: "CLEAR_LIST",
+                  modalProps: {
+                    title: props.title,
+                    listIndex: props.listIndex,
+                    listId: props.listId,
+                  },
+                });
+              }}
             >
               <Eraser className="h-5 w-5" />
               <span>Clear</span>

@@ -4,17 +4,14 @@ import { CardModalProps } from "../components/modal/CardModal";
 import { DeleteListModalProps } from "../components/modal/DeleteListModal";
 import { RenameListModalProps } from "../components/modal/RenameListModal";
 import { HubConnection } from "@microsoft/signalr/dist/esm/HubConnection";
-
-export type ModalTypes = "DELETE_LIST" | "UPDATE_CARD" | "RENAME_LIST";
-
-/**
- * ✅ Discriminated Union (حل مشكلة Vercel)
- */
+import { ClearListModalProps } from "../components/modal/ClearListModal";
+export type ModalType = "DELETE_LIST" | "UPDATE_CARD" | "RENAME_LIST" | "CLEAR_LIST";
 export type ModalContextState =
   | { isOpen: false; type: null; modalProps: null }
   | { isOpen: true; type: "DELETE_LIST"; modalProps: DeleteListModalProps }
   | { isOpen: true; type: "UPDATE_CARD"; modalProps: CardModalProps }
-  | { isOpen: true; type: "RENAME_LIST"; modalProps: RenameListModalProps };
+  | { isOpen: true; type: "RENAME_LIST"; modalProps: RenameListModalProps }
+  | { isOpen: true; type: "CLEAR_LIST"; modalProps: ClearListModalProps };
 
 /**
  * ✅ handleOpenModal payload
@@ -22,7 +19,8 @@ export type ModalContextState =
 export type hanbleOpenModalProps =
   | { type: "DELETE_LIST"; modalProps: DeleteListModalProps }
   | { type: "UPDATE_CARD"; modalProps: CardModalProps }
-  | { type: "RENAME_LIST"; modalProps: RenameListModalProps };
+  | { type: "RENAME_LIST"; modalProps: RenameListModalProps }
+  | { type: "CLEAR_LIST"; modalProps: ClearListModalProps };
 
 export type KanbanContext = {
   kanbanState: KanbanBoardState;

@@ -1234,7 +1234,7 @@ const uploadManyImages = async (files: FileList) => {
                                     {/* X remove */}
                                  <button
   type="button"
-  className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/70"
+  className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/70"
   onClick={(e) => handleDeleteImage(img, e)}
 >
   <XMarkIcon className="h-3 w-3" />

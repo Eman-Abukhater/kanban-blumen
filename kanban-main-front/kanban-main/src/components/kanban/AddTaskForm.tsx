@@ -219,19 +219,29 @@ export function AddTaskForm(props: IAddFormProps) {
       zIndex: 9999,
     }),
 
-    option: (base, state) => ({
-      ...base,
-      fontSize: 13,
-      fontWeight: 600,
-      cursor: "pointer",
-      color: isDark ? "#FFFFFF" : "#1C252E",
-      backgroundColor: state.isSelected
-        ? (isDark ? YELLOW_SELECTED_DARK : YELLOW_SELECTED_LIGHT)
-        : state.isFocused
-        ? (isDark ? YELLOW_HOVER_DARK : YELLOW_HOVER_LIGHT)
-        : "transparent",
-    }),
+  option: (base, state) => {
+  const bg = state.isSelected
+    ? (isDark ? YELLOW_SELECTED_DARK : YELLOW_SELECTED_LIGHT)
+    : state.isFocused
+    ? (isDark ? YELLOW_HOVER_DARK : YELLOW_HOVER_LIGHT)
+    : "transparent";
 
+  const activeBg = isDark ? YELLOW_SELECTED_DARK : YELLOW_SELECTED_LIGHT;
+
+  return {
+    ...base,
+    fontSize: 13,
+    fontWeight: 600,
+    cursor: "pointer",
+    color: isDark ? "#FFFFFF" : "#1C252E",
+    backgroundColor: bg,
+
+    // ✅ FIX: pressed color (mouse down / keyboard active)
+    ":active": {
+      backgroundColor: activeBg,
+    },
+  };
+},
     multiValue: (base) => ({
       ...base,
       backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(145, 158, 171, 0.12)",
@@ -302,24 +312,32 @@ export function AddTaskForm(props: IAddFormProps) {
               dark:bg-[#1B232D]
             "
           >
-            <input
-              className={[
-                "w-full rounded-[12px] bg-white/70 px-3 py-2 text-[14px] font-semibold text-ink placeholder:text-slate500 outline-none",
-                "border",
-                nameError ? "border-2 border-[#FF5630]" : "border-slate500_20",
-                "focus:outline-none focus:ring-0",
-                "dark:bg-[#1C252E]/60 dark:text-white dark:placeholder:text-slate500_80",
-                nameError ? "dark:border-2 dark:border-[#FF5630]" : "dark:border-slate500_20",
-              ].join(" ")}
-              placeholder={props.placeholder}
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              onBlur={() => setNameTouched(true)}
-              maxLength={50}
-              minLength={3}
-              autoFocus
-            />
+        <input
+  className={[
+    "w-full rounded-[12px] bg-white/70 px-3 py-2 text-[14px] font-semibold text-ink placeholder:text-slate500 outline-none",
+    "border",
+
+    // ✅ normal vs error border
+    nameError ? "border-2 border-[#FF5630]" : "border-slate500_20",
+
+    // ✅ focus border (yellow) - only when NOT error
+    "focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0",
+    nameError ? "" : "focus:border-[#FFAB00] focus:border-2",
+
+    // ✅ dark
+    "dark:bg-[#1C252E]/60 dark:text-white dark:placeholder:text-slate500_80",
+    nameError ? "dark:border-2 dark:border-[#FF5630]" : "dark:border-slate500_20",
+    nameError ? "" : "dark:focus:border-[#FFAB00] dark:focus:border-2",
+  ].join(" ")}
+  placeholder={props.placeholder}
+  type="text"
+  value={name}
+  onChange={(e) => setName(e.target.value)}
+  onBlur={() => setNameTouched(true)}
+  maxLength={50}
+  minLength={3}
+  autoFocus
+/>
 
             {nameError && (
               <div className="mt-2 text-[12px] font-semibold text-[#FF5630]">

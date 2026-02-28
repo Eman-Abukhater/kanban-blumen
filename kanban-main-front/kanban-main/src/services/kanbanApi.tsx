@@ -893,3 +893,19 @@ export async function DeleteCardImage(payload: {
     return null;
   }
 }
+export async function SaveListsOrder(payload: {
+  fkboardid: number;
+  fkpoid: number;
+  updatedby: string;
+  lists: { listid: number; seqNo: number }[];
+}) {
+  return await apiClient.post("/ProjKanbanBoards/savelistsorder", payload);
+}
+
+export async function ClearKanbanList(listid: number, fkpoid: number, updatedby: string) {
+  return apiClient.post("/ProjKanbanBoards/clearlist", {
+    listid,
+    fkpoid,
+    updatedby,
+  });
+}

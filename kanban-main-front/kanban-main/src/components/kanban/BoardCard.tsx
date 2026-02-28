@@ -98,7 +98,7 @@ export default function BoardCard({
 
             {menuOpen && (
   <div
-    className="absolute right-0 mt-2 w-32 rounded-2xl bg-white py-2 text-sm text-black
+    className="absolute right-0 mt-2 w-32 rounded-2xl bg-white py-2 px-1 text-sm text-black
       shadow-[0_18px_45px_rgba(15,23,42,0.40)]
       dark:bg-[#232C36] dark:text-white"
   >
