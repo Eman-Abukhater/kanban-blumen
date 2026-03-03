@@ -88,10 +88,15 @@ export function CardModal(props: CardModalProps) {
   const [title, setTitle] = useState<string>(props.card.title);
   const [desc, setDesc] = useState(props.card.desc);
 
-  const [date, setDate] = useState<DateValueType | null>({
-    startDate: props.card.startDate,
-    endDate: props.card.endDate,
-  });
+ const [date, setDate] = useState<DateValueType | null>(() => {
+  const s = props.card.startDate ?? null;
+  const e = props.card.endDate ?? null;
+
+  // ✅ if both are empty → keep it null (no default date)
+  if (!s && !e) return null;
+
+  return { startDate: s, endDate: e } as DateValueType;
+});
 
   const [completed, setCompleted] = useState(props.card.completed);
 
@@ -1503,14 +1508,17 @@ const uploadManyImages = async (files: FileList) => {
       </Transition>
 
       <DueDateModal
-        open={isDueDateModalOpen}
-        value={date}
-        onClose={() => setIsDueDateModalOpen(false)}
-        onApply={(newValue) => {
-          setDate(newValue);
-          setIsDueDateModalOpen(false);
-        }}
-      />
+  open={isDueDateModalOpen}
+  value={date}
+  onClose={() => setIsDueDateModalOpen(false)}
+  onApply={(newValue) => {
+    const s = newValue?.startDate ?? null;
+    const e = newValue?.endDate ?? null;
+
+    setDate(!s && !e ? null : (newValue as DateValueType));
+    setIsDueDateModalOpen(false);
+  }}
+/>
     </>
   );
 }

@@ -158,9 +158,10 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
     setMobileStep("picker");
   };
 
-  const cancelMobilePicker = () => {
-    setMobileStep("form");
-  };
+ const cancelMobilePicker = () => {
+  setTempPick(null);
+  setMobileStep("form");
+};
 
   // ✅ MOBILE commit (OK)
   // Start: set start, return to form
@@ -172,21 +173,7 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
       return;
     }
 
-    if (activeField === "start") {
-      const newStart = chosen;
-
-      // keep range valid
-      if (end && end.isBefore(newStart, "day")) {
-        setStart(newStart);
-        setEnd(newStart);
-      } else {
-        setStart(newStart);
-      }
-
-      setMobileStep("form");
-      return;
-    }
-
+activeField === "start"
     // activeField === "end"
     const newEnd = chosen;
 
@@ -479,19 +466,80 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
     return { base, cls, style };
   };
 
-  const getTempSelectedStyle = (d: Dayjs, isSelected: boolean) => {
-    const { base, cls, style } = getMobileDayStyle(d);
+const getTempSelectedStyle = (d: Dayjs, isSelected: boolean) => {
+  const day = d.startOf("day");
 
-    if (isSelected) {
-      return {
-        base,
-        cls: "text-white",
-        style: { backgroundColor: BRAND_YELLOW },
-      };
-    }
+  // ✅ match desktop sizing (optional but fixes mismatch)
+  const base =
+    "mx-auto flex h-10 w-10 items-center justify-center rounded-full text-[14px] font-semibold transition outline-none";
 
-    return { base, cls, style };
-  };
+  let cls =
+    "text-[#1C252E] hover:bg-slate500_08 dark:text-white dark:hover:bg-white/10";
+
+  const isToday = sameDay(day, today);
+
+  // ---------
+  // Decide preview range depending on which field is being picked
+  // ---------
+  let previewA: Dayjs | null = null;
+  let previewB: Dayjs | null = null;
+
+  if (activeField === "end") {
+    // ✅ picking END: preview between committed start and tempPick
+    previewA = start;
+    previewB = tempPick;
+  } else {
+    // ✅ picking START: preview between tempPick and committed end (if end exists)
+    previewA = tempPick;
+    previewB = end;
+  }
+
+  const hasPreview = !!previewA && !!previewB;
+
+  const min = hasPreview && previewA && previewB
+    ? (previewB.isBefore(previewA, "day") ? previewB : previewA)
+    : null;
+
+  const max = hasPreview && previewA && previewB
+    ? (previewB.isAfter(previewA, "day") ? previewB : previewA)
+    : null;
+
+  const isPreviewStart = !!min && sameDay(day, min);
+  const isPreviewEnd = !!max && sameDay(day, max);
+
+  const previewInBetween =
+    !!min && !!max ? day.isAfter(min, "day") && day.isBefore(max, "day") : false;
+
+  // Today ring (same rule as your desktop: not on endpoints)
+  const showTodayRing =
+    isToday && !(isPreviewStart || isPreviewEnd);
+
+  if (showTodayRing) {
+    cls = "ring-1 ring-slate500 text-[#1C252E] dark:ring-white dark:text-white";
+  }
+
+  let style: React.CSSProperties | undefined;
+
+  // ✅ Preview range (this solves “first time end selection has no in-between”)
+  if (hasPreview && previewInBetween && !showTodayRing) {
+    style = { backgroundColor: RANGE_BG };
+    cls = "text-[#1C252E] dark:text-white";
+  }
+
+  // ✅ Preview endpoints
+  if (hasPreview && (isPreviewStart || isPreviewEnd) && !showTodayRing) {
+    style = { backgroundColor: BRAND_YELLOW };
+    cls = "text-white";
+  }
+
+  // If no preview range, still highlight the clicked day
+  if (!hasPreview && isSelected) {
+    style = { backgroundColor: BRAND_YELLOW };
+    cls = "text-white";
+  }
+
+  return { base, cls, style };
+};
 
   return (
     <Transition appear show={open} as={Fragment}>

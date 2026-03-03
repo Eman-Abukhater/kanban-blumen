@@ -157,23 +157,25 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
                       }
                     }}
                     className="
-                      h-10 w-[170px] max-w-[170px]
+                  
+                      h-10 w-[160px] max-w-[160px]
                       rounded-[10px] border-2 border-[#1C252E] bg-white
-                      px-3 text-[16px] font-semibold text-ink
+                      px-2 text-[16px] font-semibold text-ink
                       outline-none
                       focus:outline-none focus:ring-0 focus:ring-offset-0
                       focus:border-[#1C252E]
                       focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0
                       dark:bg-[#1C252E] dark:text-white dark:border-white
+                      
                     "
                   />
                 )}
               </div>
 
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-0">
                 <button
                   type="button"
-                  className="flex h-5 w-5 items-center justify-center rounded-full bg-[#1C252E] text-white shadow-soft hover:opacity-90 dark:bg-white dark:text-ink"
+  className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-[#1C252E] text-white shadow-soft hover:opacity-90 dark:bg-white dark:text-ink"
                   onClick={() => {
                     setShowAddCard(true);
                     setTimeout(() => {

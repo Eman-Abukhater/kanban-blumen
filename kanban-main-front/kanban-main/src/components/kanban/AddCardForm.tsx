@@ -115,7 +115,8 @@ export function AddCardForm(props: IAddFormProps) {
             </div>
           ) : (
            <input
-  className="w-full border-none bg-transparent text-[14px] text-ink placeholder:text-slate500 
+  className=" 
+  no-global-focus w-full border-none bg-transparent text-[14px] text-ink placeholder:text-slate500 
     outline-none focus:outline-none focus-visible:outline-none focus:ring-0
     dark:text-white dark:placeholder:text-slate500_80"
   placeholder={props.placeholder || 'Task name'}

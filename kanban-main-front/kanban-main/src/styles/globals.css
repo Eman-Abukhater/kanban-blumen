@@ -3,21 +3,20 @@
 @tailwind utilities;
 
 
-
 :root {
   --sb-size: 8px;
 
-  /* Light */
-  --sb-thumb: #919EAB;      /* same as your slate500 */
-  --sb-thumb-hover: #637381;/* slate600 */
-  --sb-track: transparent;  /* ✅ same as page bg (no strip) */
+  /* Light (lighter thumb) */
+  --sb-thumb: rgba(99, 115, 129, 0.35);       /* lighter than #919EAB */
+  --sb-thumb-hover: rgba(99, 115, 129, 0.55); /* still visible on hover */
+  --sb-track: transparent;
 }
 
 .dark {
-  /* Dark */
-  --sb-thumb: #637381;       /* slate600 */
-  --sb-thumb-hover: #919EAB; /* slate500 */
-  --sb-track: transparent;   /* ✅ same as dark bg */
+  /* Dark (still visible but not too bright) */
+  --sb-thumb: rgba(145, 158, 171, 0.35);
+  --sb-thumb-hover: rgba(145, 158, 171, 0.55);
+  --sb-track: transparent;
 }
 
 /* Base body */
@@ -136,13 +135,25 @@ body {
 }
 .Toastify__toast-container {
   z-index: 9999;  /* Ensure the toast has the highest z-index */
+  padding: 12px !important; /* adds gap from all edges */
+
+}
+/* If you use top-right position, enforce exact top/right gap */
+.Toastify__toast-container--top-right {
+  top: 12px !important;
+  right: 12px !important;
 }
 
-
+/* If you use top-left too (optional) */
+.Toastify__toast-container--top-left {
+  top: 12px !important;
+  left: 12px !important;
+}
 /* ===== Description scrollbar (Light) ===== */
 .card-desc-scroll {
   scrollbar-width: thin;                       /* Firefox */
-  scrollbar-color: rgba(99,115,129,0.45) transparent;
+  scrollbar-color: var(--sb-thumb) var(--sb-track);
+
 }
 
 /* Chrome / Edge / Safari */
@@ -153,13 +164,13 @@ body {
   background: transparent;
 }
 .card-desc-scroll::-webkit-scrollbar-thumb {
-  background: rgba(99,115,129,0.35);
+  background: var(--sb-thumb);
   border-radius: 999px;
   border: 3px solid transparent;              /* makes it look thinner + nicer */
   background-clip: content-box;
 }
 .card-desc-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(99,115,129,0.55);
+  background: var(--sb-thumb-hover);
   background-clip: content-box;
 }
 
@@ -273,4 +284,20 @@ input[type="text"] {
   text-overflow: ellipsis;
   padding-right: 20px; /* Add space for scrollbar */
   box-sizing: border-box;
+}
+/* ===== Global Yellow Focus System (All Inputs) ===== */
+/* ✅ Skip elements that have .no-global-focus */
+input:focus:not(.no-global-focus),
+textarea:focus:not(.no-global-focus),
+select:focus:not(.no-global-focus) {
+  outline: none !important;
+  box-shadow: 0 0 0 1px rgba(255, 171, 0, 0.4) !important;
+  border-color: rgba(255, 171, 0, 0.4) !important;
+}
+
+.dark input:focus:not(.no-global-focus),
+.dark textarea:focus:not(.no-global-focus),
+.dark select:focus:not(.no-global-focus) {
+  box-shadow: 0 0 0 1px rgba(255, 171, 0, 0.35) !important;
+  border-color: rgba(255, 171, 0, 0.35) !important;
 }

@@ -3,6 +3,7 @@ import { Search, Plus } from "lucide-react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import Image from "next/image";
+import { inputBase } from "@/utility/inputClasses";
 
 type Props = {
   search?: string;
@@ -140,7 +141,7 @@ export default function SectionHeader({
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search..."
-                className="h-12 w-full rounded-[12px] border border-slate500_20 bg-white pl-9 pr-3 text-[14px] text-ink placeholder-slate500 outline-none focus:ring-2 focus:ring-brand/40 dark:border-slate500_20 dark:bg-[#1B232D] dark:text-slate500_80 dark:placeholder-slate500_80"
+                className={inputBase}
               />
             </div>
           </div>
