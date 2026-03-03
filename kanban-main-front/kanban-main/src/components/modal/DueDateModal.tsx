@@ -387,9 +387,8 @@ activeField === "start"
             const isToday = sameDay(d, today);
             const showTodayRing = isToday && !(isStart || isEnd);
 
-            const base =
-              "mx-auto flex h-10 w-10 items-center justify-center rounded-full text-[14px] font-semibold transition outline-none";
-
+           const base =
+  "mx-auto flex h-9 w-9 min-[370px]:h-10 min-[370px]:w-10 items-center justify-center rounded-full text-[13px] min-[370px]:text-[14px] font-semibold transition outline-none";
             // ✅ readable default in dark mode
             let cls =
               "text-[#1C252E] hover:bg-slate500_08 dark:text-white dark:hover:bg-white/10";
@@ -440,10 +439,8 @@ activeField === "start"
         : false;
 
     const isToday = sameDay(d, today);
-
-    const base =
-      "mx-auto flex h-9 w-9 items-center justify-center rounded-full text-[13px] font-semibold transition outline-none";
-
+const base =
+  "mx-auto flex h-9 w-9 min-[370px]:h-10 min-[370px]:w-10 items-center justify-center rounded-full text-[13px] min-[370px]:text-[14px] font-semibold transition outline-none";
     let cls =
       "text-[#1C252E] hover:bg-slate500_08 dark:text-white dark:hover:bg-white/10";
 
@@ -470,9 +467,8 @@ const getTempSelectedStyle = (d: Dayjs, isSelected: boolean) => {
   const day = d.startOf("day");
 
   // ✅ match desktop sizing (optional but fixes mismatch)
-  const base =
-    "mx-auto flex h-10 w-10 items-center justify-center rounded-full text-[14px] font-semibold transition outline-none";
-
+const base =
+  "mx-auto flex h-8 w-8 min-[370px]:h-9 min-[370px]:w-9 items-center justify-center rounded-full text-[13px] min-[370px]:text-[14px] font-semibold transition outline-none";
   let cls =
     "text-[#1C252E] hover:bg-slate500_08 dark:text-white dark:hover:bg-white/10";
 
@@ -566,17 +562,23 @@ const getTempSelectedStyle = (d: Dayjs, isSelected: boolean) => {
             leaveFrom="opacity-100 scale-100"
             leaveTo="opacity-0 scale-[0.98]"
           >
-            <Dialog.Panel
-              ref={panelRef}
-              className="
-                card-modal-scroll
-                w-full max-w-[920px] rounded-[24px] p-6
-                max-h-[90vh] overflow-y-auto
-                md:max-h-none md:overflow-visible
-                bg-white shadow-[0_30px_80px_rgba(0,0,0,0.18)]
-                dark:bg-[#1C252E] dark:shadow-[0_30px_80px_rgba(0,0,0,0.55)]
-              "
-            >
+      <Dialog.Panel
+  ref={panelRef}
+  className="
+    w-full max-w-[920px] rounded-[24px]
+    bg-white shadow-[0_30px_80px_rgba(0,0,0,0.18)]
+    dark:bg-[#1C252E] dark:shadow-[0_30px_80px_rgba(0,0,0,0.55)]
+    overflow-hidden
+  "
+>
+    <div
+    className="
+      card-modal-scroll
+      max-h-[90vh] overflow-y-auto
+      p-6 pr-2
+      md:max-h-none md:overflow-visible
+    "
+  >
               <Dialog.Title className="text-[20px] font-bold text-[#1C252E] dark:text-white">
                 Choose due date
               </Dialog.Title>
@@ -779,6 +781,7 @@ const getTempSelectedStyle = (d: Dayjs, isSelected: boolean) => {
                   Apply
                 </button>
               </div>
+            </div>
             </Dialog.Panel>
           </Transition.Child>
         </div>
