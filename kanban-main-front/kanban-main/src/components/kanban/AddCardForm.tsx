@@ -1,5 +1,11 @@
 import { AddCard } from "@/services/kanbanApi";
-import { FormEvent, KeyboardEvent as ReactKeyboardEvent, useEffect, useRef, useState } from "react";
+import {
+  FormEvent,
+  KeyboardEvent as ReactKeyboardEvent,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { toast } from "react-toastify";
 import { useInvalidateKanban } from "@/hooks/useKanbanMutations";
 
@@ -14,7 +20,7 @@ export interface IAddFormProps {
   ) => void;
   userInfo: any;
   fkKanbanListId: number;
-  onCreated?: () => void; // 👈 New
+  onCreated?: () => void;
 }
 
 export function AddCardForm(props: IAddFormProps) {
@@ -23,12 +29,10 @@ export function AddCardForm(props: IAddFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const invalidateKanban = useInvalidateKanban();
 
-  // Handle creating a new task
   const createCard = async () => {
     let trimmed = name.trim();
     if (!trimmed || isCreating) return;
 
-    // If the task name exceeds 100 characters, trim it and show a toast
     if (trimmed.length > 100) {
       trimmed = trimmed.slice(0, 100);
       toast.warning("Task title has been shortened to 100 characters", {
@@ -36,46 +40,61 @@ export function AddCardForm(props: IAddFormProps) {
       });
     }
 
+    // ✅ 1) Optimistic UI FIRST (instant)
+    const tempCardId = -Date.now(); // negative = temp
+    const tempSeqNo = Date.now(); // any big unique number so it goes to bottom safely
+    props.onSubmit(trimmed, tempCardId, tempSeqNo, props.fkKanbanListId);
+
+    setName("");
+    props.onCreated?.();
+
+    // ✅ 2) Instant toast (don’t wait network)
+    const toastId = toast.loading("Creating task...", {
+      position: toast.POSITION.TOP_CENTER,
+    });
+
     setIsCreating(true);
 
-    const customResponse = await AddCard(
-      trimmed,
-      props.fkKanbanListId,
-      props.userInfo.username,
-      props.userInfo.id,
-      props.userInfo.fkboardid,
-      props.userInfo.fkpoid
-    );
-
-    setIsCreating(false);
-
-    if (customResponse?.status === 200 && customResponse.data) {
-      props.onSubmit(
+    try {
+      const customResponse = await AddCard(
         trimmed,
-        customResponse.data.kanbanCardId,
-        customResponse.data.seqNo,
-        props.fkKanbanListId
+        props.fkKanbanListId,
+        props.userInfo.username,
+        props.userInfo.id,
+        props.userInfo.fkboardid,
+        props.userInfo.fkpoid
       );
 
-      setName("");
-      props.onCreated?.();
+      if (customResponse?.status === 200 && customResponse.data) {
+        toast.update(toastId, {
+          render: `Task created (#${customResponse.data.kanbanCardId})`,
+          type: "success",
+          isLoading: false,
+          autoClose: 1800,
+        });
 
-      toast.success(
-        `Card ID: ${customResponse.data.kanbanCardId} Created Successfully`,
-        { position: toast.POSITION.TOP_CENTER }
-      );
+        void invalidateKanban();
+        return;
+      }
 
-      invalidateKanban(); // Invalidate in background
-      return;
-    } else {
-      toast.error(
-        "Something went wrong, could not add the card. Please try again later.",
-        { position: toast.POSITION.TOP_CENTER }
+      throw new Error(
+        "Something went wrong, could not add the card. Please try again later."
       );
+    } catch (err: any) {
+      toast.update(toastId, {
+        render: err?.message || "Failed to create task.",
+        type: "error",
+        isLoading: false,
+        autoClose: 2500,
+      });
+
+      // ✅ refetch to clean temp optimistic card if backend failed
+     void invalidateKanban();
+    } finally {
+      setIsCreating(false);
     }
   };
 
-  // Handle keydown for Enter key
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter") {
       event.preventDefault();
@@ -83,25 +102,21 @@ export function AddCardForm(props: IAddFormProps) {
     }
   };
 
-  // Handle form submission
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
     void createCard();
   };
 
-  // Handle closing the form when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (formRef.current && !formRef.current.contains(event.target as Node)) {
-        props.onCreated?.(); // Close form if clicked outside
+        props.onCreated?.();
       }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -114,17 +129,18 @@ export function AddCardForm(props: IAddFormProps) {
               <div className="h-3 w-1/2 rounded-full bg-slate500_08 dark:bg-slate500_20" />
             </div>
           ) : (
-           <input
-  className=" 
-  no-global-focus w-full border-none bg-transparent text-[14px] text-ink placeholder:text-slate500 
-    outline-none focus:outline-none focus-visible:outline-none focus:ring-0
-    dark:text-white dark:placeholder:text-slate500_80"
-  placeholder={props.placeholder || 'Task name'}
-  type="text"
-  value={name}
-  onChange={(e) => setName(e.target.value)}
-  onKeyDown={handleKeyDown}
-/>
+            <input
+              className="
+                no-global-focus w-full border-none bg-transparent text-[14px] text-ink placeholder:text-slate500
+                outline-none focus:outline-none focus-visible:outline-none focus:ring-0
+                dark:text-white dark:placeholder:text-slate500_80
+              "
+              placeholder={props.placeholder || "Task name"}
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={handleKeyDown}
+            />
           )}
         </div>
 

@@ -37,8 +37,8 @@ export type KanbanCard = {
   kanbanTags: KanbanTag[];
   kanbanTasks: KanbanTask[];
   date: DateValueType;
-  startDate: Date;
-  endDate: Date;
+ startDate: Date | null;
+endDate: Date | null;
   status?: string;
   assignedTo?: string;
   priority?: "low" | "medium" | "high";

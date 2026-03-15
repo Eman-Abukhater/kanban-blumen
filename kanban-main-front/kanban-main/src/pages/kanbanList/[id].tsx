@@ -12,14 +12,13 @@ import KanbanBoardSkeleton from "@/components/layout/KanbanBoardSkeleton";
 import KanbanContext from "@/context/kanbanContext";
 import SectionHeader from "@/components/layout/SectionHeader";
 import { fetchKanbanList } from "@/services/kanbanApi";
-
+const KANBAN_CACHE_PREFIX = "blumen-kanban-cache-";
 export default function GetKanbanList() {
   const { setKanbanListState, userInfo, handleSetUserInfo, signalRConnection } =
     useContext(KanbanContext);
 
-  const [isNavigating, setIsNavigating] = useState(false);
   const [showSkeleton, setShowSkeleton] = useState(false);
-
+  const [cachedLists, setCachedLists] = useState<any[] | null>(null);
   const router = useRouter();
   const { id } = router.query as { id: string };
 
@@ -29,22 +28,10 @@ export default function GetKanbanList() {
     return Number.isNaN(parsed) ? null : parsed;
   }, [id]);
 
-  // -------- route change loading state --------
-  useEffect(() => {
-    const handleRouteChangeStart = () => setIsNavigating(true);
-    const handleRouteChangeComplete = () => setIsNavigating(false);
-    const handleRouteChangeError = () => setIsNavigating(false);
-
-    router.events.on("routeChangeStart", handleRouteChangeStart);
-    router.events.on("routeChangeComplete", handleRouteChangeComplete);
-    router.events.on("routeChangeError", handleRouteChangeError);
-
-    return () => {
-      router.events.off("routeChangeStart", handleRouteChangeStart);
-      router.events.off("routeChangeComplete", handleRouteChangeComplete);
-      router.events.off("routeChangeError", handleRouteChangeError);
-    };
-  }, [router.events]);
+  const cacheKey = useMemo(() => {
+    if (!fkboardid) return null;
+    return `${KANBAN_CACHE_PREFIX}${fkboardid}`;
+  }, [fkboardid]);
 
   // ✅ Keep a stable reference to setKanbanListState
   const setKanbanListStateRef = useRef(setKanbanListState);
@@ -52,46 +39,77 @@ export default function GetKanbanList() {
     setKanbanListStateRef.current = setKanbanListState;
   }, [setKanbanListState]);
 
-  // ✅ NEW: clear old board state when board id changes (prevents stale UI)
+  // -------- fetch kanban lists (React Query v4 signature) --------
+  const queryKey = ["kanbanlist", fkboardid] as const;
   useEffect(() => {
-    if (!router.isReady || !fkboardid) return;
-    setKanbanListStateRef.current([]);
-  }, [router.isReady, fkboardid]);
+    if (!router.isReady || !cacheKey || typeof window === "undefined") return;
 
-  // -------- fetch kanban lists (React Query) --------
-  // ✅ NOTE: best practice: fetchKanbanList should THROW on errors (not return null)
-  const { data, isLoading, isError, error, refetch, isFetched } = useQuery<
+    try {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (!cached) return;
+
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed)) {
+        setCachedLists(parsed);
+        setKanbanListState(parsed);
+      }
+    } catch {
+      // ignore cache errors
+    }
+  }, [router.isReady, cacheKey, setKanbanListState]);
+  const { data, isLoading, isError, error, refetch } = useQuery<
     any[],
     Error
-  >({
-    queryKey: ["kanbanlist", fkboardid],
-    queryFn: () => fetchKanbanList(fkboardid as number),
-    enabled: router.isReady && !!fkboardid,
-    staleTime: 60_000,
 
-    // ✅ NEW: refetch on mount helps when you come back to the tab / route
-    refetchOnMount: true,
+  >(
+    queryKey,
+    () => fetchKanbanList(fkboardid as number),
+    {
+      enabled: router.isReady && !!fkboardid,
 
-    refetchOnWindowFocus: false,
+      // ✅ keep cached data for fast UI
+      keepPreviousData: true,
 
-    // ✅ NEW: retry a bit more (Render sometimes fails once)
-    retry: 2,
-  });
+      // ✅ still refresh when you return so deleted items don't "come back"
+      refetchOnMount: false,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+
+      staleTime: 60_000, // 1 min
+      cacheTime: 30 * 60_000, // 30 min (v4)
+
+      retry: 2,
+
+      onSuccess: (lists) => {
+        const safeLists = Array.isArray(lists) ? lists : [];
+        setKanbanListStateRef.current(safeLists);
+
+        if (typeof window !== "undefined" && cacheKey) {
+          sessionStorage.setItem(cacheKey, JSON.stringify(safeLists));
+        }
+
+        setCachedLists(safeLists);
+      },
+
+      onError: (e) => {
+        toast.error(e.message || "Failed to load board", {
+          position: toast.POSITION.TOP_CENTER,
+        });
+      },
+    }
+  );
 
   // -------- auth check + restore user from sessionStorage --------
   useEffect(() => {
     if (!router.isReady || !fkboardid) return;
 
-    // ✅ STOP LOOP: If already has the right fkboardid, do nothing
     if (userInfo?.fkboardid === fkboardid) return;
 
-    // If userInfo exists but missing/wrong fkboardid, fix it once
     if (userInfo) {
       handleSetUserInfo({ ...userInfo, fkboardid });
       return;
     }
 
-    // Restore from session storage
     const stored = window.sessionStorage.getItem("userData");
     if (!stored) {
       router.push(`/unauthorized`);
@@ -107,7 +125,6 @@ export default function GetKanbanList() {
     if (!signalRConnection) return;
 
     const handleMessage = (message: string) => {
-      refetch();
       toast.info(`${message}`, {
         position: toast.POSITION.TOP_CENTER,
       });
@@ -118,19 +135,12 @@ export default function GetKanbanList() {
     return () => {
       signalRConnection.off("ReceiveMessage", handleMessage);
     };
-  }, [signalRConnection, refetch]);
+  }, [signalRConnection]);
 
-  // -------- when data arrives, push into context state --------
-  useEffect(() => {
-    if (!isFetched || isError) return;
-    setKanbanListStateRef.current(Array.isArray(data) ? data : []);
-  }, [isFetched, isError, data]);
-
-  // ✅ loader should depend ONLY on real loading/navigation
+  // ✅ loader should depend ONLY on true first load / navigation
+  // show skeleton only when there is no data yet
   const shouldShowLoading =
-    isNavigating || (router.isReady && !!fkboardid && isLoading);
-
-  // ✅ show skeleton only if loading lasts >150ms
+    router.isReady && !!fkboardid && isLoading && !data && !cachedLists;
   useEffect(() => {
     if (shouldShowLoading) {
       const t = setTimeout(() => setShowSkeleton(true), 150);
@@ -139,19 +149,14 @@ export default function GetKanbanList() {
     setShowSkeleton(false);
   }, [shouldShowLoading]);
 
-  // ======================================================
-  //                   RENDER
-  // ======================================================
   return (
     <Shell>
       <Topbar />
       <SectionHeader />
 
       <section className="mx-auto w-full px-4 py-6">
-        {/* ⏳ Skeleton only after 150ms */}
         {showSkeleton && <KanbanBoardSkeleton />}
 
-        {/* ❌ Error state */}
         {!shouldShowLoading && isError && (
           <div className="flex h-[300px] items-center justify-center">
             <div className="text-center">
@@ -171,8 +176,11 @@ export default function GetKanbanList() {
           </div>
         )}
 
-        {/* ✅ Always render board when not loading & not error */}
-        {!shouldShowLoading && !isError && <KanbanBoard />}
+        {!shouldShowLoading && !isError && (
+          <>
+            <KanbanBoard />
+          </>
+        )}
       </section>
     </Shell>
   );

@@ -6,10 +6,7 @@ const Base_URL: string = "https://kanban-backend-final.onrender.com/api";
 // Configure axios with better defaults for performance
 const apiClient = axios.create({
   baseURL: Base_URL,
-  timeout: 30000, // 10 second timeout
-  headers: {
-    "Content-Type": "application/json",
-  },
+  timeout: 30000,
 });
 
 // Request interceptor for authentication
@@ -306,30 +303,45 @@ export async function updateBoards(boards: any): Promise<Response> {
 export async function useOnDragEndColumns(
   mid: any,
   did: any
-): Promise<Response> {
-  const response = await fetch(`${Base_URL}/ProjBoards/useondragcolumns`, {
-    method: "PUT",
-    headers: authHeaders(false),
-    body: JSON.stringify({ mid, did }),
-  });
-  return response;
+): Promise<AddCustomResponse<any> | null> {
+  try {
+    const response = await apiClient.put("/ProjBoards/useondragcolumns", {
+      mid,
+      did,
+    });
+
+    return {
+      status: response.status,
+      data: response.data,
+    };
+  } catch (error: any) {
+    console.error("useOnDragEndColumns failed:", error?.response?.data ?? error?.message);
+    return null;
+  }
 }
 
 // useOnDragEnd
 export async function useOnDragEndTaskSameColumn(
   mid: any,
   did: any
-): Promise<Response> {
-  const response = await fetch(
-    `${Base_URL}/ProjBoards/useondragtasksamecolumn`,
-    {
-      method: "PUT",
-      headers: authHeaders(false),
+): Promise<AddCustomResponse<any> | null> {
+  try {
+    const response = await apiClient.put("/ProjBoards/useondragtasksamecolumn", {
+      mid,
+      did,
+    });
 
-      body: JSON.stringify({ mid, did }),
-    }
-  );
-  return response;
+    return {
+      status: response.status,
+      data: response.data,
+    };
+  } catch (error: any) {
+    console.error(
+      "useOnDragEndTaskSameColumn failed:",
+      error?.response?.data ?? error?.message
+    );
+    return null;
+  }
 }
 
 // useOnDragEnd
@@ -338,13 +350,23 @@ export async function useOnDragEndTask(
   cdid: any,
   mid: any,
   did: any
-): Promise<Response> {
-  const response = await fetch(`${Base_URL}/ProjBoards/useondragtask`, {
-    method: "PUT",
-    headers: authHeaders(false),
-    body: JSON.stringify({ cmid, cdid, mid, did }),
-  });
-  return response;
+): Promise<AddCustomResponse<any> | null> {
+  try {
+    const response = await apiClient.put("/ProjBoards/useondragtask", {
+      cmid,
+      cdid,
+      mid,
+      did,
+    });
+
+    return {
+      status: response.status,
+      data: response.data,
+    };
+  } catch (error: any) {
+    console.error("useOnDragEndTask failed:", error?.response?.data ?? error?.message);
+    return null;
+  }
 }
 
 // on loading the page first check and fetch Board List
@@ -849,26 +871,28 @@ export async function fetchOnlineUsers(
   }
 }
 
-export const DeleteCard = async (
+export async function DeleteCard(
   kanbanCardId: number,
   fkpoid: number,
   updatedby: string
-) => {
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+): Promise<AddCustomResponse<any> | null> {
+  try {
+    const response = await apiClient.delete(
+      `/ProjKanbanBoards/deletecard/${kanbanCardId}`,
+      {
+        data: { fkpoid, updatedby },
+      }
+    );
 
- const res = await fetch(`${Base_URL}/ProjKanbanBoards/deletecard/${kanbanCardId}`, {
-  method: "DELETE",
-  headers: {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  },
-  body: JSON.stringify({ fkpoid, updatedby }),
-});
-
-
-  const data = await res.json().catch(() => ({}));
-  return { status: res.status, data };
-};
+    return {
+      status: response.status,
+      data: response.data,
+    };
+  } catch (error: any) {
+    console.error("DeleteCard failed:", error?.response?.data ?? error?.message);
+    return null;
+  }
+}
 // ✅ Add multiple images to a card (DB insert into kanban_card_images)
 export async function AddCardImages(payload: {
   kanbanCardId: number;
@@ -914,4 +938,22 @@ export async function ClearKanbanList(listid: number, fkpoid: number, updatedby:
     fkpoid,
     updatedby,
   });
+}
+export async function AddBoardWithDefaultLists(
+  title: string,
+  projectId: number
+): Promise<AddCustomResponse<any> | null> {
+  try {
+    const response = await apiClient.post("/boards/with-default-lists", {
+      title,
+      projectId,
+      // optional:
+      // defaultLists: ["To do", "In progress", "In review", "Done", "Completed"],
+    });
+
+    return { status: response.status, data: response.data };
+  } catch (error: any) {
+    console.error("AddBoardWithDefaultLists failed:", error?.response?.data ?? error?.message);
+    return null;
+  }
 }

@@ -88,10 +88,9 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
         userInfo.fkboardid,
         userInfo.fkpoid
       );
-
       if (res?.status === 200) {
         toast.success("List renamed", { position: toast.POSITION.TOP_CENTER });
-        invalidateKanban();
+        void invalidateKanban();
         return;
       }
 
@@ -175,7 +174,7 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
               <div className="flex items-center gap-0">
                 <button
                   type="button"
-  className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-[#1C252E] text-white shadow-soft hover:opacity-90 dark:bg-white dark:text-ink"
+                  className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-[#1C252E] text-white shadow-soft hover:opacity-90 dark:bg-white dark:text-ink"
                   onClick={() => {
                     setShowAddCard(true);
                     setTimeout(() => {
@@ -200,7 +199,7 @@ function KanbanListComponent(props: IKanbanListComponentProps) {
                   title={props.list.title}
                   userInfo={userInfo}
                   onRename={startRename}
-                  
+
                 />
 
                 <div

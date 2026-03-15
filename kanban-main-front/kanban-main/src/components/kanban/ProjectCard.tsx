@@ -85,7 +85,7 @@ export default function ProjectCard({ project, onView, onEdit, onDelete }: Props
       <div className="flex-1 px-4 pt-3 pb-4">
         {/* ID + menu */}
         <div className="flex items-start justify-between">
-          <span className="inline-flex rounded-[6px] border-[3px] border-[#8E33FF] px-1 py-[3px] text-[12px] font-bold leading-[14px] text-[#A855F7]">
+          <span className="inline-flex rounded-[6px] bg-[#8E33FF29]  p-1 text-[12px] font-bold leading-[14px] text-[#5119B7]  dark:text-[#C684FF]">
             ID : {String(project?.id ?? "1").padStart(3, "0")}
           </span>
 
@@ -104,6 +104,7 @@ export default function ProjectCard({ project, onView, onEdit, onDelete }: Props
   <div
     className="absolute right-0 mt-2 w-32 rounded-2xl bg-white px-1 py-2 text-sm text-black
       shadow-[0_18px_45px_rgba(15,23,42,0.40)]
+       dark:shadow-[0_18px_45px_rgba(0,0,0,0.55)]
       dark:bg-[#232C36] dark:text-white"
   >
     {/* Edit */}

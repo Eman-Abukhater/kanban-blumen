@@ -1,4 +1,4 @@
-import { PropsWithChildren, useState } from "react";
+import { PropsWithChildren, useState, useMemo, useCallback, useRef,useEffect } from "react";
 import { DropResult } from "react-beautiful-dnd";
 import { KanbanBoardState, KanbanCard } from "../components/kanban/KanbanTypes";
 import { ClearListModal } from "../components/modal/ClearListModal";
@@ -19,12 +19,24 @@ import { toast } from "react-toastify";
 import { HubConnection } from "@microsoft/signalr";
 import { debounceWithCardId } from "@/utility/debounce";
 import { ClearKanbanList } from "@/services/kanbanApi";
-export interface IAppProps extends PropsWithChildren {}
+export interface IAppProps extends PropsWithChildren { }
 
 export function KanbanContextComponent(props: IAppProps) {
   const { children } = props;
 
   const [userInfo, setUserInfo] = useState<any>();
+  useEffect(() => {
+  if (typeof window === "undefined") return;
+
+  try {
+    const stored = window.sessionStorage.getItem("userData");
+    if (stored) {
+      setUserInfo(JSON.parse(stored));
+    }
+  } catch {
+    // ignore sessionStorage parse errors
+  }
+}, []);
 
   const [signalRConnection, setConnection] = useState<HubConnection | undefined>();
   const [onlineUsers, setOnlineUsers] = useState<any>([]);
@@ -33,12 +45,16 @@ export function KanbanContextComponent(props: IAppProps) {
     "kanban-state",
     defaultKanbanBoardState
   );
-const safeKanbanState = (Array.isArray(kanbanState) ? kanbanState : [])
-  .filter(Boolean)
-  .map((l: any) => ({
-    ...l,
-    kanbanCards: Array.isArray(l?.kanbanCards) ? l.kanbanCards : [],
-  }));
+  const safeKanbanState = useMemo(() => {
+    return (Array.isArray(kanbanState) ? kanbanState : [])
+      .filter(Boolean)
+      .map((l: any) => ({
+        ...l,
+        kanbanCards: Array.isArray(l?.kanbanCards) ? l.kanbanCards : [],
+      }));
+  }, [kanbanState]);
+
+
   const [modalState, setModalState] = useState<ModalContextState>(
     defaultModalContextState
   );
@@ -76,9 +92,9 @@ const safeKanbanState = (Array.isArray(kanbanState) ? kanbanState : [])
     setKanbanState(tempList);
   };
 
-  const setKanbanListState = (KanbanList: KanbanBoardState) => {
-    setKanbanState(KanbanList);
-  };
+const setKanbanListState = useCallback((KanbanList: KanbanBoardState) => {
+  setKanbanState(KanbanList);
+}, [setKanbanState]);
 
   const handleCreateCard = (
     listIndex: number,
@@ -123,8 +139,7 @@ const safeKanbanState = (Array.isArray(kanbanState) ? kanbanState : [])
     setKanbanState(tempList);
   };
 
-  let lastCardId: number | null = null;
-
+  const lastCardIdRef = useRef<number | null>(null);
   async function updateCardPosition(
     SourceListId: number,
     DestinationListId: number,
@@ -144,9 +159,9 @@ const safeKanbanState = (Array.isArray(kanbanState) ? kanbanState : [])
       userInfo.fkboardid,
       userInfo.fkpoid
     );
-  if (customResponse?.status === 200) {
-    return;
-  } else {
+    if (customResponse?.status === 200) {
+      return;
+    } else {
       toast.error(
         `something went wrong, could not save the changes for swapped Lists`,
         { position: toast.POSITION.TOP_CENTER }
@@ -154,203 +169,203 @@ const safeKanbanState = (Array.isArray(kanbanState) ? kanbanState : [])
     }
   }
 
- const handleDragEnd = async (dropResult: DropResult) => {
-  const { source, destination, type } = dropResult;
+  const handleDragEnd = async (dropResult: DropResult) => {
+    const { source, destination, type } = dropResult;
 
-  if (!destination) return;
-  if (
-    destination.droppableId === source.droppableId &&
-    destination.index === source.index
-  )
-    return;
-
-  //###### LIST (COLUMNS) #########
-  if (type === "all-lists") {
-    // ✅ Guard: need userInfo to save
-    if (!userInfo?.username || !userInfo?.fkpoid) {
-      toast.error("User info missing - cannot save list order", {
-        position: toast.POSITION.TOP_CENTER,
-      });
+    if (!destination) return;
+    if (
+      destination.droppableId === source.droppableId &&
+      destination.index === source.index
+    )
       return;
-    }
 
-    // ✅ copy
-    const tempBoard = [...kanbanState];
+    //###### LIST (COLUMNS) #########
+    if (type === "all-lists") {
+      // ✅ Guard: need userInfo to save
+      if (!userInfo?.username || !userInfo?.fkpoid) {
+        toast.error("User info missing - cannot save list order", {
+          position: toast.POSITION.TOP_CENTER,
+        });
+        return;
+      }
 
-    // ✅ move dragged list by index (this is the real order in UI)
-    const [moved] = tempBoard.splice(source.index, 1);
-    tempBoard.splice(destination.index, 0, moved);
+      // ✅ copy
+      const tempBoard = [...kanbanState];
 
-    // ✅ normalize seqNo for THIS board lists only (1..N)
-    const fkBoardId = moved.fkBoardId;
-    const boardLists = tempBoard.filter((l) => l.fkBoardId === fkBoardId);
+      // ✅ move dragged list by index (this is the real order in UI)
+      const [moved] = tempBoard.splice(source.index, 1);
+      tempBoard.splice(destination.index, 0, moved);
 
-    boardLists.forEach((l, idx) => {
-      l.seqNo = idx + 1;
-    });
+      // ✅ normalize seqNo for THIS board lists only (1..N)
+      const fkBoardId = moved.fkBoardId;
+      const boardLists = tempBoard.filter((l) => l.fkBoardId === fkBoardId);
 
-    // ✅ update UI immediately
-    setKanbanState(tempBoard);
-
-    // ✅ persist order in DB
-    try {
-      const listsPayload = boardLists.map((l) => ({
-        listid: Number(l.kanbanListId), // ✅ DB id
-        seqNo: Number(l.seqNo),
-      }));
-
-      await SaveListsOrder({
-        fkboardid: Number(fkBoardId),
-        fkpoid: Number(userInfo.fkpoid),
-        updatedby: userInfo.username,
-        lists: listsPayload,
+      boardLists.forEach((l, idx) => {
+        l.seqNo = idx + 1;
       });
 
-      // optional success toast
-      // toast.success("Lists order saved", { position: toast.POSITION.TOP_CENTER });
-    } catch (e: any) {
-      console.error("SaveListsOrder error:", e?.response?.data || e);
-      toast.error(
-        e?.response?.data?.error ||
+      // ✅ update UI immediately
+      setKanbanState(tempBoard);
+
+      // ✅ persist order in DB
+      try {
+        const listsPayload = boardLists.map((l) => ({
+          listid: Number(l.kanbanListId), // ✅ DB id
+          seqNo: Number(l.seqNo),
+        }));
+
+        await SaveListsOrder({
+          fkboardid: Number(fkBoardId),
+          fkpoid: Number(userInfo.fkpoid),
+          updatedby: userInfo.username,
+          lists: listsPayload,
+        });
+
+        // optional success toast
+        // toast.success("Lists order saved", { position: toast.POSITION.TOP_CENTER });
+      } catch (e: any) {
+        console.error("SaveListsOrder error:", e?.response?.data || e);
+        toast.error(
+          e?.response?.data?.error ||
           e?.response?.data?.message ||
           e?.message ||
           "Failed to save list order",
-        { position: toast.POSITION.TOP_CENTER }
-      );
+          { position: toast.POSITION.TOP_CENTER }
+        );
+      }
+
+      return;
     }
 
-    return;
-  }
+    let SourceListId = 0;
+    let DestinationListId = 0;
+    let kanbanCardId = 0;
+    let oldSeqNo = 0;
+    let newSeqNo = 0;
 
-  let SourceListId = 0;
-  let DestinationListId = 0;
-  let kanbanCardId = 0;
-  let oldSeqNo = 0;
-  let newSeqNo = 0;
-
-  // Handle card reordering logic
-  if (source.droppableId === destination.droppableId) {
-    const listIndex = kanbanState.findIndex(
-      (list) => list.id === source.droppableId
-    );
-
-    if (listIndex !== -1) {
-      const updatedList = { ...kanbanState[listIndex] };
-
-      SourceListId = updatedList.kanbanListId;
-      DestinationListId = updatedList.kanbanListId;
-
-      const [draggedCard] = updatedList.kanbanCards.splice(source.index, 1);
-      oldSeqNo = draggedCard.seqNo;
-
-      updatedList.kanbanCards.splice(destination.index, 0, draggedCard);
-
-      updatedList.kanbanCards.forEach((card, index) => {
-        card.seqNo = index + 1;
-      });
-
-      const updatedKanbanState = [...kanbanState];
-      updatedKanbanState[listIndex] = updatedList;
-      setKanbanState(updatedKanbanState);
-
-      kanbanCardId = draggedCard.kanbanCardId;
-      newSeqNo = draggedCard.seqNo;
-      const cardTitle = draggedCard.title;
-
-      const [debouncedFunc, teardown] = debounceWithCardId(
-        async () => {
-          updateCardPosition(
-            SourceListId,
-            DestinationListId,
-            kanbanCardId,
-            cardTitle,
-            oldSeqNo,
-            newSeqNo
-          );
-        },
-        2000
+    // Handle card reordering logic
+    if (source.droppableId === destination.droppableId) {
+      const listIndex = kanbanState.findIndex(
+        (list) => list.id === source.droppableId
       );
 
-      if (lastCardId === kanbanCardId) teardown();
-      lastCardId = kanbanCardId;
+      if (listIndex !== -1) {
+        const updatedList = { ...kanbanState[listIndex] };
 
-      debouncedFunc({}, kanbanCardId);
-    }
-  } else {
-    const sourceListIndex = kanbanState.findIndex(
-      (list) => list.id === source.droppableId
-    );
+        SourceListId = updatedList.kanbanListId;
+        DestinationListId = updatedList.kanbanListId;
 
-    const destinationListIndex = kanbanState.findIndex(
-      (list) => list.id === destination.droppableId
-    );
+        const [draggedCard] = updatedList.kanbanCards.splice(source.index, 1);
+        oldSeqNo = draggedCard.seqNo;
 
-    if (sourceListIndex !== -1 && destinationListIndex !== -1) {
-      const sourceList = { ...kanbanState[sourceListIndex] };
-      const destinationList = { ...kanbanState[destinationListIndex] };
+        updatedList.kanbanCards.splice(destination.index, 0, draggedCard);
 
-      SourceListId = sourceList.kanbanListId;
-      DestinationListId = destinationList.kanbanListId;
+        updatedList.kanbanCards.forEach((card, index) => {
+          card.seqNo = index + 1;
+        });
 
-      const [draggedCard] = sourceList.kanbanCards.splice(source.index, 1);
-      oldSeqNo = draggedCard.seqNo;
+        const updatedKanbanState = [...kanbanState];
+        updatedKanbanState[listIndex] = updatedList;
+        setKanbanState(updatedKanbanState);
 
-      destinationList.kanbanCards.splice(destination.index, 0, draggedCard);
+        kanbanCardId = draggedCard.kanbanCardId;
+        newSeqNo = draggedCard.seqNo;
+        const cardTitle = draggedCard.title;
 
-      sourceList.kanbanCards.forEach((card, index) => {
-        card.seqNo = index + 1;
-      });
-      destinationList.kanbanCards.forEach((card, index) => {
-        card.seqNo = index + 1;
-      });
+        const [debouncedFunc, teardown] = debounceWithCardId(
+          async () => {
+            updateCardPosition(
+              SourceListId,
+              DestinationListId,
+              kanbanCardId,
+              cardTitle,
+              oldSeqNo,
+              newSeqNo
+            );
+          },
+          2000
+        );
 
-      const updatedKanbanState = [...kanbanState];
-      updatedKanbanState[sourceListIndex] = sourceList;
-      updatedKanbanState[destinationListIndex] = destinationList;
-      setKanbanState(updatedKanbanState);
+        if (lastCardIdRef.current === kanbanCardId) teardown();
+        lastCardIdRef.current = kanbanCardId;
 
-      kanbanCardId = draggedCard.kanbanCardId;
-      newSeqNo = draggedCard.seqNo;
-      const cardTitle = draggedCard.title;
-
-      const [debouncedFunc, teardown] = debounceWithCardId(
-        async () => {
-          updateCardPosition(
-            SourceListId,
-            DestinationListId,
-            kanbanCardId,
-            cardTitle,
-            oldSeqNo,
-            newSeqNo
-          );
-        },
-        2000
+        debouncedFunc({}, kanbanCardId);
+      }
+    } else {
+      const sourceListIndex = kanbanState.findIndex(
+        (list) => list.id === source.droppableId
       );
 
-      if (lastCardId === kanbanCardId) teardown();
-      lastCardId = kanbanCardId;
+      const destinationListIndex = kanbanState.findIndex(
+        (list) => list.id === destination.droppableId
+      );
 
-      debouncedFunc({}, kanbanCardId);
+      if (sourceListIndex !== -1 && destinationListIndex !== -1) {
+        const sourceList = { ...kanbanState[sourceListIndex] };
+        const destinationList = { ...kanbanState[destinationListIndex] };
+
+        SourceListId = sourceList.kanbanListId;
+        DestinationListId = destinationList.kanbanListId;
+
+        const [draggedCard] = sourceList.kanbanCards.splice(source.index, 1);
+        oldSeqNo = draggedCard.seqNo;
+
+        destinationList.kanbanCards.splice(destination.index, 0, draggedCard);
+
+        sourceList.kanbanCards.forEach((card, index) => {
+          card.seqNo = index + 1;
+        });
+        destinationList.kanbanCards.forEach((card, index) => {
+          card.seqNo = index + 1;
+        });
+
+        const updatedKanbanState = [...kanbanState];
+        updatedKanbanState[sourceListIndex] = sourceList;
+        updatedKanbanState[destinationListIndex] = destinationList;
+        setKanbanState(updatedKanbanState);
+
+        kanbanCardId = draggedCard.kanbanCardId;
+        newSeqNo = draggedCard.seqNo;
+        const cardTitle = draggedCard.title;
+
+        const [debouncedFunc, teardown] = debounceWithCardId(
+          async () => {
+            updateCardPosition(
+              SourceListId,
+              DestinationListId,
+              kanbanCardId,
+              cardTitle,
+              oldSeqNo,
+              newSeqNo
+            );
+          },
+          2000
+        );
+
+        if (lastCardIdRef.current === kanbanCardId) teardown();
+        lastCardIdRef.current = kanbanCardId;
+
+        debouncedFunc({}, kanbanCardId);
+      }
     }
-  }
-};
-  const handleCloseModal = () => {
+  };
+  const handleCloseModal = useCallback(() => {
     setModalState({ isOpen: false, type: null, modalProps: null });
-  };
+  }, []);
 
-  const handleSetUserInfo = (user: any) => {
+  const handleSetUserInfo = useCallback((user: any) => {
     setUserInfo(user);
-  };
+  }, []);
 
-  const setSignalRConnection = (SignalRConnection: HubConnection | undefined) => {
+  const setSignalRConnection = useCallback((SignalRConnection: HubConnection | undefined) => {
     setConnection(SignalRConnection);
-  };
+  }, []);
 
-  const setUsersOnline = (onlineUsesr: any) => {
+  const setUsersOnline = useCallback((onlineUsesr: any) => {
     setOnlineUsers(onlineUsesr);
-  };
+  }, []);
 
-const handleOpenModal = (payload: hanbleOpenModalProps) => {
+ const handleOpenModal = useCallback((payload: hanbleOpenModalProps) => {
   if (payload.type === "DELETE_LIST") {
     setModalState({
       isOpen: true,
@@ -377,51 +392,52 @@ const handleOpenModal = (payload: hanbleOpenModalProps) => {
     });
     return;
   }
+
   if (payload.type === "CLEAR_LIST") {
-  setModalState({
-    isOpen: true,
-    type: "CLEAR_LIST",
-    modalProps: payload.modalProps,
-  });
-  return;
-}
-};
-
-
-// ✅ Clear all cards in a list (by listIndex - always matches kanbanState UI order)
-const handleClearList = async (listid: number, _userInfo: any) => {
-  const id = Number(listid);
-
-  if (!userInfo?.fkpoid || !userInfo?.username) {
-    toast.error("Missing user info", { position: toast.POSITION.TOP_CENTER });
+    setModalState({
+      isOpen: true,
+      type: "CLEAR_LIST",
+      modalProps: payload.modalProps,
+    });
     return;
   }
+}, []);
 
-  // ✅ 1) Optimistic UI: clear immediately
-  setKanbanState((prev) => {
-    const idx = prev.findIndex((l) => Number(l.kanbanListId) === id);
-    if (idx === -1) return prev;
 
-    const next = [...prev];
-    next[idx] = { ...next[idx], kanbanCards: [] };
-    return next;
-  });
+  // ✅ Clear all cards in a list (by listIndex - always matches kanbanState UI order)
+  const handleClearList = async (listid: number, _userInfo: any) => {
+    const id = Number(listid);
 
-  // ✅ 2) Persist in DB (THIS is what triggers Network tab)
-  try {
-    const res = await ClearKanbanList(id, Number(userInfo.fkpoid), userInfo.username);
-
-    if (res?.status === 200) {
+    if (!userInfo?.fkpoid || !userInfo?.username) {
+      toast.error("Missing user info", { position: toast.POSITION.TOP_CENTER });
       return;
     }
 
-    toast.error("Failed to clear list", { position: toast.POSITION.TOP_CENTER });
-  } catch (e: any) {
-    toast.error(e?.response?.data?.error || "Failed to clear list", {
-      position: toast.POSITION.TOP_CENTER,
+    // ✅ 1) Optimistic UI: clear immediately
+    setKanbanState((prev) => {
+      const idx = prev.findIndex((l) => Number(l.kanbanListId) === id);
+      if (idx === -1) return prev;
+
+      const next = [...prev];
+      next[idx] = { ...next[idx], kanbanCards: [] };
+      return next;
     });
-  }
-};
+
+    // ✅ 2) Persist in DB (THIS is what triggers Network tab)
+    try {
+      const res = await ClearKanbanList(id, Number(userInfo.fkpoid), userInfo.username);
+
+      if (res?.status === 200) {
+        return;
+      }
+
+      toast.error("Failed to clear list", { position: toast.POSITION.TOP_CENTER });
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error || "Failed to clear list", {
+        position: toast.POSITION.TOP_CENTER,
+      });
+    }
+  };
   const renderModal = (state: ModalContextState) => {
     if (!state.isOpen) return null;
 
@@ -437,9 +453,9 @@ const handleClearList = async (listid: number, _userInfo: any) => {
       return <RenameListModal {...state.modalProps} />;
     }
 
-      if (state.type === "CLEAR_LIST") {
-  return <ClearListModal {...state.modalProps} />;
-}
+    if (state.type === "CLEAR_LIST") {
+      return <ClearListModal {...state.modalProps} />;
+    }
 
     return null;
   };

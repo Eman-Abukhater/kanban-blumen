@@ -14,7 +14,7 @@ export const defaultModalContextState: ModalContextState = {
   modalProps: null,
 };
 
-export const userInfo: any = {};
+export const userInfo: any = null;
 
 const initialContextState: KanbanContextType = {
   kanbanState: defaultKanbanBoardState,

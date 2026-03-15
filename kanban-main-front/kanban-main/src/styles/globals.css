@@ -301,3 +301,28 @@ select:focus:not(.no-global-focus) {
   box-shadow: 0 0 0 1px rgba(255, 171, 0, 0.35) !important;
   border-color: rgba(255, 171, 0, 0.35) !important;
 }
+/* Add these styles at the end of your global CSS file */
+
+/* Fix for nested modals on mobile */
+@media (max-width: 768px) {
+  /* Ensure modals stack properly */
+  [data-headlessui-state="open"] {
+    pointer-events: auto !important;
+  }
+  
+  /* Fix for nested modals */
+  .fixed.inset-0 {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+/* In your global CSS */
+[class*="z-\\[9999\\]"] {
+  isolation: isolate;
+}
+  /* Prevent body scroll when modal is open */
+  body.modal-open {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+  }
+}

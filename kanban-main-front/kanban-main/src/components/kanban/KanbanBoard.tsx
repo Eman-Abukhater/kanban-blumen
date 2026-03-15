@@ -1,4 +1,4 @@
-import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import {
   DragDropContext,
   Droppable,
@@ -20,10 +20,7 @@ export function KanbanBoard() {
   const [hasOverflow, setHasOverflow] = useState(false);
 
   // No pagination: show all lists
-const visibleLists = useMemo(
-  () => (Array.isArray(kanbanState) ? kanbanState.filter(Boolean) : []),
-  [kanbanState]
-);
+  const visibleLists = Array.isArray(kanbanState) ? kanbanState : [];
   // Measure overflow for sticky bar
   useEffect(() => {
     const el = contentScrollRef.current;
@@ -78,16 +75,17 @@ const visibleLists = useMemo(
       bar.removeEventListener("scroll", onBarScroll);
     };
   }, [hasOverflow]);
-
-  const onDragEnd = (result: DropResult, _provided: ResponderProvided) => {
-    if (!result.destination) return;
-    // No pagination mapping needed anymore
-    handleDragEnd(result);
-  };
+  const onDragEnd = useCallback(
+    (result: DropResult, _provided: ResponderProvided) => {
+      if (!result.destination) return;
+      handleDragEnd(result);
+    },
+    [handleDragEnd]
+  );
 
   // Updated column width (to allow growing/shrinking)
   const columnShellClass =
-     "shrink-0 flex-grow min-w-[280px] max-w-[340px] sm:w-[340px]";
+    "shrink-0 flex-grow min-w-[280px] max-w-[340px] sm:w-[340px]";
 
   return (
     <>
@@ -95,14 +93,15 @@ const visibleLists = useMemo(
           COLUMNS
          ======================= */}
       <div
-       className={[
-    "w-full", // Ensures full width
-    "min-w-[280px]", // Sets a minimum width for the container to avoid shrinking too much
-    "overflow-x-auto", // Horizontal scrolling enabled
-    "overflow-y-hidden", // Hide vertical scroll
-    "px-4 pb-6", // Padding for spacing
-    "kanban-scroll", // Custom scrollbar styles
-  ].join(" ")}
+        ref={contentScrollRef}
+        className={[
+          "w-full",
+          "min-w-[280px]",
+          "overflow-x-auto",
+          "overflow-y-hidden",
+          "px-4 pb-6",
+          "kanban-scroll",
+        ].join(" ")}
       >
         <DragDropContext onDragEnd={onDragEnd}>
           <Droppable
