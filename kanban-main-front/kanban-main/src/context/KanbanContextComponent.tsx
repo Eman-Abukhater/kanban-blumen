@@ -117,8 +117,8 @@ const setKanbanListState = useCallback((KanbanList: KanbanBoardState) => {
       seqNo,
       createdAt: new Date(),
       addedBy: "",
-      startDate: new Date(),
-      endDate: new Date(),
+      startDate: null,
+      endDate: null,
     });
     setKanbanListState(tempList);
   };
