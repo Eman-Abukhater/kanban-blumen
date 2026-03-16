@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo, useContext, useCallback, useRef, useLayoutEffect } from "react";
 import { useRouter } from "next/router";
-import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import { HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
 import {
@@ -13,6 +12,7 @@ import {
   Search,
 } from "lucide-react";
 import Image from "next/image";
+
 import Shell from "@/components/layout/Shell";
 import Topbar from "@/components/layout/Topbar";
 import BoardCard from "@/components/kanban/BoardCard";
@@ -20,12 +20,12 @@ import AddEditBoardModal from "@/components/modal/AddEditBoardModal";
 import BoardCardSkeleton from "@/components/layout/BoardCardSkeleton";
 import KanbanContext from "@/context/kanbanContext";
 import SectionHeader from "@/components/layout/SectionHeader";
+
 import {
   fetchInitialBoards,
   AddBoardWithDefaultLists,
   EditBoard,
   DeleteBoard,
-  fetchKanbanList,
 } from "@/services/kanbanApi";
 
 type ApiBoard = {
@@ -216,7 +216,7 @@ export default function BoardListPage() {
   } = useContext(KanbanContext);
 
   const router = useRouter();
-  const queryClient = useQueryClient();
+
   const fkpoid = useMemo(() => {
     if (!router.isReady) return null as number | null;
     const raw = router.query.id;
@@ -581,27 +581,13 @@ export default function BoardListPage() {
       return;
     }
 
-    // ✅ optimistic temp board (negative id so it never clashes with real ids)
-    const tempId = -Date.now();
-    const tempBoard = { boardId: tempId, title: newTitle };
-
-    // ✅ show immediately
-    setBoards((prev) => {
-      const next = [tempBoard, ...prev];
-      if (typeof window !== "undefined" && cacheKey) {
-        window.sessionStorage.setItem(cacheKey, JSON.stringify(next));
-      }
-      return next;
-    });
-
     setCardPage(0);
     setTablePage(0);
-    closeModal(); // ✅ close instantly (don’t wait)
+    closeModal();
 
     try {
       setIsCreatingBoard(true);
 
-      // ✅ ONE request (board + default lists)
       const res = await AddBoardWithDefaultLists(newTitle, Number(safeFkpoid));
 
       if (!res || res.status !== 201 || !res.data) {
@@ -613,37 +599,27 @@ export default function BoardListPage() {
       }
 
       const realId = Number((res as any)?.data?.data?.boardId);
-      if (!Number.isFinite(realId)) throw new Error("Board ID not returned.");
+      if (!Number.isFinite(realId)) {
+        throw new Error("Board ID not returned.");
+      }
 
-      // ✅ replace temp with real
+      const createdBoard = {
+        boardId: realId,
+        title: (res as any)?.data?.data?.title ?? newTitle,
+      };
+
       setBoards((prev) => {
-        const next = prev.map((b) =>
-          b.boardId === tempId
-            ? {
-              ...b,
-              boardId: realId,
-              title: (res as any)?.data?.data?.title ?? b.title,
-            }
-            : b
-        );
+        const next = [createdBoard, ...prev];
         if (typeof window !== "undefined" && cacheKey) {
           window.sessionStorage.setItem(cacheKey, JSON.stringify(next));
         }
         return next;
       });
+
       toast.success(`Board "${newTitle}" created!`, {
         position: toast.POSITION.TOP_CENTER,
       });
     } catch (e: any) {
-      // ❌ rollback: remove temp board
-      setBoards((prev) => {
-        const next = prev.filter((b) => b.boardId !== tempId);
-        if (typeof window !== "undefined" && cacheKey) {
-          window.sessionStorage.setItem(cacheKey, JSON.stringify(next));
-        }
-        return next;
-      });
-
       toast.error(e?.message || "Failed to add board.", {
         position: toast.POSITION.TOP_CENTER,
       });
@@ -813,32 +789,22 @@ export default function BoardListPage() {
     );
   };
 
-const handleAddClick = async (board: ApiBoard) => {
-  if (!userInfo) return;
+  const handleAddClick = async (board: ApiBoard) => {
+    if (!userInfo) return;
 
-  if (typeof window !== "undefined" && fkpoid != null) {
-    sessionStorage.setItem("activeProjectId", String(fkpoid));
-  }
+    if (typeof window !== "undefined" && fkpoid != null) {
+      sessionStorage.setItem("activeProjectId", String(fkpoid));
+    }
 
-  handleSetUserInfo({
-    ...userInfo,
-    boardTitle: board.title,
-    fkboardid: board.boardId,
-  });
+    handleSetUserInfo({
+      ...userInfo,
+      boardTitle: board.title,
+      fkboardid: board.boardId,
+    });
 
-  await Promise.all([
-    router.prefetch(`/kanbanList/${board.boardId}`),
-    queryClient.prefetchQuery(
-      ["kanbanlist", board.boardId],
-      () => fetchKanbanList(board.boardId),
-      {
-        staleTime: 60_000,
-      }
-    ),
-  ]);
-
-  router.push(`/kanbanList/${board.boardId}`);
-};
+    await router.prefetch(`/kanbanList/${board.boardId}`);
+    router.push(`/kanbanList/${board.boardId}`);
+  };
 
   return (
     <>
@@ -873,56 +839,64 @@ const handleAddClick = async (board: ApiBoard) => {
               {/* ======================= CARD VIEW (default) ======================= */}
               {!isTableView && (
                 <>
-                  {showSkeleton ? (
-                    <div
-                      className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4
- ${dense ? "gap-4" : "gap-5"
-                        }`}
-                    >
-                      <BoardCardSkeleton count={6} />
-                    </div>
-                  ) : cardTotal === 0 ? (
-                    <div className="rounded-[16px] border border-slate500_12 bg-white p-10 text-center dark:border-slate500_20 dark:bg-[#1B232D]">
-                      <h3 className="text-[18px] font-semibold text-ink dark:text-white">
-                        No Boards yet
-                      </h3>
-                      <p className="mt-1 text-[14px] text-[#637381] dark:text-slate500_80">
-                        Try creating a new board for this project.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={handleCreateBoard}
-                        className="mt-4 inline-flex h-9 items-center justify-center rounded-[10px] bg-ink px-5 text-[14px] font-semibold text-white shadow-[0_10px_25px_rgba(15,23,42,0.18)] hover:opacity-95 dark:bg-white dark:text-[#1C252E] dark:shadow-none"
-                      >
-                        Create Board
-                      </button>
-                    </div>
-                  ) : (
-                    <div
-                      className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4
- ${dense ? "gap-4" : "gap-5"
-                        }`}
-                    >
-                      {isCreatingBoard && <BoardCardSkeleton count={1} />}
+                {showSkeleton ? (
+  <div
+    className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 ${
+      dense ? "gap-4" : "gap-5"
+    }`}
+  >
+    <BoardCardSkeleton count={6} />
+  </div>
+) : isCreatingBoard && cardTotal === 0 ? (
+  <div
+    className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 ${
+      dense ? "gap-4" : "gap-5"
+    }`}
+  >
+    <BoardCardSkeleton count={1} />
+  </div>
+) : cardTotal === 0 ? (
+  <div className="rounded-[16px] border border-slate500_12 bg-white p-10 text-center dark:border-slate500_20 dark:bg-[#1B232D]">
+    <h3 className="text-[18px] font-semibold text-ink dark:text-white">
+      No Boards yet
+    </h3>
+    <p className="mt-1 text-[14px] text-[#637381] dark:text-slate500_80">
+      Try creating a new board for this project.
+    </p>
+    <button
+      type="button"
+      onClick={handleCreateBoard}
+      className="mt-4 inline-flex h-9 items-center justify-center rounded-[10px] bg-ink px-5 text-[14px] font-semibold text-white shadow-[0_10px_25px_rgba(15,23,42,0.18)] hover:opacity-95 dark:bg-white dark:text-[#1C252E] dark:shadow-none"
+    >
+      Create Board
+    </button>
+  </div>
+) : (
+  <div
+    className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 ${
+      dense ? "gap-4" : "gap-5"
+    }`}
+  >
+    {isCreatingBoard && <BoardCardSkeleton count={1} />}
 
-                      {cardPaginatedBoards.map((board) => (
-                        <BoardCard
-                          key={board.boardId}
-                          idLabel={String(board.boardId).padStart(3, "0")}
-                          title={board.title}
-                          taskCount={"20+"}
-                          tags={[
-                            { label: "New Project" },
-                            { label: "Urgent" },
-                            { label: "2+" },
-                          ]}
-                          onAdd={() => handleAddClick(board)}
-                          onEdit={() => openEditModal(board)}
-                          onDelete={() => openDeleteBoardConfirm(board)}
-                        />
-                      ))}
-                    </div>
-                  )}
+    {cardPaginatedBoards.map((board) => (
+      <BoardCard
+        key={board.boardId}
+        idLabel={String(board.boardId).padStart(3, "0")}
+        title={board.title}
+        taskCount={"20+"}
+        tags={[
+          { label: "New Project" },
+          { label: "Urgent" },
+          { label: "2+" },
+        ]}
+        onAdd={() => handleAddClick(board)}
+        onEdit={() => openEditModal(board)}
+        onDelete={() => openDeleteBoardConfirm(board)}
+      />
+    ))}
+  </div>
+)}
                 </>
               )}
 

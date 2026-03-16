@@ -6,7 +6,10 @@ const Base_URL: string = "https://kanban-backend-final.onrender.com/api";
 // Configure axios with better defaults for performance
 const apiClient = axios.create({
   baseURL: Base_URL,
-  timeout: 30000,
+  timeout: 30000, // 30 second timeout
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
 
 // Request interceptor for authentication

@@ -66,6 +66,7 @@ export function AddCardForm(props: IAddFormProps) {
       );
 
       if (customResponse?.status === 200 && customResponse.data) {
+        // ✅ success toast update
         toast.update(toastId, {
           render: `Task created (#${customResponse.data.kanbanCardId})`,
           type: "success",
@@ -73,7 +74,8 @@ export function AddCardForm(props: IAddFormProps) {
           autoClose: 1800,
         });
 
-        void invalidateKanban();
+        // ✅ we refetch in background so temp card gets replaced with real one
+        invalidateKanban();
         return;
       }
 
@@ -89,7 +91,7 @@ export function AddCardForm(props: IAddFormProps) {
       });
 
       // ✅ refetch to clean temp optimistic card if backend failed
-     void invalidateKanban();
+      invalidateKanban();
     } finally {
       setIsCreating(false);
     }

@@ -4,7 +4,6 @@ import KanbanContext from "../../context/kanbanContext";
 import { classNames } from "../../utility/css";
 import { KanbanCard } from "./KanbanTypes";
 import { GetCardImagePath } from "@/utility/baseUrl";
-import { MessageCircle, Paperclip } from "lucide-react";
 
 export interface IKanbanCardComponentProps {
   listIndex: number;

@@ -1,4 +1,5 @@
 // src/components/layout/SectionHeader.tsx
+import { useMemo } from "react";
 import { Search, Plus } from "lucide-react";
 import { useRouter } from "next/router";
 import Link from "next/link";
@@ -24,8 +25,9 @@ export default function SectionHeader({
   onChangeViewMode,
 }: Props) {
   const router = useRouter();
-  const path = router.pathname.split("/").filter(Boolean);
-
+  const path = useMemo(() => {
+    return router.pathname.split("/").filter(Boolean);
+  }, [router.pathname]);
   // ✅ Breadcrumb-related additions (FIXED)
   const projectListHref = "/projects";
 
@@ -33,44 +35,42 @@ export default function SectionHeader({
   // - on /boardList/[id] => router.query.id is the PROJECT id ✅
   // - on /kanbanList/[id] => router.query.id is the BOARD id ❌ (wrong for boardList breadcrumb)
   // so: read the project id from sessionStorage on kanbanList
-  const projectIdFromSession =
-    typeof window !== "undefined"
-      ? sessionStorage.getItem("activeProjectId")
-      : null;
+const projectIdFromSession = useMemo(() => {
+  if (typeof window === "undefined") return "";
+  return sessionStorage.getItem("activeProjectId") || "";
+}, [router.pathname]);
 
-  const projectId =
-    path[0] === "boardList"
-      ? ((router.query.id as string) || "")
-      : (projectIdFromSession || "");
+const projectId = useMemo(() => {
+  return path[0] === "boardList"
+    ? ((router.query.id as string) || "")
+    : projectIdFromSession;
+}, [path, router.query.id, projectIdFromSession]);
 
-  const boardListHref = projectId ? `/boardList/${projectId}` : "/boardList";
-  // ✅ End breadcrumb-related additions
+const boardListHref = useMemo(() => {
+  return projectId ? `/boardList/${projectId}` : "/boardList";
+}, [projectId]);
+const breadcrumb: { label: string; href?: string }[] = [];
 
-  const breadcrumb: { label: string; href?: string }[] = [];
+if (path[0] === "projects") {
+  breadcrumb.push({ label: "Project" });
+  breadcrumb.push({ label: "Project List" });
+} else if (path[0] === "boardList") {
+  breadcrumb.push({ label: "Project", href: projectListHref });
+  breadcrumb.push({ label: "Project List", href: projectListHref });
+  breadcrumb.push({ label: "Board List" });
+} else if (path[0] === "kanbanList") {
+  breadcrumb.push({ label: "Project", href: projectListHref });
+  breadcrumb.push({ label: "Project List", href: projectListHref });
+  breadcrumb.push({ label: "Board List", href: boardListHref });
+  breadcrumb.push({ label: "Kanban" });
+} else {
+  breadcrumb.push({ label: "Project" });
+  breadcrumb.push({ label: "Project List" });
+}
 
-  if (path[0] === "projects") {
-    breadcrumb.push({ label: "Project" });
-    breadcrumb.push({ label: "Project List" });
-  } else if (path[0] === "boardList") {
-    breadcrumb.push({ label: "Project", href: projectListHref });
-    breadcrumb.push({ label: "Project List", href: projectListHref });
-    breadcrumb.push({ label: "Board List" });
-  } else if (path[0] === "kanbanList") {
-    breadcrumb.push({ label: "Project", href: projectListHref });
-    breadcrumb.push({ label: "Project List", href: projectListHref });
-
-    // ✅ clickable Board List => goes back to the SAME project board list
-    breadcrumb.push({ label: "Board List", href: boardListHref });
-
-    breadcrumb.push({ label: "Kanban" });
-  } else {
-    breadcrumb.push({ label: "Project" });
-    breadcrumb.push({ label: "Project List" });
-  }
-
-  let currentTitle = "Project List";
-  if (path[0] === "boardList") currentTitle = "Board List";
-  if (path[0] === "kanbanList") currentTitle = "Kanban";
+let currentTitle = "Project List";
+if (path[0] === "boardList") currentTitle = "Board List";
+if (path[0] === "kanbanList") currentTitle = "Kanban";
 
   return (
     <div className="w-full bg-white px-5 pt-8 dark:bg-[#141A21]">

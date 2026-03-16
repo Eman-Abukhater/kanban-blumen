@@ -12,13 +12,13 @@ import KanbanBoardSkeleton from "@/components/layout/KanbanBoardSkeleton";
 import KanbanContext from "@/context/kanbanContext";
 import SectionHeader from "@/components/layout/SectionHeader";
 import { fetchKanbanList } from "@/services/kanbanApi";
-const KANBAN_CACHE_PREFIX = "blumen-kanban-cache-";
+
 export default function GetKanbanList() {
   const { setKanbanListState, userInfo, handleSetUserInfo, signalRConnection } =
     useContext(KanbanContext);
 
   const [showSkeleton, setShowSkeleton] = useState(false);
-  const [cachedLists, setCachedLists] = useState<any[] | null>(null);
+
   const router = useRouter();
   const { id } = router.query as { id: string };
 
@@ -28,10 +28,7 @@ export default function GetKanbanList() {
     return Number.isNaN(parsed) ? null : parsed;
   }, [id]);
 
-  const cacheKey = useMemo(() => {
-    if (!fkboardid) return null;
-    return `${KANBAN_CACHE_PREFIX}${fkboardid}`;
-  }, [fkboardid]);
+
 
   // ✅ Keep a stable reference to setKanbanListState
   const setKanbanListStateRef = useRef(setKanbanListState);
@@ -41,26 +38,10 @@ export default function GetKanbanList() {
 
   // -------- fetch kanban lists (React Query v4 signature) --------
   const queryKey = ["kanbanlist", fkboardid] as const;
-  useEffect(() => {
-    if (!router.isReady || !cacheKey || typeof window === "undefined") return;
 
-    try {
-      const cached = sessionStorage.getItem(cacheKey);
-      if (!cached) return;
-
-      const parsed = JSON.parse(cached);
-      if (Array.isArray(parsed)) {
-        setCachedLists(parsed);
-        setKanbanListState(parsed);
-      }
-    } catch {
-      // ignore cache errors
-    }
-  }, [router.isReady, cacheKey, setKanbanListState]);
-  const { data, isLoading, isError, error, refetch } = useQuery<
+  const { data, isLoading, isError, error, refetch, isFetching } = useQuery<
     any[],
     Error
-
   >(
     queryKey,
     () => fetchKanbanList(fkboardid as number),
@@ -81,14 +62,7 @@ export default function GetKanbanList() {
       retry: 2,
 
       onSuccess: (lists) => {
-        const safeLists = Array.isArray(lists) ? lists : [];
-        setKanbanListStateRef.current(safeLists);
-
-        if (typeof window !== "undefined" && cacheKey) {
-          sessionStorage.setItem(cacheKey, JSON.stringify(safeLists));
-        }
-
-        setCachedLists(safeLists);
+        setKanbanListStateRef.current(Array.isArray(lists) ? lists : []);
       },
 
       onError: (e) => {
@@ -140,7 +114,8 @@ export default function GetKanbanList() {
   // ✅ loader should depend ONLY on true first load / navigation
   // show skeleton only when there is no data yet
   const shouldShowLoading =
-    router.isReady && !!fkboardid && isLoading && !data && !cachedLists;
+    router.isReady && !!fkboardid && isLoading && !data;
+
   useEffect(() => {
     if (shouldShowLoading) {
       const t = setTimeout(() => setShowSkeleton(true), 150);
