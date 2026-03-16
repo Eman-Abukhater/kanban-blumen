@@ -995,7 +995,7 @@ export function CardModal(props: CardModalProps) {
       {({ active }) => (
         <button
           type="button"
-          onClick={() => {
+          onClick={() => { 
             if (normalize(opt) !== "completed") lastNonDoneStatusRef.current = opt;
 
             setStatus(opt);

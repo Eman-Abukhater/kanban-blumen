@@ -1,6 +1,6 @@
-// src/components/kanban/DueDateModal.tsx
-import React, { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { Dialog, Transition, Menu } from "@headlessui/react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { Menu } from "@headlessui/react";
 import dayjs, { Dayjs } from "dayjs";
 import { DateValueType } from "react-tailwindcss-datepicker/dist/types";
 
@@ -12,8 +12,6 @@ type Props = {
 };
 
 const WEEK = ["S", "M", "T", "W", "T", "F", "S"];
-
-// Brand
 const BRAND_YELLOW = "#FFAB00";
 const RANGE_BG = "rgba(255, 171, 0, 0.40)";
 
@@ -45,23 +43,25 @@ function buildMonthGrid(month: Dayjs) {
 
 export function DueDateModal({ open, value, onClose, onApply }: Props) {
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   const [leftMonth, setLeftMonth] = useState(() => dayjs().startOf("month"));
-
   const [start, setStart] = useState<Dayjs | null>(null);
   const [end, setEnd] = useState<Dayjs | null>(null);
 
   const today = useMemo(() => dayjs().startOf("day"), []);
 
-  // ===== MOBILE =====
   const [mobileStep, setMobileStep] = useState<"form" | "picker">("form");
   const [activeField, setActiveField] = useState<"start" | "end">("start");
 
   const [pickMonth, setPickMonth] = useState(() => dayjs().startOf("month"));
   const pickWeeks = useMemo(() => buildMonthGrid(pickMonth), [pickMonth]);
 
-  // temp selection (only commits on OK)
   const [tempPick, setTempPick] = useState<Dayjs | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const closeAll = () => {
     setMobileStep("form");
@@ -69,52 +69,42 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
     onClose();
   };
 
-  // ✅ hard outside click close
   useEffect(() => {
     if (!open) return;
-
-    const handler = (e: MouseEvent | TouchEvent) => {
-      const el = panelRef.current;
-      if (!el) return;
-
-      const target = e.target as Node | null;
-      if (target && !el.contains(target)) {
-        closeAll();
-      }
-    };
-
-    document.addEventListener("mousedown", handler, true);
-    document.addEventListener("touchstart", handler, true);
-
-    return () => {
-      document.removeEventListener("mousedown", handler, true);
-      document.removeEventListener("touchstart", handler, true);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
-
-  // sync initial value when opening
-  useEffect(() => {
-    if (!open) return;
-
-    setMobileStep("form");
-    setTempPick(null);
 
     const s = toDay(value?.startDate);
     const e = toDay(value?.endDate);
 
+    setMobileStep("form");
+    setTempPick(null);
     setStart(s);
     setEnd(e);
 
-    if (s) setLeftMonth(s.startOf("month"));
+    if (s) {
+      setLeftMonth(s.startOf("month"));
+      setPickMonth(s.startOf("month"));
+    } else {
+      const now = dayjs().startOf("month");
+      setLeftMonth(now);
+      setPickMonth(now);
+    }
   }, [open, value?.startDate, value?.endDate]);
 
-  const rightMonth = useMemo(() => leftMonth.add(1, "month"), [leftMonth]);
+  useEffect(() => {
+    if (!open) return;
 
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeAll();
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [open]);
+
+  const rightMonth = useMemo(() => leftMonth.add(1, "month"), [leftMonth]);
   const leftWeeks = useMemo(() => buildMonthGrid(leftMonth), [leftMonth]);
   const rightWeeks = useMemo(() => buildMonthGrid(rightMonth), [rightMonth]);
 
-  // ===== DESKTOP pick logic =====
   const handlePick = (d: Dayjs) => {
     if (!start) {
       setStart(d);
@@ -146,38 +136,40 @@ export function DueDateModal({ open, value, onClose, onApply }: Props) {
     closeAll();
   };
 
-  // ===== MOBILE open picker =====
-  const openMobilePicker = (field: "start" | "end") => {
-    setActiveField(field);
+const openMobilePicker = (field: "start" | "end") => {
+  setActiveField(field);
 
-    const current = field === "start" ? start : end;
-    const base = current || (field === "end" ? start : null) || today;
+  const current = field === "start" ? start : end;
+  const fallback = field === "end" ? start : null;
+  const base = current || fallback || today;
 
-    setPickMonth(base.startOf("month"));
-    setTempPick(current || null);
-    setMobileStep("picker");
-  };
-
- const cancelMobilePicker = () => {
-  setTempPick(null);
-  setMobileStep("form");
+  setPickMonth(base.startOf("month"));
+  setTempPick(current || fallback || null);
+  setMobileStep("picker");
 };
 
-  // ✅ MOBILE commit (OK)
-  // Start: set start, return to form
-  // End: set end, AUTO-APPLY + CLOSE (this matches your required flow)
+  const cancelMobilePicker = () => {
+    setTempPick(null);
+    setMobileStep("form");
+  };
+
   const commitMobilePick = () => {
     const chosen = tempPick;
+
     if (!chosen) {
       setMobileStep("form");
       return;
     }
 
-activeField === "start"
-    // activeField === "end"
+if (activeField === "start") {
+  setStart(chosen);
+  setEnd(null);
+  setMobileStep("form");
+  return;
+}
+
     const newEnd = chosen;
 
-    // if no start yet, treat it as start
     if (!start) {
       setStart(newEnd);
       setEnd(null);
@@ -185,26 +177,20 @@ activeField === "start"
       return;
     }
 
-    // if end before start => swap
     if (newEnd.isBefore(start, "day")) {
       const nextStart = newEnd;
       const nextEnd = start;
 
       setStart(nextStart);
       setEnd(nextEnd);
-
-      // ✅ auto apply when user confirms end
       applyAndClose(nextStart, nextEnd);
       return;
     }
 
     setEnd(newEnd);
-
-    // ✅ auto apply when user confirms end
     applyAndClose(start, newEnd);
   };
 
-  // ===== Month dropdown =====
   const MONTHS = useMemo(
     () => Array.from({ length: 12 }, (_, i) => dayjs().month(i).format("MMMM")),
     []
@@ -235,19 +221,14 @@ activeField === "start"
       <Menu as="div" className="relative">
         <Menu.Button
           type="button"
-          className="
-            inline-flex items-center gap-2
-            text-[18px] font-semibold text-[#1C252E]
-            dark:text-white
-            hover:opacity-90
-          "
+          className="inline-flex items-center gap-2 text-[18px] font-semibold text-[#1C252E] dark:text-white hover:opacity-90"
         >
           {month.format("MMMM YYYY")}
         </Menu.Button>
 
         <Menu.Items
           className="
-            absolute left-0 z-[9999] mt-2 w-56
+            absolute left-0 z-[10001] mt-2 w-56
             rounded-[16px] border border-slate500_12 bg-white p-2
             shadow-[0_18px_45px_rgba(15,23,42,0.12)]
             dark:border-white/10 dark:bg-[#1B232D]
@@ -313,14 +294,7 @@ activeField === "start"
     const showNext = side === "right";
 
     return (
-      <div
-        className="
-          w-full rounded-[20px] p-6
-          border border-dashed
-          border-slate500_20 bg-white
-          dark:border-white/10 dark:bg-[#1C252E]
-        "
-      >
+      <div className="w-full rounded-[20px] border border-dashed border-slate500_20 bg-white p-6 dark:border-white/10 dark:bg-[#1C252E]">
         <div className="mb-4 flex items-center justify-between">
           {renderMonthTitle(month, side)}
 
@@ -329,11 +303,7 @@ activeField === "start"
               <button
                 type="button"
                 onClick={() => setLeftMonth((m) => m.subtract(1, "month"))}
-                className="
-                  h-9 w-9 rounded-full
-                  text-[#637381] hover:bg-slate500_08
-                  dark:text-white/70 dark:hover:bg-white/10
-                "
+                className="h-9 w-9 rounded-full text-[#637381] hover:bg-slate500_08 dark:text-white/70 dark:hover:bg-white/10"
                 aria-label="Previous month"
               >
                 ‹
@@ -346,11 +316,7 @@ activeField === "start"
               <button
                 type="button"
                 onClick={() => setLeftMonth((m) => m.add(1, "month"))}
-                className="
-                  h-9 w-9 rounded-full
-                  text-[#637381] hover:bg-slate500_08
-                  dark:text-white/70 dark:hover:bg-white/10
-                "
+                className="h-9 w-9 rounded-full text-[#637381] hover:bg-slate500_08 dark:text-white/70 dark:hover:bg-white/10"
                 aria-label="Next month"
               >
                 ›
@@ -374,7 +340,6 @@ activeField === "start"
             if (!cell) return <div key={idx} className="h-10" />;
 
             const d = cell.startOf("day");
-
             const isStart = sameDay(d, start);
             const isEnd = sameDay(d, end);
             const hasRange = !!start && !!end;
@@ -387,9 +352,9 @@ activeField === "start"
             const isToday = sameDay(d, today);
             const showTodayRing = isToday && !(isStart || isEnd);
 
-           const base =
-  "mx-auto flex h-9 w-9 min-[370px]:h-10 min-[370px]:w-10 items-center justify-center rounded-full text-[13px] min-[370px]:text-[14px] font-semibold transition outline-none";
-            // ✅ readable default in dark mode
+            const base =
+              "mx-auto flex h-9 w-9 min-[370px]:h-10 min-[370px]:w-10 items-center justify-center rounded-full text-[13px] min-[370px]:text-[14px] font-semibold transition outline-none";
+
             let cls =
               "text-[#1C252E] hover:bg-slate500_08 dark:text-white dark:hover:bg-white/10";
 
@@ -427,35 +392,68 @@ activeField === "start"
     );
   };
 
-  // ===== MOBILE styles =====
-  const getMobileDayStyle = (d: Dayjs) => {
-    const isStart = sameDay(d, start);
-    const isEnd = sameDay(d, end);
-    const hasRange = !!start && !!end;
+  const getTempSelectedStyle = (d: Dayjs, isSelected: boolean) => {
+    const day = d.startOf("day");
 
-    const inBetween =
-      hasRange && start && end
-        ? d.isAfter(start, "day") && d.isBefore(end, "day")
-        : false;
+    const base =
+      "mx-auto flex h-8 w-8 min-[370px]:h-9 min-[370px]:w-9 items-center justify-center rounded-full text-[13px] min-[370px]:text-[14px] font-semibold transition outline-none";
 
-    const isToday = sameDay(d, today);
-const base =
-  "mx-auto flex h-9 w-9 min-[370px]:h-10 min-[370px]:w-10 items-center justify-center rounded-full text-[13px] min-[370px]:text-[14px] font-semibold transition outline-none";
     let cls =
       "text-[#1C252E] hover:bg-slate500_08 dark:text-white dark:hover:bg-white/10";
 
-    if (isToday && !(isStart || isEnd)) {
+    const isToday = sameDay(day, today);
+
+    let previewA: Dayjs | null = null;
+    let previewB: Dayjs | null = null;
+
+    if (activeField === "end") {
+      previewA = start;
+      previewB = tempPick;
+    } else {
+      previewA = tempPick;
+      previewB = end;
+    }
+
+    const hasPreview = !!previewA && !!previewB;
+
+    const min =
+      hasPreview && previewA && previewB
+        ? previewB.isBefore(previewA, "day")
+          ? previewB
+          : previewA
+        : null;
+
+    const max =
+      hasPreview && previewA && previewB
+        ? previewB.isAfter(previewA, "day")
+          ? previewB
+          : previewA
+        : null;
+
+    const isPreviewStart = !!min && sameDay(day, min);
+    const isPreviewEnd = !!max && sameDay(day, max);
+    const previewInBetween =
+      !!min && !!max ? day.isAfter(min, "day") && day.isBefore(max, "day") : false;
+
+    const showTodayRing = isToday && !(isPreviewStart || isPreviewEnd);
+
+    if (showTodayRing) {
       cls = "ring-1 ring-slate500 text-[#1C252E] dark:ring-white dark:text-white";
     }
 
     let style: React.CSSProperties | undefined;
 
-    if (inBetween && !(isToday && !(isStart || isEnd))) {
+    if (hasPreview && previewInBetween && !showTodayRing) {
       style = { backgroundColor: RANGE_BG };
       cls = "text-[#1C252E] dark:text-white";
     }
 
-    if (isStart || isEnd) {
+    if (hasPreview && (isPreviewStart || isPreviewEnd) && !showTodayRing) {
+      style = { backgroundColor: BRAND_YELLOW };
+      cls = "text-white";
+    }
+
+    if (!hasPreview && isSelected) {
       style = { backgroundColor: BRAND_YELLOW };
       cls = "text-white";
     }
@@ -463,329 +461,191 @@ const base =
     return { base, cls, style };
   };
 
-const getTempSelectedStyle = (d: Dayjs, isSelected: boolean) => {
-  const day = d.startOf("day");
+  if (!mounted || !open) return null;
 
-  // ✅ match desktop sizing (optional but fixes mismatch)
-const base =
-  "mx-auto flex h-8 w-8 min-[370px]:h-9 min-[370px]:w-9 items-center justify-center rounded-full text-[13px] min-[370px]:text-[14px] font-semibold transition outline-none";
-  let cls =
-    "text-[#1C252E] hover:bg-slate500_08 dark:text-white dark:hover:bg-white/10";
-
-  const isToday = sameDay(day, today);
-
-  // ---------
-  // Decide preview range depending on which field is being picked
-  // ---------
-  let previewA: Dayjs | null = null;
-  let previewB: Dayjs | null = null;
-
-  if (activeField === "end") {
-    // ✅ picking END: preview between committed start and tempPick
-    previewA = start;
-    previewB = tempPick;
-  } else {
-    // ✅ picking START: preview between tempPick and committed end (if end exists)
-    previewA = tempPick;
-    previewB = end;
-  }
-
-  const hasPreview = !!previewA && !!previewB;
-
-  const min = hasPreview && previewA && previewB
-    ? (previewB.isBefore(previewA, "day") ? previewB : previewA)
-    : null;
-
-  const max = hasPreview && previewA && previewB
-    ? (previewB.isAfter(previewA, "day") ? previewB : previewA)
-    : null;
-
-  const isPreviewStart = !!min && sameDay(day, min);
-  const isPreviewEnd = !!max && sameDay(day, max);
-
-  const previewInBetween =
-    !!min && !!max ? day.isAfter(min, "day") && day.isBefore(max, "day") : false;
-
-  // Today ring (same rule as your desktop: not on endpoints)
-  const showTodayRing =
-    isToday && !(isPreviewStart || isPreviewEnd);
-
-  if (showTodayRing) {
-    cls = "ring-1 ring-slate500 text-[#1C252E] dark:ring-white dark:text-white";
-  }
-
-  let style: React.CSSProperties | undefined;
-
-  // ✅ Preview range (this solves “first time end selection has no in-between”)
-  if (hasPreview && previewInBetween && !showTodayRing) {
-    style = { backgroundColor: RANGE_BG };
-    cls = "text-[#1C252E] dark:text-white";
-  }
-
-  // ✅ Preview endpoints
-  if (hasPreview && (isPreviewStart || isPreviewEnd) && !showTodayRing) {
-    style = { backgroundColor: BRAND_YELLOW };
-    cls = "text-white";
-  }
-
-  // If no preview range, still highlight the clicked day
-  if (!hasPreview && isSelected) {
-    style = { backgroundColor: BRAND_YELLOW };
-    cls = "text-white";
-  }
-
-  return { base, cls, style };
-};
-
-  return (
-    <Transition appear show={open} as={Fragment}>
-      <Dialog as="div" className="relative z-[9999]" onClose={closeAll}>
-        <Transition.Child
-          as={Fragment}
-          enter="ease-out duration-150"
-          enterFrom="opacity-0"
-          enterTo="opacity-100"
-          leave="ease-in duration-100"
-          leaveFrom="opacity-100"
-          leaveTo="opacity-0"
-        >
-          <div className="fixed inset-0 bg-black/50" onClick={closeAll} />
-        </Transition.Child>
-
-        <div className="fixed inset-0 flex items-center justify-center p-4 sm:p-6">
-          <Transition.Child
-            as={Fragment}
-            enter="ease-out duration-150"
-            enterFrom="opacity-0 scale-[0.98]"
-            enterTo="opacity-100 scale-100"
-            leave="ease-in duration-100"
-            leaveFrom="opacity-100 scale-100"
-            leaveTo="opacity-0 scale-[0.98]"
-          >
-      <Dialog.Panel
-  ref={panelRef}
-  className="
-    w-full max-w-[920px] rounded-[24px]
-    bg-white shadow-[0_30px_80px_rgba(0,0,0,0.18)]
-    dark:bg-[#1C252E] dark:shadow-[0_30px_80px_rgba(0,0,0,0.55)]
-    overflow-hidden
-  "
->
+  return createPortal(
     <div
-    className="
-      card-modal-scroll
-      max-h-[90vh] overflow-y-auto
-      p-6 pr-2
-      md:max-h-none md:overflow-visible
-    "
-  >
-              <Dialog.Title className="text-[20px] font-bold text-[#1C252E] dark:text-white">
-                Choose due date
-              </Dialog.Title>
-
-              {/* ===== DESKTOP (two months) ===== */}
-              <div className="mt-6 hidden flex-col gap-4 md:flex md:flex-row">
-                {renderCalendar(leftMonth, leftWeeks, "left")}
-                {renderCalendar(rightMonth, rightWeeks, "right")}
-              </div>
-
-              {/* ===== MOBILE (Start/End -> Picker) ===== */}
-              <div className="mt-6 md:hidden">
-                {mobileStep === "form" ? (
-                  <div className="space-y-4">
-                    <div>
-                      <div className="mb-2 text-[14px] font-semibold text-[#637381] dark:text-white/70">
-                        Start date
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => openMobilePicker("start")}
-                        className="
-                          flex w-full items-center justify-between
-                          rounded-[14px] border border-slate500_20 bg-white px-4 py-4
-                          text-[16px] font-semibold text-[#1C252E]
-                          dark:border-white/10 dark:bg-[#1C252E] dark:text-white
-                        "
-                      >
-                        <span>{start ? start.format("MM/DD/YYYY") : "—"}</span>
-                        <span className="opacity-70">
-                          <svg
-                            width="22"
-                            height="22"
-                            viewBox="0 0 24 24"
-                            fill="currentColor"
-                            aria-hidden="true"
-                          >
-                            <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1.5A2.5 2.5 0 0 1 22 6.5v13A2.5 2.5 0 0 1 19.5 22h-15A2.5 2.5 0 0 1 2 19.5v-13A2.5 2.5 0 0 1 4.5 4H6V3a1 1 0 0 1 1-1Zm12.5 6h-15a.5.5 0 0 0-.5.5v11a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-11a.5.5 0 0 0-.5-.5Z" />
-                          </svg>
-                        </span>
-                      </button>
-                    </div>
-
-                    <div>
-                      <div className="mb-2 text-[14px] font-semibold text-[#637381] dark:text-white/70">
-                        End date
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => openMobilePicker("end")}
-                        className="
-                          flex w-full items-center justify-between
-                          rounded-[14px] border border-slate500_20 bg-white px-4 py-4
-                          text-[16px] font-semibold text-[#1C252E]
-                          dark:border-white/10 dark:bg-[#1C252E] dark:text-white
-                        "
-                      >
-                        <span>{end ? end.format("MM/DD/YYYY") : "—"}</span>
-                        <span className="opacity-70">
-                          <svg
-                            width="22"
-                            height="22"
-                            viewBox="0 0 24 24"
-                            fill="currentColor"
-                            aria-hidden="true"
-                          >
-                            <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1.5A2.5 2.5 0 0 1 22 6.5v13A2.5 2.5 0 0 1 19.5 22h-15A2.5 2.5 0 0 1 2 19.5v-13A2.5 2.5 0 0 1 4.5 4H6V3a1 1 0 0 1 1-1Zm12.5 6h-15a.5.5 0 0 0-.5.5v11a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-11a.5.5 0 0 0-.5-.5Z" />
-                          </svg>
-                        </span>
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div>
-                    <div className="text-[13px] font-semibold tracking-wide text-[#637381] dark:text-white/60">
-                      SELECT DATE
-                    </div>
-
-                    <div className="mt-2 text-[28px] font-bold text-[#1C252E] dark:text-white">
-                      {tempPick ? tempPick.format("ddd, MMM D") : "Select date"}
-                    </div>
-
-                    <div className="mt-6 mb-2 flex items-center justify-between">
-                      <div className="inline-flex items-center gap-2 text-[18px] font-semibold text-[#1C252E] dark:text-white">
-                        {pickMonth.format("MMMM YYYY")}
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setPickMonth((m) => m.subtract(1, "month"))}
-                          className="h-9 w-9 rounded-full text-[#637381] hover:bg-slate500_08 dark:text-white/70 dark:hover:bg-white/10"
-                          aria-label="Prev month"
-                        >
-                          ‹
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => setPickMonth((m) => m.add(1, "month"))}
-                          className="h-9 w-9 rounded-full text-[#637381] hover:bg-slate500_08 dark:text-white/70 dark:hover:bg-white/10"
-                          aria-label="Next month"
-                        >
-                          ›
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-7 text-center text-[12px] font-medium text-[#637381] dark:text-white/60">
-                      {WEEK.map((w) => (
-                        <div key={w} className="py-2">
-                          {w}
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="grid grid-cols-7 gap-y-1 text-center">
-                      {pickWeeks.flat().map((cell, idx) => {
-                        if (!cell) return <div key={idx} className="h-10" />;
-
-                        const d = cell.startOf("day");
-                        const isSelected = tempPick ? d.isSame(tempPick, "day") : false;
-
-                        const { base, cls, style } = getTempSelectedStyle(d, isSelected);
-
-                        return (
-                          <button
-                            key={idx}
-                            type="button"
-                            onClick={() => setTempPick(d)}
-                            className={`${base} ${cls}`}
-                            style={style}
-                          >
-                            {d.date()}
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    <div className="mt-8 flex items-center justify-end gap-3">
-                      {/* ✅ bordered cancel (review) */}
-                      <button
-                        type="button"
-                        onClick={cancelMobilePicker}
-                        className="
-                          rounded-[12px] px-6 py-3 text-[14px] font-semibold
-                          border border-slate500_20 text-[#1C252E] hover:bg-slate500_08
-                          dark:border-white/10 dark:text-white dark:hover:bg-white/10
-                        "
-                      >
-                        Cancel
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={commitMobilePick}
-                        className="
-                          rounded-[12px] px-6 py-3 text-[14px] font-semibold
-                          bg-[#1C252E] text-white hover:opacity-90
-                          dark:bg-white dark:text-[#1C252E]
-                        "
-                      >
-                        OK
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* ===== DESKTOP footer ===== */}
-              <div className="mt-6 hidden items-center justify-end gap-3 md:flex">
-                <button
-                  type="button"
-                  onClick={closeAll}
-                  className="
-                    rounded-[12px] px-5 py-2 text-[14px] font-semibold
-                    border border-slate500_20 text-[#1C252E] hover:bg-slate500_08
-                    dark:border-white/10 dark:bg-[#1C252E] dark:text-white dark:hover:bg-white/10
-                  "
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    onApply({
-                      startDate: start ? start.toDate() : null,
-                      endDate: end ? end.toDate() : null,
-                    } as DateValueType)
-                  }
-                  className="
-                    rounded-[12px] px-5 py-2 text-[14px] font-semibold
-                    bg-[#1C252E] text-white hover:opacity-90
-                    dark:bg-white dark:text-[#1C252E]
-                  "
-                >
-                  Apply
-                </button>
-              </div>
+      className="fixed inset-0 z-[9999]"
+      style={{ touchAction: "auto" }}
+      onMouseDown={(e) => e.stopPropagation()}
+      onTouchStart={(e) => e.stopPropagation()}
+      onTouchEnd={(e) => e.stopPropagation()}
+    >
+<div
+  className="absolute inset-0 bg-black/50"
+  onClick={closeAll}
+  onMouseDown={closeAll}
+  onTouchStart={closeAll}
+/>
+      <div className="fixed inset-0 flex items-center justify-center p-4 sm:p-6">
+        <div
+          ref={panelRef}
+          className="w-full max-w-[920px] overflow-hidden rounded-[24px] bg-white shadow-[0_30px_80px_rgba(0,0,0,0.18)] dark:bg-[#1C252E] dark:shadow-[0_30px_80px_rgba(0,0,0,0.55)] pointer-events-auto"
+          onMouseDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          onTouchEnd={(e) => e.stopPropagation()}
+        >
+          <div className="card-modal-scroll max-h-[90vh] overflow-y-auto p-6 pr-2 md:max-h-none md:overflow-visible">
+            <div className="text-[20px] font-bold text-[#1C252E] dark:text-white">
+              Choose due date
             </div>
-            </Dialog.Panel>
-          </Transition.Child>
+
+            <div className="mt-6 hidden flex-col gap-4 md:flex md:flex-row">
+              {renderCalendar(leftMonth, leftWeeks, "left")}
+              {renderCalendar(rightMonth, rightWeeks, "right")}
+            </div>
+
+            <div className="mt-6 md:hidden">
+              {mobileStep === "form" ? (
+                <div className="space-y-4">
+                  <div>
+                    <div className="mb-2 text-[14px] font-semibold text-[#637381] dark:text-white/70">
+                      Start date
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => openMobilePicker("start")}
+                      className="flex w-full items-center justify-between rounded-[14px] border border-slate500_20 bg-white px-4 py-4 text-[16px] font-semibold text-[#1C252E] dark:border-white/10 dark:bg-[#1C252E] dark:text-white"
+                    >
+                      <span>{start ? start.format("MM/DD/YYYY") : "—"}</span>
+                      <span className="opacity-70">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                          <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1.5A2.5 2.5 0 0 1 22 6.5v13A2.5 2.5 0 0 1 19.5 22h-15A2.5 2.5 0 0 1 2 19.5v-13A2.5 2.5 0 0 1 4.5 4H6V3a1 1 0 0 1 1-1Zm12.5 6h-15a.5.5 0 0 0-.5.5v11a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-11a.5.5 0 0 0-.5-.5Z" />
+                        </svg>
+                      </span>
+                    </button>
+                  </div>
+
+                  <div>
+                    <div className="mb-2 text-[14px] font-semibold text-[#637381] dark:text-white/70">
+                      End date
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => openMobilePicker("end")}
+                      className="flex w-full items-center justify-between rounded-[14px] border border-slate500_20 bg-white px-4 py-4 text-[16px] font-semibold text-[#1C252E] dark:border-white/10 dark:bg-[#1C252E] dark:text-white"
+                    >
+                      <span>{end ? end.format("MM/DD/YYYY") : "—"}</span>
+                      <span className="opacity-70">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                          <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1.5A2.5 2.5 0 0 1 22 6.5v13A2.5 2.5 0 0 1 19.5 22h-15A2.5 2.5 0 0 1 2 19.5v-13A2.5 2.5 0 0 1 4.5 4H6V3a1 1 0 0 1 1-1Zm12.5 6h-15a.5.5 0 0 0-.5.5v11a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-11a.5.5 0 0 0-.5-.5Z" />
+                        </svg>
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <div className="text-[13px] font-semibold tracking-wide text-[#637381] dark:text-white/60">
+                    SELECT DATE
+                  </div>
+
+                  <div className="mb-2 mt-2 text-[28px] font-bold text-[#1C252E] dark:text-white">
+                    {tempPick ? tempPick.format("ddd, MMM D") : "Select date"}
+                  </div>
+
+                  <div className="mb-2 mt-6 flex items-center justify-between">
+                    <div className="inline-flex items-center gap-2 text-[18px] font-semibold text-[#1C252E] dark:text-white">
+                      {pickMonth.format("MMMM YYYY")}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setPickMonth((m) => m.subtract(1, "month"))}
+                        className="h-9 w-9 rounded-full text-[#637381] hover:bg-slate500_08 dark:text-white/70 dark:hover:bg-white/10"
+                        aria-label="Prev month"
+                      >
+                        ‹
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setPickMonth((m) => m.add(1, "month"))}
+                        className="h-9 w-9 rounded-full text-[#637381] hover:bg-slate500_08 dark:text-white/70 dark:hover:bg-white/10"
+                        aria-label="Next month"
+                      >
+                        ›
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-7 text-center text-[12px] font-medium text-[#637381] dark:text-white/60">
+                    {WEEK.map((w) => (
+                      <div key={w} className="py-2">
+                        {w}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-7 gap-y-1 text-center">
+                    {pickWeeks.flat().map((cell, idx) => {
+                      if (!cell) return <div key={idx} className="h-10" />;
+
+                      const d = cell.startOf("day");
+                      const isSelected = tempPick ? d.isSame(tempPick, "day") : false;
+                      const { base, cls, style } = getTempSelectedStyle(d, isSelected);
+
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setTempPick(d)}
+                          className={`${base} ${cls}`}
+                          style={style}
+                        >
+                          {d.date()}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="mt-8 flex items-center justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={cancelMobilePicker}
+                      className="rounded-[12px] border border-slate500_20 px-6 py-3 text-[14px] font-semibold text-[#1C252E] hover:bg-slate500_08 dark:border-white/10 dark:text-white dark:hover:bg-white/10"
+                    >
+                      Cancel
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={commitMobilePick}
+                      className="rounded-[12px] bg-[#1C252E] px-6 py-3 text-[14px] font-semibold text-white hover:opacity-90 dark:bg-white dark:text-[#1C252E]"
+                    >
+                      OK
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 hidden items-center justify-end gap-3 md:flex">
+              <button
+                type="button"
+                onClick={closeAll}
+                className="rounded-[12px] border border-slate500_20 px-5 py-2 text-[14px] font-semibold text-[#1C252E] hover:bg-slate500_08 dark:border-white/10 dark:bg-[#1C252E] dark:text-white dark:hover:bg-white/10"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  applyAndClose(start, end)
+                }
+                className="rounded-[12px] bg-[#1C252E] px-5 py-2 text-[14px] font-semibold text-white hover:opacity-90 dark:bg-white dark:text-[#1C252E]"
+              >
+                Apply
+              </button>
+            </div>
+          </div>
         </div>
-      </Dialog>
-    </Transition>
+      </div>
+    </div>,
+    document.body
   );
 }
