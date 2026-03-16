@@ -471,20 +471,23 @@ if (activeField === "start") {
       onTouchStart={(e) => e.stopPropagation()}
       onTouchEnd={(e) => e.stopPropagation()}
     >
-<div
-  className="absolute inset-0 bg-black/50"
-  onClick={closeAll}
-  onMouseDown={closeAll}
-  onTouchStart={closeAll}
-/>
-      <div className="fixed inset-0 flex items-center justify-center p-4 sm:p-6">
-        <div
-          ref={panelRef}
-          className="w-full max-w-[920px] overflow-hidden rounded-[24px] bg-white shadow-[0_30px_80px_rgba(0,0,0,0.18)] dark:bg-[#1C252E] dark:shadow-[0_30px_80px_rgba(0,0,0,0.55)] pointer-events-auto"
-          onMouseDown={(e) => e.stopPropagation()}
-          onTouchStart={(e) => e.stopPropagation()}
-          onTouchEnd={(e) => e.stopPropagation()}
-        >
+<div className="absolute inset-0 bg-black/50" onClick={closeAll} />
+     <div
+  className="fixed inset-0 flex items-center justify-center p-4 sm:p-6 pointer-events-none"
+  onMouseDown={(e) => {
+    if (e.target === e.currentTarget) closeAll();
+  }}
+  onTouchStart={(e) => {
+    if (e.target === e.currentTarget) closeAll();
+  }}
+>
+  <div
+    ref={panelRef}
+    className="w-full max-w-[920px] overflow-hidden rounded-[24px] bg-white shadow-[0_30px_80px_rgba(0,0,0,0.18)] dark:bg-[#1C252E] dark:shadow-[0_30px_80px_rgba(0,0,0,0.55)] pointer-events-auto"
+    onMouseDown={(e) => e.stopPropagation()}
+    onTouchStart={(e) => e.stopPropagation()}
+    onTouchEnd={(e) => e.stopPropagation()}
+  >
           <div className="card-modal-scroll max-h-[90vh] overflow-y-auto p-6 pr-2 md:max-h-none md:overflow-visible">
             <div className="text-[20px] font-bold text-[#1C252E] dark:text-white">
               Choose due date
