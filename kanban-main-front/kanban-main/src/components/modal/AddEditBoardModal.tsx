@@ -82,10 +82,10 @@ const onSubmit = async (e: FormEvent) => {
           {/* Body – single Title field with floating label */}
           <div className="px-8 pb-4">
             <div className="relative">
-              <label className="pointer-events-none absolute -top-2 left-3 inline-flex bg-white px-1 text-[13px] font-medium text-[#637381] dark:bg-[#1C252E] dark:text-slate500_80">
-                Add Title
-                <span className="ml-0.5 text-[#FF5630]">*</span>
-              </label>
+               <label className="pointer-events-none absolute left-3 -top-3 z-10 inline-flex bg-white px-2 text-[14px] font-medium text-[#637381] dark:bg-[#1C252E] dark:text-slate500_80">
+      Add Title
+      <span className="ml-0.5 text-[#FF5630]">*</span>
+    </label>
 
               <input
                 value={title}

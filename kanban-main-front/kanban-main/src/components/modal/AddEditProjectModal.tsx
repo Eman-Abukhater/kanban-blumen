@@ -69,37 +69,35 @@ export default function AddEditProjectModal({
           </div>
 
           {/* Body */}
-          <div className="space-y-4 px-8 pb-2">
-            {/* Title field with floating label */}
-            <div className="relative">
-              <label className="pointer-events-none absolute -top-2 left-3 inline-flex bg-white px-1 text-[13px] font-medium text-[#637381] dark:bg-[#1C252E] dark:text-slate500_80">
-                Add Title
-                <span className="ml-0.5 text-[#FF5630]">*</span>
-              </label>
+        <div className="space-y-6 px-8 pb-2">
+  <div className="relative">
+    <label className="pointer-events-none absolute left-3 -top-3 z-10 inline-flex bg-white px-2 text-[14px] font-medium text-[#637381] dark:bg-[#1C252E] dark:text-slate500_80">
+      Add Title
+      <span className="ml-0.5 text-[#FF5630]">*</span>
+    </label>
 
-              <input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="--"
-                className="h-[56px] w-full rounded-[12px] border border-[#919EAB33] bg-white px-3 pt-3 text-[14px] text-[#1C252E] outline-none transition focus:border-[#1D7BF5] focus:ring-2 focus:ring-[#1D7BF5]/20 dark:border-slate500_20 dark:bg-[#1C252E] dark:text-white"
-              />
-            </div>
+    <input
+      value={title}
+      onChange={(e) => setTitle(e.target.value)}
+      placeholder="--"
+      className="h-[64px] w-full rounded-[16px] border border-[#919EAB33] bg-white px-4 pt-4 text-[14px] text-[#1C252E] outline-none transition focus:border-[#1D7BF5] focus:ring-2 focus:ring-[#1D7BF5]/20 dark:border-slate500_20 dark:bg-[#1C252E] dark:text-white"
+    />
+  </div>
 
-            {/* Description field with floating label */}
-            <div className="relative">
-              <label className="pointer-events-none absolute -top-2 left-3 inline-flex bg-white px-1 text-[13px] font-medium text-[#637381] dark:bg-[#1C252E] dark:text-slate500_80">
-                Description
-              </label>
+  <div className="relative">
+    <label className="pointer-events-none absolute left-4 -top-3 z-10 inline-flex bg-white px-2 text-[14px] font-medium text-[#637381] dark:bg-[#1C252E] dark:text-slate500_80">
+      Description
+    </label>
 
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="--"
-                rows={4}
-  className="scroll-thin w-full rounded-[12px] border border-[#919EAB33] bg-white px-3 pt-3 text-[14px] text-[#1C252E] outline-none transition focus:border-[#1D7BF5] focus:ring-2 focus:ring-[#1D7BF5]/20 dark:border-slate500_20 dark:bg-[#1C252E] dark:text-white"
-              />
-            </div>
-          </div>
+    <textarea
+      value={description}
+      onChange={(e) => setDescription(e.target.value)}
+      placeholder="--"
+      rows={4}
+      className="scroll-thin min-h-[170px] w-full rounded-[16px] border border-[#919EAB33] bg-white px-4 pt-5 text-[14px] text-[#1C252E] outline-none transition focus:border-[#1D7BF5] focus:ring-2 focus:ring-[#1D7BF5]/20 dark:border-slate500_20 dark:bg-[#1C252E] dark:text-white"
+    />
+  </div>
+</div>
 
           {/* Footer / actions */}
           <div className="flex items-center justify-end gap-3 px-8 py-5">
